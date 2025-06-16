@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { TeacherType } from '@/types';
 
 interface RegisterFormProps {
   onBackToLogin: () => void;
@@ -58,7 +58,17 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onBackToLogin }) => {
       return;
     }
 
-    const success = await register(formData);
+    const registrationData = {
+      invitationCode: formData.invitationCode,
+      fullName: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      password: formData.password,
+      teacherType: formData.teacherType as TeacherType,
+      language: formData.language
+    };
+
+    const success = await register(registrationData);
     if (success) {
       toast.success('Registration submitted! Awaiting admin approval.');
       onBackToLogin();

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -22,6 +21,12 @@ interface RegisterData {
   password: string;
   teacherType?: TeacherType;
   language: 'en' | 'ar';
+}
+
+interface DemoAccount {
+  role: UserRole;
+  fullName: string;
+  teacherType?: TeacherType;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -93,7 +98,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(true);
       
       // Demo accounts for testing
-      const demoAccounts = {
+      const demoAccounts: Record<string, DemoAccount> = {
         'admin@ayatwbian.com': { role: 'admin', fullName: 'Admin User' },
         'sales@ayatwbian.com': { role: 'sales', fullName: 'Sales Agent' },
         'teacher@ayatwbian.com': { role: 'teacher', fullName: 'Teacher User', teacherType: 'mixed' },
@@ -101,7 +106,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
 
       if (email in demoAccounts && password === 'password') {
-        const demoData = demoAccounts[email as keyof typeof demoAccounts];
+        const demoData = demoAccounts[email];
         
         // Create a mock session for demo purposes
         const mockUser: AppUser = {
@@ -109,11 +114,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           email,
           fullName: demoData.fullName,
           phone: '+1234567890',
-          role: demoData.role as UserRole,
+          role: demoData.role,
           language: 'en',
           status: 'approved',
           createdAt: new Date().toISOString(),
-          teacherType: demoData.teacherType as TeacherType
+          teacherType: demoData.teacherType
         };
         
         setUser(mockUser);
