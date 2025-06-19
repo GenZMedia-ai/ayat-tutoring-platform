@@ -171,12 +171,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return false;
       }
 
-      // Update invitation code usage
+      // Update invitation code usage - fixed the SQL increment
       if (data.user) {
-        await supabase
+        const { data: currentCode, error: fetchError } = await supabase
           .from('invitation_codes')
-          .update({ used_count: supabase.sql`used_count + 1` })
-          .eq('code', userData.invitationCode);
+          .select('used_count')
+          .eq('code', userData.invitationCode)
+          .single();
+
+        if (!fetchError && currentCode) {
+          await supabase
+            .from('invitation_codes')
+            .update({ used_count: currentCode.used_count + 1 })
+            .eq('code', userData.invitationCode);
+        }
       }
 
       return true;
