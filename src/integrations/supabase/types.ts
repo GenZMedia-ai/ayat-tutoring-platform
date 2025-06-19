@@ -9,13 +9,203 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      currencies: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_enabled: boolean | null
+          name: string
+          symbol: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          name: string
+          symbol: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          name?: string
+          symbol?: string
+        }
+        Relationships: []
+      }
+      invitation_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          role: string
+          usage_limit: number | null
+          used_count: number | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          role: string
+          usage_limit?: number | null
+          used_count?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          role?: string
+          usage_limit?: number | null
+          used_count?: number | null
+        }
+        Relationships: []
+      }
+      packages: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number
+          session_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price: number
+          session_count: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          session_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          language: string
+          phone: string
+          role: string
+          status: string
+          teacher_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id: string
+          language?: string
+          phone: string
+          role: string
+          status?: string
+          teacher_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          language?: string
+          phone?: string
+          role?: string
+          status?: string
+          teacher_type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      teacher_availability: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          is_available: boolean | null
+          is_booked: boolean | null
+          student_id: string | null
+          teacher_id: string
+          time_slot: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          is_available?: boolean | null
+          is_booked?: boolean | null
+          student_id?: string | null
+          teacher_id: string
+          time_slot: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          is_available?: boolean | null
+          is_booked?: boolean | null
+          student_id?: string | null
+          teacher_id?: string
+          time_slot?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { user_id: string }
+        Returns: string
+      }
+      get_user_status: {
+        Args: { user_id: string }
+        Returns: string
+      }
+      is_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
