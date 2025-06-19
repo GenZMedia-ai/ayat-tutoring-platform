@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -23,12 +24,6 @@ interface RegisterData {
   language: 'en' | 'ar';
 }
 
-interface DemoAccount {
-  role: UserRole;
-  fullName: string;
-  teacherType?: TeacherType;
-}
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
@@ -44,29 +39,56 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchUserProfile = async (userId: string): Promise<AppUser | null> => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error || !profile) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+
+      return {
+        id: profile.id,
+        email: profile.email,
+        fullName: profile.full_name,
+        phone: profile.phone,
+        role: profile.role as UserRole,
+        language: profile.language as 'en' | 'ar',
+        status: profile.status as 'pending' | 'approved' | 'rejected',
+        createdAt: profile.created_at,
+        teacherType: profile.teacher_type as TeacherType | undefined,
+        approvedBy: profile.approved_by,
+        approvedAt: profile.approved_at
+      };
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
         setSession(session);
+        
         if (session?.user) {
-          // Mock user data for now - in real implementation this would fetch from your users table
-          const mockUser: AppUser = {
-            id: session.user.id,
-            email: session.user.email || '',
-            fullName: session.user.user_metadata?.full_name || 'Demo User',
-            phone: session.user.user_metadata?.phone || '+1234567890',
-            role: session.user.user_metadata?.role || 'admin',
-            language: session.user.user_metadata?.language || 'en',
-            status: 'approved',
-            createdAt: new Date().toISOString(),
-            teacherType: session.user.user_metadata?.teacher_type
-          };
-          setUser(mockUser);
+          // Use setTimeout to defer Supabase calls and prevent deadlock
+          setTimeout(async () => {
+            const profile = await fetchUserProfile(session.user.id);
+            setUser(profile);
+            setLoading(false);
+          }, 0);
         } else {
           setUser(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
@@ -74,20 +96,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
-        const mockUser: AppUser = {
-          id: session.user.id,
-          email: session.user.email || '',
-          fullName: session.user.user_metadata?.full_name || 'Demo User',
-          phone: session.user.user_metadata?.phone || '+1234567890',
-          role: session.user.user_metadata?.role || 'admin',
-          language: session.user.user_metadata?.language || 'en',
-          status: 'approved',
-          createdAt: new Date().toISOString(),
-          teacherType: session.user.user_metadata?.teacher_type
-        };
-        setUser(mockUser);
+        setTimeout(async () => {
+          const profile = await fetchUserProfile(session.user.id);
+          setUser(profile);
+          setLoading(false);
+        }, 0);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -97,40 +113,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setLoading(true);
       
-      // Demo accounts for testing
-      const demoAccounts: Record<string, DemoAccount> = {
-        'admin@ayatwbian.com': { role: 'admin', fullName: 'Admin User' },
-        'sales@ayatwbian.com': { role: 'sales', fullName: 'Sales Agent' },
-        'teacher@ayatwbian.com': { role: 'teacher', fullName: 'Teacher User', teacherType: 'mixed' },
-        'supervisor@ayatwbian.com': { role: 'supervisor', fullName: 'Supervisor User' }
-      };
-
-      if (email in demoAccounts && password === 'password') {
-        const demoData = demoAccounts[email];
-        
-        // Create a mock session for demo purposes
-        const mockUser: AppUser = {
-          id: `demo-${demoData.role}`,
-          email,
-          fullName: demoData.fullName,
-          phone: '+1234567890',
-          role: demoData.role,
-          language: 'en',
-          status: 'approved',
-          createdAt: new Date().toISOString(),
-          teacherType: demoData.teacherType
-        };
-        
-        setUser(mockUser);
-        return true;
-      }
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Login error:', error);
+        return false;
+      }
+
       return true;
     } catch (error) {
       console.error('Login error:', error);
@@ -152,10 +144,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setLoading(true);
       
-      // Mock registration - in real implementation this would create user in Supabase
-      console.log('Registration data:', userData);
-      
-      // Simulate successful registration
+      // First validate the invitation code and get the role
+      const codeValidation = await validateInvitationCode(userData.invitationCode);
+      if (!codeValidation.valid || !codeValidation.role) {
+        throw new Error('Invalid invitation code');
+      }
+
+      // Create the user with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            full_name: userData.fullName,
+            phone: userData.phone,
+            role: codeValidation.role,
+            teacher_type: userData.teacherType,
+            language: userData.language
+          }
+        }
+      });
+
+      if (error) {
+        console.error('Registration error:', error);
+        return false;
+      }
+
+      // Update invitation code usage
+      if (data.user) {
+        await supabase
+          .from('invitation_codes')
+          .update({ used_count: supabase.sql`used_count + 1` })
+          .eq('code', userData.invitationCode);
+      }
+
       return true;
     } catch (error) {
       console.error('Registration error:', error);
@@ -166,19 +189,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const validateInvitationCode = async (code: string): Promise<{ valid: boolean; role?: string }> => {
-    // Mock validation for demo codes
-    const demoCodes = {
-      'ADMIN2025': 'admin',
-      'TEACHER2025': 'teacher',
-      'SALES2025': 'sales',
-      'SUPERVISOR2025': 'supervisor'
-    };
+    try {
+      const { data: invitationCode, error } = await supabase
+        .from('invitation_codes')
+        .select('*')
+        .eq('code', code)
+        .eq('is_active', true)
+        .single();
 
-    if (code in demoCodes) {
-      return { valid: true, role: demoCodes[code as keyof typeof demoCodes] };
+      if (error || !invitationCode) {
+        return { valid: false };
+      }
+
+      // Check if code is expired
+      if (invitationCode.expires_at && new Date(invitationCode.expires_at) < new Date()) {
+        return { valid: false };
+      }
+
+      // Check if usage limit is reached
+      if (invitationCode.usage_limit && invitationCode.used_count >= invitationCode.usage_limit) {
+        return { valid: false };
+      }
+
+      return { valid: true, role: invitationCode.role };
+    } catch (error) {
+      console.error('Error validating invitation code:', error);
+      return { valid: false };
     }
-
-    return { valid: false };
   };
 
   const value: AuthContextType = {

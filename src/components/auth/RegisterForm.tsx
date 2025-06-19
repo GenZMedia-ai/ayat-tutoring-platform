@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -70,7 +71,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onBackToLogin }) => {
 
     const success = await register(registrationData);
     if (success) {
-      toast.success('Registration submitted! Awaiting admin approval.');
+      toast.success('Registration successful! Please check your email to verify your account, then wait for admin approval.');
       onBackToLogin();
     } else {
       toast.error('Registration failed. Please try again.');
@@ -129,12 +130,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onBackToLogin }) => {
           </form>
           
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Demo Codes:</p>
-            <div className="mt-2 space-y-1 text-xs">
-              <p>ADMIN2025 - Admin Role</p>
-              <p>TEACHER2025 - Teacher Role</p>
-              <p>SALES2025 - Sales Agent Role</p>
-              <p>SUPERVISOR2025 - Supervisor Role</p>
+            <p>Test with invitation code:</p>
+            <div className="mt-2 text-xs">
+              <p className="font-mono">ADMIN2025 - Admin Role</p>
             </div>
           </div>
         </CardContent>

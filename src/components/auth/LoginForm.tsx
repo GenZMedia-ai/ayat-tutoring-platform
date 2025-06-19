@@ -7,7 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
-const LoginForm: React.FC = () => {
+interface LoginFormProps {
+  onSwitchToRegister: () => void;
+}
+
+const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const { login, loading } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -23,10 +27,8 @@ const LoginForm: React.FC = () => {
     }
 
     const success = await login(formData.email, formData.password);
-    if (success) {
-      toast.success('Welcome to Ayat w Bian!');
-    } else {
-      toast.error('Invalid credentials or account not approved');
+    if (!success) {
+      toast.error('Invalid email or password');
     }
   };
 
@@ -64,6 +66,7 @@ const LoginForm: React.FC = () => {
               required
             />
           </div>
+          
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input
@@ -76,6 +79,7 @@ const LoginForm: React.FC = () => {
               required
             />
           </div>
+          
           <Button 
             type="submit" 
             className="w-full ayat-button-primary"
@@ -83,16 +87,20 @@ const LoginForm: React.FC = () => {
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
+          
+          <Button 
+            type="button" 
+            variant="ghost" 
+            className="w-full"
+            onClick={onSwitchToRegister}
+          >
+            Don't have an account? Register
+          </Button>
         </form>
-        
+
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>Demo Accounts:</p>
-          <div className="mt-2 space-y-1 text-xs">
-            <p>Admin: admin@ayatwbian.com / password</p>
-            <p>Sales: sales@ayatwbian.com / password</p>
-            <p>Teacher: teacher@ayatwbian.com / password</p>
-            <p>Supervisor: supervisor@ayatwbian.com / password</p>
-          </div>
+          <p>For testing purposes, you can register with invitation code:</p>
+          <p className="font-mono text-xs mt-1">ADMIN2025</p>
         </div>
       </CardContent>
     </Card>
