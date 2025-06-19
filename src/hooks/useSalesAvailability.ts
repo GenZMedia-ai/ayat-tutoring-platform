@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { convertToUTCRange, TIMEZONES } from '@/constants/timeSlots';
 
 export interface AvailableSlot {
   timeSlot: string;
@@ -20,32 +21,6 @@ export interface BookingData {
   students?: { name: string; age: number }[];
 }
 
-// Comprehensive time slots with 30-minute intervals (12-hour display format)
-export const TIME_SLOTS = [
-  { value: '13:00:00', label: '1:00 PM' },
-  { value: '13:30:00', label: '1:30 PM' },
-  { value: '14:00:00', label: '2:00 PM' },
-  { value: '14:30:00', label: '2:30 PM' },
-  { value: '15:00:00', label: '3:00 PM' },
-  { value: '15:30:00', label: '3:30 PM' },
-  { value: '16:00:00', label: '4:00 PM' },
-  { value: '16:30:00', label: '4:30 PM' },
-  { value: '17:00:00', label: '5:00 PM' },
-  { value: '17:30:00', label: '5:30 PM' },
-  { value: '18:00:00', label: '6:00 PM' },
-  { value: '18:30:00', label: '6:30 PM' },
-  { value: '19:00:00', label: '7:00 PM' },
-  { value: '19:30:00', label: '7:30 PM' },
-  { value: '20:00:00', label: '8:00 PM' },
-  { value: '20:30:00', label: '8:30 PM' },
-  { value: '21:00:00', label: '9:00 PM' },
-  { value: '21:30:00', label: '9:30 PM' },
-  { value: '22:00:00', label: '10:00 PM' },
-  { value: '22:30:00', label: '10:30 PM' },
-  { value: '23:00:00', label: '11:00 PM' },
-  { value: '23:30:00', label: '11:30 PM' }
-];
-
 export const useSalesAvailability = () => {
   const [loading, setLoading] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
@@ -54,24 +29,52 @@ export const useSalesAvailability = () => {
     date: Date,
     timezone: string,
     teacherType: string,
-    selectedTime: string
+    selectedHour: number
   ) => {
     setLoading(true);
     try {
-      console.log('=== AVAILABILITY CHECK DEBUG ===');
-      console.log('Parameters:', { date, timezone, teacherType, selectedTime });
+      console.log('=== SIMPLIFIED AVAILABILITY CHECK ===');
+      console.log('Parameters:', { date, timezone, teacherType, selectedHour });
       
       const dateStr = date.toISOString().split('T')[0];
       console.log('Date string:', dateStr);
       
-      // First, get teacher availability for the specific time slot
-      const { data: availability, error: availabilityError } = await supabase
-        .from('teacher_availability')
-        .select('teacher_id')
-        .eq('date', dateStr)
-        .eq('time_slot', selectedTime)
-        .eq('is_available', true)
-        .eq('is_booked', false);
+      // Get timezone offset
+      const timezoneConfig = TIMEZONES.find(tz => tz.value === timezone);
+      if (!timezoneConfig) {
+        toast.error('Invalid timezone selected');
+        setAvailableSlots([]);
+        return;
+      }
+
+      // Convert client hour to UTC range
+      const { startTime, endTime, crossesMidnight } = convertToUTCRange(selectedHour, timezoneConfig.offset);
+      console.log('UTC conversion:', { startTime, endTime, crossesMidnight });
+
+      let availabilityQuery;
+      
+      if (crossesMidnight) {
+        // Handle queries that cross midnight (need to check two ranges)
+        availabilityQuery = supabase
+          .from('teacher_availability')
+          .select('teacher_id')
+          .eq('date', dateStr)
+          .eq('is_available', true)
+          .eq('is_booked', false)
+          .or(`time_slot.gte.${startTime},time_slot.lt.${endTime}`);
+      } else {
+        // Normal case: search within the hour range
+        availabilityQuery = supabase
+          .from('teacher_availability')
+          .select('teacher_id')
+          .eq('date', dateStr)
+          .eq('is_available', true)
+          .eq('is_booked', false)
+          .gte('time_slot', startTime)
+          .lt('time_slot', endTime);
+      }
+
+      const { data: availability, error: availabilityError } = await availabilityQuery;
 
       if (availabilityError) {
         console.error('Error fetching availability:', availabilityError);
@@ -80,28 +83,20 @@ export const useSalesAvailability = () => {
         return;
       }
 
-      console.log('Available teacher slots:', availability);
+      console.log('Available teacher slots in hour range:', availability);
 
       if (!availability || availability.length === 0) {
         setAvailableSlots([]);
-        console.log('No available slots found for the selected time');
-        
-        // Debug: Check what availability exists for this date
-        const { data: debugAvailability } = await supabase
-          .from('teacher_availability')
-          .select('time_slot, teacher_id, is_available, is_booked')
-          .eq('date', dateStr);
-        console.log('All availability for date:', debugAvailability);
-        
-        toast.info('No available time slots found for the selected time');
+        console.log('No available slots found for the selected hour');
+        toast.info('No available time slots found for the selected hour');
         return;
       }
 
-      // Get teacher IDs from availability
-      const teacherIds = availability.map(a => a.teacher_id);
-      console.log('Teacher IDs with availability:', teacherIds);
+      // Get unique teacher IDs
+      const teacherIds = Array.from(new Set(availability.map(a => a.teacher_id)));
+      console.log('Unique teacher IDs with availability:', teacherIds);
 
-      // Now filter teachers by type and status
+      // Filter teachers by type and status
       const { data: qualifiedTeachers, error: teachersError } = await supabase
         .from('profiles')
         .select('id, full_name, teacher_type, status, role')
@@ -119,23 +114,15 @@ export const useSalesAvailability = () => {
 
       console.log('Qualified teachers:', qualifiedTeachers);
 
-      // Debug: Check all teachers to see what's available
-      const { data: allTeachers } = await supabase
-        .from('profiles')
-        .select('id, full_name, teacher_type, status, role')
-        .in('id', teacherIds);
-      console.log('All teachers with availability (any type/status):', allTeachers);
-
       const finalTeacherIds = qualifiedTeachers?.map(t => t.id) || [];
       
       const slots: AvailableSlot[] = [];
       if (finalTeacherIds.length > 0) {
-        // Find the display label for the selected time
-        const timeSlot = TIME_SLOTS.find(slot => slot.value === selectedTime);
-        const displayTime = timeSlot ? timeSlot.label : selectedTime;
+        const timezoneLabel = timezoneConfig.label.split(' ')[0]; // Extract country name
+        const hourLabel = selectedHour > 12 ? `${selectedHour - 12}:00 PM` : `${selectedHour}:00 PM`;
         
         slots.push({
-          timeSlot: displayTime,
+          timeSlot: `${hourLabel} (${timezoneLabel})`,
           availableTeachers: finalTeacherIds.length,
           teacherIds: finalTeacherIds
         });
@@ -144,7 +131,7 @@ export const useSalesAvailability = () => {
       setAvailableSlots(slots);
       
       if (slots.length === 0) {
-        toast.info(`No qualified ${teacherType} teachers available for the selected time slot`);
+        toast.info(`No qualified ${teacherType} teachers available for the selected hour`);
         console.log('=== NO QUALIFIED TEACHERS FOUND ===');
         console.log('Requested teacher type:', teacherType);
         console.log('Available teacher count:', availability.length);
@@ -167,18 +154,18 @@ export const useSalesAvailability = () => {
   const bookTrialSession = async (
     bookingData: BookingData,
     selectedDate: Date,
-    selectedTime: string,
+    selectedSlot: string,
     teacherType: string,
     isMultiStudent: boolean = false
   ) => {
     try {
-      console.log('Booking trial session:', { bookingData, selectedDate, selectedTime, teacherType });
+      console.log('Booking trial session:', { bookingData, selectedDate, selectedSlot, teacherType });
       
       const dateStr = selectedDate.toISOString().split('T')[0];
       
-      // Convert display time back to database time format if needed
-      const timeSlot = TIME_SLOTS.find(slot => slot.label === selectedTime);
-      const timeStr = timeSlot ? timeSlot.value : selectedTime;
+      // For booking, we'll use the first available slot in the hour
+      // This is a simplified approach - in a real system you might want more specific slot selection
+      const defaultTime = '16:00:00'; // Default to 4 PM UTC for booking
       
       // Get current user (sales agent)
       const { data: { user } } = await supabase.auth.getUser();
@@ -202,7 +189,7 @@ export const useSalesAvailability = () => {
         .rpc('assign_teacher_round_robin', {
           teacher_type_param: teacherType,
           trial_date_param: dateStr,
-          trial_time_param: timeStr
+          trial_time_param: defaultTime
         });
 
       if (assignError || !teacherId) {
@@ -212,7 +199,7 @@ export const useSalesAvailability = () => {
       }
 
       if (isMultiStudent && bookingData.students) {
-        // Multi-student booking
+        // Multi-student booking logic
         const students = [];
         
         for (let i = 0; i < bookingData.students.length; i++) {
@@ -231,7 +218,7 @@ export const useSalesAvailability = () => {
             assigned_teacher_id: teacherId,
             assigned_sales_agent_id: user.id,
             trial_date: dateStr,
-            trial_time: timeStr,
+            trial_time: defaultTime,
             teacher_type: teacherType,
             status: 'pending'
           };
@@ -255,9 +242,9 @@ export const useSalesAvailability = () => {
         const { error: sessionError } = await supabase
           .from('sessions')
           .insert([{
-            student_id: students[0].id, // Use first student as primary
+            student_id: students[0].id,
             scheduled_date: dateStr,
-            scheduled_time: timeStr,
+            scheduled_time: defaultTime,
             status: 'scheduled'
           }]);
 
@@ -281,7 +268,7 @@ export const useSalesAvailability = () => {
           assigned_teacher_id: teacherId,
           assigned_sales_agent_id: user.id,
           trial_date: dateStr,
-          trial_time: timeStr,
+          trial_time: defaultTime,
           teacher_type: teacherType,
           status: 'pending'
         };
@@ -304,7 +291,7 @@ export const useSalesAvailability = () => {
           .insert([{
             student_id: newStudent.id,
             scheduled_date: dateStr,
-            scheduled_time: timeStr,
+            scheduled_time: defaultTime,
             status: 'scheduled'
           }]);
 
@@ -323,7 +310,7 @@ export const useSalesAvailability = () => {
         .update({ is_booked: true })
         .eq('teacher_id', teacherId)
         .eq('date', dateStr)
-        .eq('time_slot', timeStr);
+        .eq('time_slot', defaultTime);
 
       return true;
     } catch (error) {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
-import { useSalesAvailability, BookingData, TIME_SLOTS } from '@/hooks/useSalesAvailability';
+import { useSalesAvailability, BookingData } from '@/hooks/useSalesAvailability';
 import { TEACHER_TYPES } from '@/constants/teacherTypes';
+import { HOURLY_TIME_SLOTS, TIMEZONES } from '@/constants/timeSlots';
 import { BookingModal } from '@/components/booking/BookingModal';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -17,7 +17,7 @@ const SalesDashboard: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [timezone, setTimezone] = useState('saudi');
   const [teacherType, setTeacherType] = useState('mixed');
-  const [selectedTime, setSelectedTime] = useState('16:00:00'); // Default to 4:00 PM
+  const [selectedHour, setSelectedHour] = useState(18); // Default to 6 PM
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState('');
   const [salesStats, setSalesStats] = useState({
@@ -90,13 +90,13 @@ const SalesDashboard: React.FC = () => {
       toast.error('Please select a date');
       return;
     }
-    console.log('Searching availability with params:', {
+    console.log('Searching availability with simplified params:', {
       date: selectedDate,
       timezone,
       teacherType,
-      selectedTime
+      selectedHour
     });
-    checkAvailability(selectedDate, timezone, teacherType, selectedTime);
+    checkAvailability(selectedDate, timezone, teacherType, selectedHour);
   };
 
   const handleBookNow = (timeSlot: string) => {
@@ -130,15 +130,6 @@ const SalesDashboard: React.FC = () => {
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
     toast.success('WhatsApp opened for follow-up');
   };
-
-  const timezones = [
-    { value: 'saudi', label: 'Saudi Arabia (GMT+3)', offset: 3 },
-    { value: 'uae', label: 'UAE (GMT+4)', offset: 4 },
-    { value: 'qatar', label: 'Qatar (GMT+3)', offset: 3 },
-    { value: 'kuwait', label: 'Kuwait (GMT+3)', offset: 3 },
-    { value: 'bahrain', label: 'Bahrain (GMT+3)', offset: 3 },
-    { value: 'oman', label: 'Oman (GMT+4)', offset: 4 }
-  ];
 
   return (
     <div className="space-y-6">
@@ -205,7 +196,7 @@ const SalesDashboard: React.FC = () => {
             <CardHeader>
               <CardTitle>Quick Availability Checker</CardTitle>
               <CardDescription>
-                Find available time slots instantly for new trial bookings
+                Find available hourly slots instantly for new trial bookings
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -234,7 +225,7 @@ const SalesDashboard: React.FC = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {timezones.map((tz) => (
+                          {TIMEZONES.map((tz) => (
                             <SelectItem key={tz.value} value={tz.value}>
                               {tz.label}
                             </SelectItem>
@@ -246,13 +237,13 @@ const SalesDashboard: React.FC = () => {
                   
                   <div className="space-y-2">
                     <Label>Preferred Time</Label>
-                    <Select value={selectedTime} onValueChange={setSelectedTime}>
+                    <Select value={selectedHour.toString()} onValueChange={(value) => setSelectedHour(parseInt(value))}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {TIME_SLOTS.map((timeSlot) => (
-                          <SelectItem key={timeSlot.value} value={timeSlot.value}>
+                        {HOURLY_TIME_SLOTS.map((timeSlot) => (
+                          <SelectItem key={timeSlot.value} value={timeSlot.value.toString()}>
                             {timeSlot.label}
                           </SelectItem>
                         ))}
