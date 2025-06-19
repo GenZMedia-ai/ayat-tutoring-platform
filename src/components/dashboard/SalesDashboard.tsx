@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { useSalesAvailability, BookingData, TIME_SLOTS } from '@/hooks/useSalesAvailability';
+import { TEACHER_TYPES } from '@/constants/teacherTypes';
 import { BookingModal } from '@/components/booking/BookingModal';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -89,6 +90,12 @@ const SalesDashboard: React.FC = () => {
       toast.error('Please select a date');
       return;
     }
+    console.log('Searching availability with params:', {
+      date: selectedDate,
+      timezone,
+      teacherType,
+      selectedTime
+    });
     checkAvailability(selectedDate, timezone, teacherType, selectedTime);
   };
 
@@ -212,10 +219,11 @@ const SalesDashboard: React.FC = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="kids">Kids</SelectItem>
-                          <SelectItem value="adult">Adult</SelectItem>
-                          <SelectItem value="mixed">Mixed</SelectItem>
-                          <SelectItem value="expert">Expert</SelectItem>
+                          {TEACHER_TYPES.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -281,8 +289,9 @@ const SalesDashboard: React.FC = () => {
                   )}
                   
                   {!loading && availableSlots.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No available slots found. Try different criteria.
+                    <div className="text-center py-8 text-muted-foreground space-y-2">
+                      <p>No available slots found.</p>
+                      <p className="text-sm">Try different criteria or check the console for debugging info.</p>
                     </div>
                   )}
                   

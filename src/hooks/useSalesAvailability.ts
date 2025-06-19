@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -19,18 +20,30 @@ export interface BookingData {
   students?: { name: string; age: number }[];
 }
 
-// Predefined time slots with 12-hour display format
+// Comprehensive time slots with 30-minute intervals (12-hour display format)
 export const TIME_SLOTS = [
+  { value: '13:00:00', label: '1:00 PM' },
+  { value: '13:30:00', label: '1:30 PM' },
   { value: '14:00:00', label: '2:00 PM' },
+  { value: '14:30:00', label: '2:30 PM' },
   { value: '15:00:00', label: '3:00 PM' },
+  { value: '15:30:00', label: '3:30 PM' },
   { value: '16:00:00', label: '4:00 PM' },
+  { value: '16:30:00', label: '4:30 PM' },
   { value: '17:00:00', label: '5:00 PM' },
+  { value: '17:30:00', label: '5:30 PM' },
   { value: '18:00:00', label: '6:00 PM' },
+  { value: '18:30:00', label: '6:30 PM' },
   { value: '19:00:00', label: '7:00 PM' },
+  { value: '19:30:00', label: '7:30 PM' },
   { value: '20:00:00', label: '8:00 PM' },
+  { value: '20:30:00', label: '8:30 PM' },
   { value: '21:00:00', label: '9:00 PM' },
+  { value: '21:30:00', label: '9:30 PM' },
   { value: '22:00:00', label: '10:00 PM' },
-  { value: '23:00:00', label: '11:00 PM' }
+  { value: '22:30:00', label: '10:30 PM' },
+  { value: '23:00:00', label: '11:00 PM' },
+  { value: '23:30:00', label: '11:30 PM' }
 ];
 
 export const useSalesAvailability = () => {
@@ -45,9 +58,11 @@ export const useSalesAvailability = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('Checking availability for:', { date, timezone, teacherType, selectedTime });
+      console.log('=== AVAILABILITY CHECK DEBUG ===');
+      console.log('Parameters:', { date, timezone, teacherType, selectedTime });
       
       const dateStr = date.toISOString().split('T')[0];
+      console.log('Date string:', dateStr);
       
       // First, get teacher availability for the specific time slot
       const { data: availability, error: availabilityError } = await supabase
@@ -69,17 +84,27 @@ export const useSalesAvailability = () => {
 
       if (!availability || availability.length === 0) {
         setAvailableSlots([]);
-        toast.info('No available time slots found');
+        console.log('No available slots found for the selected time');
+        
+        // Debug: Check what availability exists for this date
+        const { data: debugAvailability } = await supabase
+          .from('teacher_availability')
+          .select('time_slot, teacher_id, is_available, is_booked')
+          .eq('date', dateStr);
+        console.log('All availability for date:', debugAvailability);
+        
+        toast.info('No available time slots found for the selected time');
         return;
       }
 
       // Get teacher IDs from availability
       const teacherIds = availability.map(a => a.teacher_id);
+      console.log('Teacher IDs with availability:', teacherIds);
 
       // Now filter teachers by type and status
       const { data: qualifiedTeachers, error: teachersError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, full_name, teacher_type, status, role')
         .in('id', teacherIds)
         .eq('teacher_type', teacherType)
         .eq('status', 'approved')
@@ -93,6 +118,13 @@ export const useSalesAvailability = () => {
       }
 
       console.log('Qualified teachers:', qualifiedTeachers);
+
+      // Debug: Check all teachers to see what's available
+      const { data: allTeachers } = await supabase
+        .from('profiles')
+        .select('id, full_name, teacher_type, status, role')
+        .in('id', teacherIds);
+      console.log('All teachers with availability (any type/status):', allTeachers);
 
       const finalTeacherIds = qualifiedTeachers?.map(t => t.id) || [];
       
@@ -112,9 +144,15 @@ export const useSalesAvailability = () => {
       setAvailableSlots(slots);
       
       if (slots.length === 0) {
-        toast.info('No qualified teachers available for the selected time slot');
+        toast.info(`No qualified ${teacherType} teachers available for the selected time slot`);
+        console.log('=== NO QUALIFIED TEACHERS FOUND ===');
+        console.log('Requested teacher type:', teacherType);
+        console.log('Available teacher count:', availability.length);
+        console.log('Qualified teacher count:', qualifiedTeachers?.length || 0);
       } else {
-        toast.success(`Found ${slots[0].availableTeachers} qualified teacher(s)`);
+        toast.success(`Found ${slots[0].availableTeachers} qualified ${teacherType} teacher(s)`);
+        console.log('=== SUCCESS ===');
+        console.log('Found teachers:', qualifiedTeachers?.map(t => t.full_name));
       }
       
     } catch (error) {
