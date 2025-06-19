@@ -1,14 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
-import { useSalesAvailability, BookingData } from '@/hooks/useSalesAvailability';
+import { useSalesAvailability, BookingData, TIME_SLOTS } from '@/hooks/useSalesAvailability';
 import { BookingModal } from '@/components/booking/BookingModal';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -16,8 +16,7 @@ const SalesDashboard: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [timezone, setTimezone] = useState('saudi');
   const [teacherType, setTeacherType] = useState('mixed');
-  const [startHour, setStartHour] = useState(16);
-  const [endHour, setEndHour] = useState(20);
+  const [selectedTime, setSelectedTime] = useState('16:00:00'); // Default to 4:00 PM
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState('');
   const [salesStats, setSalesStats] = useState({
@@ -90,7 +89,7 @@ const SalesDashboard: React.FC = () => {
       toast.error('Please select a date');
       return;
     }
-    checkAvailability(selectedDate, timezone, teacherType, startHour, endHour);
+    checkAvailability(selectedDate, timezone, teacherType, selectedTime);
   };
 
   const handleBookNow = (timeSlot: string) => {
@@ -237,37 +236,20 @@ const SalesDashboard: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Start Hour</Label>
-                      <Select value={startHour.toString()} onValueChange={(value) => setStartHour(parseInt(value))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 12 }, (_, i) => i + 14).map(hour => (
-                            <SelectItem key={hour} value={hour.toString()}>
-                              {hour}:00 ({hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? 'PM' : 'AM'})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>End Hour</Label>
-                      <Select value={endHour.toString()} onValueChange={(value) => setEndHour(parseInt(value))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 8 }, (_, i) => i + 16).map(hour => (
-                            <SelectItem key={hour} value={hour.toString()}>
-                              {hour}:00 ({hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? 'PM' : 'AM'})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-2">
+                    <Label>Preferred Time</Label>
+                    <Select value={selectedTime} onValueChange={setSelectedTime}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIME_SLOTS.map((timeSlot) => (
+                          <SelectItem key={timeSlot.value} value={timeSlot.value}>
+                            {timeSlot.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <Calendar
@@ -283,7 +265,7 @@ const SalesDashboard: React.FC = () => {
                     className="w-full ayat-button-primary"
                     disabled={loading}
                   >
-                    {loading ? 'Searching...' : 'Search Available Slots'}
+                    {loading ? 'Searching...' : 'Check Availability'}
                   </Button>
                 </div>
 
