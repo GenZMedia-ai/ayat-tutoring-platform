@@ -24,32 +24,6 @@ interface RegisterData {
   language: 'en' | 'ar';
 }
 
-interface ProfileRow {
-  id: string;
-  email: string;
-  full_name: string;
-  phone: string;
-  role: string;
-  teacher_type: string | null;
-  language: string;
-  status: string;
-  created_at: string;
-  approved_by: string | null;
-  approved_at: string | null;
-}
-
-interface InvitationCodeRow {
-  id: string;
-  code: string;
-  role: string;
-  created_by: string;
-  expires_at: string | null;
-  usage_limit: number | null;
-  used_count: number | null;
-  is_active: boolean | null;
-  created_at: string;
-}
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
@@ -68,7 +42,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const fetchUserProfile = async (userId: string): Promise<AppUser | null> => {
     try {
       const { data: profile, error } = await supabase
-        .from('profiles' as any)
+        .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
@@ -78,20 +52,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return null;
       }
 
-      const profileData = profile as ProfileRow;
-
       return {
-        id: profileData.id,
-        email: profileData.email,
-        fullName: profileData.full_name,
-        phone: profileData.phone,
-        role: profileData.role as UserRole,
-        language: profileData.language as 'en' | 'ar',
-        status: profileData.status as 'pending' | 'approved' | 'rejected',
-        createdAt: profileData.created_at,
-        teacherType: profileData.teacher_type as TeacherType | undefined,
-        approvedBy: profileData.approved_by,
-        approvedAt: profileData.approved_at
+        id: profile.id,
+        email: profile.email,
+        fullName: profile.full_name,
+        phone: profile.phone,
+        role: profile.role as UserRole,
+        language: profile.language as 'en' | 'ar',
+        status: profile.status as 'pending' | 'approved' | 'rejected',
+        createdAt: profile.created_at,
+        teacherType: profile.teacher_type as TeacherType | undefined,
+        approvedBy: profile.approved_by,
+        approvedAt: profile.approved_at
       };
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
@@ -202,16 +174,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Update invitation code usage
       if (data.user) {
         const { data: currentCode, error: fetchError } = await supabase
-          .from('invitation_codes' as any)
+          .from('invitation_codes')
           .select('used_count')
           .eq('code', userData.invitationCode)
           .single();
 
         if (!fetchError && currentCode) {
-          const codeData = currentCode as Pick<InvitationCodeRow, 'used_count'>;
           await supabase
-            .from('invitation_codes' as any)
-            .update({ used_count: (codeData.used_count || 0) + 1 })
+            .from('invitation_codes')
+            .update({ used_count: (currentCode.used_count || 0) + 1 })
             .eq('code', userData.invitationCode);
         }
       }
@@ -228,7 +199,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const validateInvitationCode = async (code: string): Promise<{ valid: boolean; role?: string }> => {
     try {
       const { data: invitationCode, error } = await supabase
-        .from('invitation_codes' as any)
+        .from('invitation_codes')
         .select('*')
         .eq('code', code)
         .eq('is_active', true)
@@ -238,19 +209,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { valid: false };
       }
 
-      const codeData = invitationCode as InvitationCodeRow;
-
       // Check if code is expired
-      if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
+      if (invitationCode.expires_at && new Date(invitationCode.expires_at) < new Date()) {
         return { valid: false };
       }
 
       // Check if usage limit is reached
-      if (codeData.usage_limit && (codeData.used_count || 0) >= codeData.usage_limit) {
+      if (invitationCode.usage_limit && (invitationCode.used_count || 0) >= invitationCode.usage_limit) {
         return { valid: false };
       }
 
-      return { valid: true, role: codeData.role };
+      return { valid: true, role: invitationCode.role };
     } catch (error) {
       console.error('Error validating invitation code:', error);
       return { valid: false };
