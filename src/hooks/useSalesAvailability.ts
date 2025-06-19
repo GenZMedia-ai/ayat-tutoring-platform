@@ -92,8 +92,10 @@ export const useSalesAvailability = () => {
         return;
       }
 
-      // Get unique teacher IDs
-      const teacherIds = Array.from(new Set(availability.map(a => a.teacher_id)));
+      // Get unique teacher IDs with proper typing
+      const teacherIds: string[] = Array.from(
+        new Set(availability.map(a => a.teacher_id as string))
+      );
       console.log('Unique teacher IDs with availability:', teacherIds);
 
       // Filter teachers by type and status
