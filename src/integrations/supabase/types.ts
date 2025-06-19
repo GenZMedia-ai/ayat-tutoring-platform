@@ -153,6 +153,122 @@ export type Database = {
         }
         Relationships: []
       }
+      sessions: {
+        Row: {
+          actual_minutes: number | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          reschedule_count: number
+          scheduled_date: string
+          scheduled_time: string
+          session_number: number
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          actual_minutes?: number | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reschedule_count?: number
+          scheduled_date: string
+          scheduled_time: string
+          session_number?: number
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          actual_minutes?: number | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          reschedule_count?: number
+          scheduled_date?: string
+          scheduled_time?: string
+          session_number?: number
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      students: {
+        Row: {
+          age: number
+          assigned_sales_agent_id: string
+          assigned_supervisor_id: string | null
+          assigned_teacher_id: string | null
+          country: string
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          parent_name: string | null
+          phone: string
+          platform: string
+          status: string
+          teacher_type: string
+          trial_date: string | null
+          trial_time: string | null
+          unique_id: string
+          updated_at: string
+        }
+        Insert: {
+          age: number
+          assigned_sales_agent_id: string
+          assigned_supervisor_id?: string | null
+          assigned_teacher_id?: string | null
+          country: string
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          parent_name?: string | null
+          phone: string
+          platform: string
+          status?: string
+          teacher_type: string
+          trial_date?: string | null
+          trial_time?: string | null
+          unique_id: string
+          updated_at?: string
+        }
+        Update: {
+          age?: number
+          assigned_sales_agent_id?: string
+          assigned_supervisor_id?: string | null
+          assigned_teacher_id?: string | null
+          country?: string
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          parent_name?: string | null
+          phone?: string
+          platform?: string
+          status?: string
+          teacher_type?: string
+          trial_date?: string | null
+          trial_time?: string | null
+          unique_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       teacher_availability: {
         Row: {
           created_at: string
@@ -194,6 +310,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_teacher_round_robin: {
+        Args: {
+          teacher_type_param: string
+          trial_date_param: string
+          trial_time_param: string
+        }
+        Returns: string
+      }
+      generate_student_unique_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_user_role: {
         Args: { user_id: string }
         Returns: string
