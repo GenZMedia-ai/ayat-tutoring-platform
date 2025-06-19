@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -50,55 +49,72 @@ export const useSalesAvailability = () => {
       
       const dateStr = date.toISOString().split('T')[0];
       
-      // Query teacher availability for the specific time slot with proper join syntax
-      const { data: availability, error } = await supabase
+      // First, get teacher availability for the specific time slot
+      const { data: availability, error: availabilityError } = await supabase
         .from('teacher_availability')
-        .select(`
-          teacher_id,
-          profiles!inner(
-            teacher_type,
-            status,
-            role
-          )
-        `)
+        .select('teacher_id')
         .eq('date', dateStr)
         .eq('time_slot', selectedTime)
         .eq('is_available', true)
-        .eq('is_booked', false)
-        .eq('profiles.teacher_type', teacherType)
-        .eq('profiles.status', 'approved')
-        .eq('profiles.role', 'teacher');
+        .eq('is_booked', false);
 
-      if (error) {
-        console.error('Error fetching availability:', error);
+      if (availabilityError) {
+        console.error('Error fetching availability:', availabilityError);
         toast.error('Failed to check availability');
         setAvailableSlots([]);
         return;
       }
 
-      console.log('Availability data:', availability);
+      console.log('Available teacher slots:', availability);
 
-      const teacherIds = availability?.map(a => a.teacher_id) || [];
+      if (!availability || availability.length === 0) {
+        setAvailableSlots([]);
+        toast.info('No available time slots found');
+        return;
+      }
+
+      // Get teacher IDs from availability
+      const teacherIds = availability.map(a => a.teacher_id);
+
+      // Now filter teachers by type and status
+      const { data: qualifiedTeachers, error: teachersError } = await supabase
+        .from('profiles')
+        .select('id')
+        .in('id', teacherIds)
+        .eq('teacher_type', teacherType)
+        .eq('status', 'approved')
+        .eq('role', 'teacher');
+
+      if (teachersError) {
+        console.error('Error fetching teachers:', teachersError);
+        toast.error('Failed to check teacher qualifications');
+        setAvailableSlots([]);
+        return;
+      }
+
+      console.log('Qualified teachers:', qualifiedTeachers);
+
+      const finalTeacherIds = qualifiedTeachers?.map(t => t.id) || [];
       
       const slots: AvailableSlot[] = [];
-      if (teacherIds.length > 0) {
+      if (finalTeacherIds.length > 0) {
         // Find the display label for the selected time
         const timeSlot = TIME_SLOTS.find(slot => slot.value === selectedTime);
         const displayTime = timeSlot ? timeSlot.label : selectedTime;
         
         slots.push({
           timeSlot: displayTime,
-          availableTeachers: teacherIds.length,
-          teacherIds
+          availableTeachers: finalTeacherIds.length,
+          teacherIds: finalTeacherIds
         });
       }
       
       setAvailableSlots(slots);
       
       if (slots.length === 0) {
-        toast.info('No available teachers found for the selected time slot');
+        toast.info('No qualified teachers available for the selected time slot');
       } else {
-        toast.success(`Found ${slots[0].availableTeachers} available teacher(s)`);
+        toast.success(`Found ${slots[0].availableTeachers} qualified teacher(s)`);
       }
       
     } catch (error) {
