@@ -198,6 +198,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           id: string
+          idempotency_key: string | null
           notes: string | null
           reschedule_count: number
           scheduled_date: string
@@ -211,6 +212,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           notes?: string | null
           reschedule_count?: number
           scheduled_date: string
@@ -224,6 +226,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           notes?: string | null
           reschedule_count?: number
           scheduled_date?: string

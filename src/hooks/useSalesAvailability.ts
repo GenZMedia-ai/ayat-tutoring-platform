@@ -202,7 +202,7 @@ export const useSalesAvailability = () => {
     isMultiStudent: boolean = false
   ) => {
     try {
-      console.log('=== BOOKING WITH SECURE RPC ===');
+      console.log('=== BOOKING WITH SECURE RPC (Fixed Version) ===');
       console.log('Booking Parameters:', { 
         bookingData, 
         selectedDate: selectedDate.toDateString(), 
@@ -247,8 +247,8 @@ export const useSalesAvailability = () => {
         p_available_teacher_ids: availableTeacherIds
       });
 
-      // Call the secure RPC function with type assertion
-      const { data: result, error } = await (supabase as any)
+      // Call the secure RPC function - FIXED: Removed unnecessary type casting
+      const { data: result, error } = await supabase
         .rpc('book_trial_session', {
           p_booking_data: rpcBookingData,
           p_is_multi_student: isMultiStudent,
@@ -256,7 +256,7 @@ export const useSalesAvailability = () => {
           p_utc_start_time: utcStartTime,
           p_teacher_type: teacherType,
           p_available_teacher_ids: availableTeacherIds
-        }) as { data: BookingResult | null, error: any };
+        });
 
       if (error) {
         console.error('RPC Booking Error:', error);
