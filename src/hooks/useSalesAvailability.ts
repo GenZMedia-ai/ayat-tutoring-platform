@@ -265,8 +265,8 @@ export const useSalesAvailability = () => {
         return false;
       }
 
-      // Type guard and casting for the result
-      const result = data as BookingResult;
+      // Safe type casting through unknown
+      const result = data as unknown as BookingResult;
       
       if (!result || !result.success) {
         console.error('Booking failed - no result or success=false:', result);
