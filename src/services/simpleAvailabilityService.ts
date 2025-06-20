@@ -56,6 +56,13 @@ export class SimpleAvailabilityService {
       baseUtcHour
     });
     
+    // Create time range for filtering (search for slots within ±30 minutes)
+    const startTime = `${String(baseUtcHour).padStart(2, '0')}:00:00`;
+    const endHour = baseUtcHour + 1;
+    const endTime = `${String(endHour).padStart(2, '0')}:00:00`;
+    
+    console.log('Time range filter:', { startTime, endTime });
+    
     // Build teacher type filter
     let teacherTypeFilter: string[];
     if (teacherType === 'mixed') {
@@ -66,13 +73,15 @@ export class SimpleAvailabilityService {
     
     console.log('Teacher type filter:', teacherTypeFilter);
     
-    // First, get available slots
+    // First, get available slots filtered by time range
     const { data: availability, error: availabilityError } = await supabase
       .from('teacher_availability')
       .select('id, time_slot, teacher_id')
       .eq('date', dateStr)
       .eq('is_available', true)
       .eq('is_booked', false)
+      .gte('time_slot', startTime)
+      .lt('time_slot', endTime)
       .order('time_slot');
     
     if (availabilityError) {
@@ -81,11 +90,11 @@ export class SimpleAvailabilityService {
     }
     
     if (!availability || availability.length === 0) {
-      console.log('No availability found');
+      console.log('No availability found for time range:', { startTime, endTime });
       return [];
     }
     
-    console.log(`Found ${availability.length} availability records`);
+    console.log(`Found ${availability.length} availability records in time range`);
     
     // Get unique teacher IDs
     const teacherIds = [...new Set(availability.map(slot => slot.teacher_id))];
