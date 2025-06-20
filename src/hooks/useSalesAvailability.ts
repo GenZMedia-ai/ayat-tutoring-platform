@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -149,7 +150,7 @@ export const useSalesAvailability = () => {
         
         for (let i = 0; i < bookingData.students.length; i++) {
           const student = bookingData.students[i];
-          const { data: studentUniqueId } = await supabase.rpc('generate_student_unique_id);
+          const { data: studentUniqueId } = await supabase.rpc('generate_student_unique_id');
           
           const studentData = {
             unique_id: studentUniqueId,
