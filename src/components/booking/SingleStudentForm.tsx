@@ -38,7 +38,15 @@ export const SingleStudentForm: React.FC<SingleStudentFormProps> = ({ onSubmit, 
     if (!formData.studentName || !formData.country || !formData.phone || !formData.age) {
       return;
     }
-    onSubmit(formData);
+
+    // Add country prefix to phone number before submitting
+    const countryData = countries.find(c => c.code === formData.country);
+    const fullPhoneNumber = countryData ? `${countryData.prefix}${formData.phone}` : formData.phone;
+
+    onSubmit({
+      ...formData,
+      phone: fullPhoneNumber,
+    });
   };
 
   const handleCountryChange = (countryCode: string) => {

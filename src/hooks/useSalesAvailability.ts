@@ -182,7 +182,7 @@ export const useSalesAvailability = () => {
       return 'Invalid booking information provided. Please check your data and try again.';
     }
     if (message.includes('P0005')) {
-      return 'Selected teacher is no longer available. Please refresh and try again.';
+      return 'Booking failed due to system validation error. Please check all required fields and try again.';
     }
     
     // Generic database errors

@@ -40,7 +40,15 @@ export const MultiStudentForm: React.FC<MultiStudentFormProps> = ({ onSubmit, lo
     if (!formData.parentName || !formData.country || !formData.phone || !formData.students?.every(s => s.name && s.age)) {
       return;
     }
-    onSubmit(formData);
+
+    // Add country prefix to phone number before submitting
+    const countryData = countries.find(c => c.code === formData.country);
+    const fullPhoneNumber = countryData ? `${countryData.prefix}${formData.phone}` : formData.phone;
+
+    onSubmit({
+      ...formData,
+      phone: fullPhoneNumber,
+    });
   };
 
   const handleCountryChange = (countryCode: string) => {
