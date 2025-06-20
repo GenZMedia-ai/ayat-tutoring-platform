@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { format, parseISO } from 'date-fns';
-import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { format, parse } from 'date-fns';
+import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
 
 const EGYPT_TIMEZONE = 'Africa/Cairo';
 
@@ -41,20 +41,24 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
   const egyptTimeToUTC = (date: Date, time: string): string => {
     console.log('🔄 Converting Egypt time to UTC:', { date: date.toDateString(), time });
     
-    // Create a proper date string in YYYY-MM-DD format
+    // Create a date string in YYYY-MM-DD format
     const dateString = format(date, 'yyyy-MM-dd');
     
-    // Create ISO string with Egypt time
-    const egyptDateTimeString = `${dateString}T${time}:00`;
-    console.log('📅 Egypt DateTime String:', egyptDateTimeString);
+    // Create a full datetime string
+    const dateTimeString = `${dateString} ${time}`;
+    console.log('📅 Egypt DateTime String:', dateTimeString);
     
-    // Parse as if it's in Egypt timezone, then convert to UTC
-    const egyptDateTime = parseISO(egyptDateTimeString);
-    const utcDateTime = fromZonedTime(egyptDateTime, EGYPT_TIMEZONE);
+    // Parse this string as if it's in Egypt timezone (browser-timezone agnostic)
+    const egyptDateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm', new Date());
+    console.log('🕰️ Parsed Egypt DateTime:', egyptDateTime);
+    
+    // Convert from Egypt timezone to UTC
+    const utcDateTime = zonedTimeToUtc(egyptDateTime, EGYPT_TIMEZONE);
+    console.log('🌐 UTC DateTime:', utcDateTime);
     
     // Format as HH:mm:ss for database storage
     const utcTime = format(utcDateTime, 'HH:mm:ss');
-    console.log('🌐 Converted to UTC time:', utcTime);
+    console.log('✅ Final UTC time for storage:', utcTime);
     
     return utcTime;
   };
@@ -71,13 +75,17 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     const utcDateTimeString = `${todayString}T${utcTime}`;
     console.log('📅 UTC DateTime String:', utcDateTimeString);
     
-    // Parse as UTC and convert to Egypt timezone
-    const utcDateTime = parseISO(utcDateTimeString + 'Z'); // Z indicates UTC
-    const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
+    // Parse as UTC (Z indicates UTC timezone)
+    const utcDateTime = new Date(utcDateTimeString + 'Z');
+    console.log('🌐 Parsed UTC DateTime:', utcDateTime);
+    
+    // Convert from UTC to Egypt timezone
+    const egyptDateTime = utcToZonedTime(utcDateTime, EGYPT_TIMEZONE);
+    console.log('🇪🇬 Egypt DateTime:', egyptDateTime);
     
     // Return formatted time as HH:mm
     const egyptTime = format(egyptDateTime, 'HH:mm');
-    console.log('🇪🇬 Converted to Egypt time:', egyptTime);
+    console.log('✅ Final Egypt time for display:', egyptTime);
     
     return egyptTime;
   };
