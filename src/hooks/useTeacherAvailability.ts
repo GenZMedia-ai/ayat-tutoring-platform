@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 
 const EGYPT_TIMEZONE = 'Africa/Cairo';
@@ -39,30 +39,47 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
 
   // Convert Egypt time to UTC for database storage using proper timezone handling
   const egyptTimeToUTC = (date: Date, time: string): string => {
-    // Parse the time in Egypt timezone
-    const [hours, minutes] = time.split(':').map(Number);
-    const egyptDate = new Date(date);
-    egyptDate.setHours(hours, minutes, 0, 0);
-
-    // Convert to UTC using proper timezone handling (handles DST automatically)
-    const utcDate = fromZonedTime(egyptDate, EGYPT_TIMEZONE);
-
+    console.log('🔄 Converting Egypt time to UTC:', { date: date.toDateString(), time });
+    
+    // Create a proper date string in YYYY-MM-DD format
+    const dateString = format(date, 'yyyy-MM-dd');
+    
+    // Create ISO string with Egypt time
+    const egyptDateTimeString = `${dateString}T${time}:00`;
+    console.log('📅 Egypt DateTime String:', egyptDateTimeString);
+    
+    // Parse as if it's in Egypt timezone, then convert to UTC
+    const egyptDateTime = parseISO(egyptDateTimeString);
+    const utcDateTime = fromZonedTime(egyptDateTime, EGYPT_TIMEZONE);
+    
     // Format as HH:mm:ss for database storage
-    return format(utcDate, 'HH:mm:ss');
+    const utcTime = format(utcDateTime, 'HH:mm:ss');
+    console.log('🌐 Converted to UTC time:', utcTime);
+    
+    return utcTime;
   };
 
   // Convert UTC time from database to Egypt time for display
   const utcToEgyptTime = (utcTime: string): string => {
+    console.log('🔄 Converting UTC to Egypt time:', utcTime);
+    
     // Create a date object for today with the UTC time
     const today = new Date();
-    const [hours, minutes] = utcTime.split(':').map(Number);
-    today.setUTCHours(hours, minutes, 0, 0);
-
-    // Convert to Egypt timezone (handles DST automatically)
-    const egyptDate = toZonedTime(today, EGYPT_TIMEZONE);
-
+    const todayString = format(today, 'yyyy-MM-dd');
+    
+    // Create proper UTC datetime string
+    const utcDateTimeString = `${todayString}T${utcTime}`;
+    console.log('📅 UTC DateTime String:', utcDateTimeString);
+    
+    // Parse as UTC and convert to Egypt timezone
+    const utcDateTime = parseISO(utcDateTimeString + 'Z'); // Z indicates UTC
+    const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
+    
     // Return formatted time as HH:mm
-    return format(egyptDate, 'HH:mm');
+    const egyptTime = format(egyptDateTime, 'HH:mm');
+    console.log('🇪🇬 Converted to Egypt time:', egyptTime);
+    
+    return egyptTime;
   };
 
   // Fetch availability data from database
@@ -72,6 +89,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     setLoading(true);
     try {
       const dateString = selectedDate.toISOString().split('T')[0];
+      console.log('📊 Fetching availability for date:', dateString);
       
       const { data, error } = await supabase
         .from('teacher_availability')
@@ -80,19 +98,26 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
         .eq('date', dateString);
 
       if (error) {
-        console.error('Error fetching availability:', error);
+        console.error('❌ Error fetching availability:', error);
         toast.error('Failed to fetch availability data');
         return;
       }
+
+      console.log('📋 Fetched availability data:', data);
 
       // Generate all possible time slots
       const allSlots = generateTimeSlots();
       
       // Update slots with database data
       const updatedSlots = allSlots.map(slot => {
-        const dbSlot = data?.find(d => utcToEgyptTime(d.time_slot) === slot.time);
+        const dbSlot = data?.find(d => {
+          const convertedTime = utcToEgyptTime(d.time_slot);
+          console.log(`🔍 Comparing slot ${slot.time} with DB slot ${d.time_slot} (converted: ${convertedTime})`);
+          return convertedTime === slot.time;
+        });
         
         if (dbSlot) {
+          console.log(`✅ Found matching slot:`, { slotTime: slot.time, dbId: dbSlot.id });
           return {
             ...slot,
             id: dbSlot.id,
@@ -105,9 +130,10 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
         return slot;
       });
 
+      console.log('📝 Final updated slots:', updatedSlots.filter(s => s.isAvailable || s.isBooked));
       setTimeSlots(updatedSlots);
     } catch (error) {
-      console.error('Error in fetchAvailability:', error);
+      console.error('❌ Error in fetchAvailability:', error);
       toast.error('Failed to load availability');
     } finally {
       setLoading(false);
@@ -118,29 +144,51 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
   const toggleAvailability = async (time: string) => {
     if (!selectedDate || !user) return;
 
+    console.log('🎯 Toggling availability for time:', time);
+
     const slot = timeSlots.find(s => s.time === time);
-    if (!slot || slot.isBooked) return; // Can't modify booked slots
+    if (!slot || slot.isBooked) {
+      console.log('❌ Cannot modify slot:', { slot, reason: slot?.isBooked ? 'booked' : 'not found' });
+      return; // Can't modify booked slots
+    }
 
     const dateString = selectedDate.toISOString().split('T')[0];
     const utcTime = egyptTimeToUTC(selectedDate, time);
+
+    console.log('💾 Database operation:', { 
+      action: slot.isAvailable ? 'remove' : 'add',
+      egyptTime: time,
+      utcTime,
+      dateString 
+    });
 
     try {
       if (slot.isAvailable) {
         // Remove availability
         if (slot.id) {
+          console.log('🗑️ Removing availability for slot ID:', slot.id);
           const { error } = await supabase
             .from('teacher_availability')
             .delete()
             .eq('id', slot.id);
 
           if (error) {
-            console.error('Error removing availability:', error);
+            console.error('❌ Error removing availability:', error);
             toast.error('Failed to remove availability');
             return;
           }
+          console.log('✅ Successfully removed availability');
         }
       } else {
         // Add availability
+        console.log('➕ Adding availability:', {
+          teacher_id: user.id,
+          date: dateString,
+          time_slot: utcTime,
+          is_available: true,
+          is_booked: false,
+        });
+        
         const { error } = await supabase
           .from('teacher_availability')
           .insert({
@@ -152,17 +200,18 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
           });
 
         if (error) {
-          console.error('Error adding availability:', error);
+          console.error('❌ Error adding availability:', error);
           toast.error('Failed to add availability');
           return;
         }
+        console.log('✅ Successfully added availability');
       }
 
       // Refresh data
       await fetchAvailability();
       toast.success(slot.isAvailable ? 'Time slot removed' : 'Time slot added');
     } catch (error) {
-      console.error('Error toggling availability:', error);
+      console.error('❌ Error toggling availability:', error);
       toast.error('Failed to update availability');
     }
   };
