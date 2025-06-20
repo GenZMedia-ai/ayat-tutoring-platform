@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 
 const EGYPT_TIMEZONE = 'Africa/Cairo';
 
@@ -54,8 +54,9 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     const egyptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
     console.log('🕰️ Egypt DateTime (neutral):', egyptDateTime);
     
-    // Convert from Egypt timezone to UTC using zonedTimeToUtc
-    const utcDateTime = zonedTimeToUtc(egyptDateTime, EGYPT_TIMEZONE);
+    // Convert from Egypt timezone to UTC using fromZonedTime
+    // fromZonedTime treats the input as being in the specified timezone
+    const utcDateTime = fromZonedTime(egyptDateTime, EGYPT_TIMEZONE);
     console.log('🌐 UTC DateTime:', utcDateTime);
     
     // Format as HH:mm:ss for database storage
@@ -81,8 +82,8 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     const utcDateTime = new Date(utcDateTimeString + 'Z');
     console.log('🌐 Parsed UTC DateTime:', utcDateTime);
     
-    // Convert from UTC to Egypt timezone using utcToZonedTime
-    const egyptDateTime = utcToZonedTime(utcDateTime, EGYPT_TIMEZONE);
+    // Convert from UTC to Egypt timezone using toZonedTime
+    const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
     console.log('🇪🇬 Egypt DateTime:', egyptDateTime);
     
     // Return formatted time as HH:mm
