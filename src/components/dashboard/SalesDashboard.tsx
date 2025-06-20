@@ -18,7 +18,7 @@ const SalesDashboard: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date('2025-06-21'));
   const [timezone, setTimezone] = useState('uae'); // Default to UAE for testing
   const [teacherType, setTeacherType] = useState('mixed');
-  const [selectedHour, setSelectedHour] = useState(18.5); // Default to 6:30 PM (UAE 6:30PM = UTC 14:30)
+  const [selectedHour, setSelectedHour] = useState(14); // Default to 2 PM UAE (2PM UAE = UTC 10:00)
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [salesStats, setSalesStats] = useState({
@@ -91,7 +91,7 @@ const SalesDashboard: React.FC = () => {
       toast.error('Please select a date');
       return;
     }
-    console.log('Searching availability with parameters:', {
+    console.log('Searching enhanced availability with parameters:', {
       date: selectedDate,
       timezone,
       teacherType,
@@ -103,6 +103,7 @@ const SalesDashboard: React.FC = () => {
   const handleBookNow = (slotsGroup: any) => {
     // Handle both single slot (backward compatibility) and slot groups (new round-robin)
     const slots = Array.isArray(slotsGroup) ? slotsGroup : [slotsGroup];
+    console.log('Booking slot selection:', slots);
     setSelectedSlot(slots);
     setIsBookingModalOpen(true);
   };
@@ -110,16 +111,24 @@ const SalesDashboard: React.FC = () => {
   const handleBookingSubmit = async (data: BookingData, isMultiStudent: boolean) => {
     if (!selectedDate || !selectedSlot) return false;
     
+    console.log('Submitting booking with enhanced validation:', {
+      data,
+      selectedDate,
+      selectedSlot,
+      teacherType,
+      isMultiStudent
+    });
+    
     const success = await bookTrialSession(
       data,
       selectedDate,
-      selectedSlot, // Now expects slot group for round-robin
+      selectedSlot, // This contains the exact slot with UTC time
       teacherType,
       isMultiStudent
     );
     
     if (success) {
-      // Refresh availability after booking
+      // Refresh availability after successful booking
       handleSearchAvailability();
     }
     
@@ -197,9 +206,9 @@ const SalesDashboard: React.FC = () => {
         <TabsContent value="quick-checker" className="space-y-4">
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>Real-Time Availability Checker with Round-Robin Assignment</CardTitle>
+              <CardTitle>Enhanced Real-Time Availability Checker (30-min slots)</CardTitle>
               <CardDescription>
-                Find available time slots and automatically assign teachers using round-robin algorithm
+                Find all available 30-minute time slots with improved search and exact booking validation
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -207,10 +216,10 @@ const SalesDashboard: React.FC = () => {
                 <div className="space-y-4">
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-sm text-blue-800">
-                      <strong>Test with:</strong> Date: 2025-06-21, Type: Mixed, Time: 6:30 PM, Timezone: UAE
+                      <strong>Enhanced Test:</strong> Date: 2025-06-21, Type: Mixed, Time: 2:00 PM, Timezone: UAE
                     </p>
                     <p className="text-xs text-blue-600 mt-1">
-                      This should find teacher availability at UTC 14:30:00
+                      Should now find BOTH 2:00-2:30 PM and 2:30-3:00 PM slots (UTC 10:00-10:30 and 10:30-11:00)
                     </p>
                   </div>
                   
@@ -248,7 +257,7 @@ const SalesDashboard: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>Preferred Time</Label>
+                    <Label>Preferred Time (Hour)</Label>
                     <Select value={selectedHour.toString()} onValueChange={(value) => setSelectedHour(parseFloat(value))}>
                       <SelectTrigger>
                         <SelectValue />
@@ -276,27 +285,27 @@ const SalesDashboard: React.FC = () => {
                     className="w-full ayat-button-primary"
                     disabled={loading}
                   >
-                    {loading ? 'Searching...' : 'Check Availability'}
+                    {loading ? 'Searching Enhanced...' : 'Check All 30-min Slots'}
                   </Button>
                 </div>
 
                 <div className="space-y-4">
                   <h4 className="font-medium">
-                    Available Time Slots for {selectedDate?.toDateString()}
+                    Available 30-Minute Slots for {selectedDate?.toDateString()}
                   </h4>
                   
                   {loading && (
                     <div className="text-center py-8 text-muted-foreground">
-                      Searching for real-time availability...
+                      Searching for enhanced real-time availability (30-min slots)...
                     </div>
                   )}
                   
                   {!loading && availableSlots.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground space-y-2">
-                      <p>No available slots found for the selected criteria.</p>
-                      <p className="text-sm">Check browser console for detailed debugging info.</p>
+                      <p>No available 30-minute slots found for the selected criteria.</p>
+                      <p className="text-sm">Check browser console for enhanced debugging info.</p>
                       <p className="text-xs text-blue-600">
-                        Try: Date 2025-06-21, UAE timezone, Mixed teacher, 6:30 PM
+                        Try: Date 2025-06-21, UAE timezone, Mixed teacher, 2:00 PM (should show both 2:00-2:30 and 2:30-3:00)
                       </p>
                     </div>
                   )}
@@ -331,7 +340,7 @@ const SalesDashboard: React.FC = () => {
                             className="ayat-button-primary"
                             onClick={() => handleBookNow(slotsInGroup)}
                           >
-                            Book Slot
+                            Book Exact Slot
                           </Button>
                         </div>
                       );
@@ -341,10 +350,10 @@ const SalesDashboard: React.FC = () => {
                   {availableSlots.length > 0 && (
                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                       <p className="text-sm text-green-800">
-                        <strong>Found {Object.keys(groupSlotsByTime(availableSlots)).length} time slot(s)</strong> with {new Set(availableSlots.map(s => s.teacherId)).size} qualified teacher(s)
+                        <strong>Enhanced: Found {Object.keys(groupSlotsByTime(availableSlots)).length} time slot(s)</strong> with {new Set(availableSlots.map(s => s.teacherId)).size} qualified teacher(s)
                       </p>
                       <p className="text-xs text-green-600 mt-1">
-                        Teacher assignment uses round-robin algorithm for fair distribution
+                        All 30-minute slots are now displayed with exact booking validation
                       </p>
                     </div>
                   )}
@@ -397,8 +406,8 @@ const SalesDashboard: React.FC = () => {
         onSubmit={handleBookingSubmit}
         selectedSlot={selectedSlot ? 
           (Array.isArray(selectedSlot) ? 
-            `${selectedSlot[0].clientTimeDisplay} (${selectedSlot[0].egyptTimeDisplay}) - ${selectedSlot.length} teacher(s) available` :
-            `${selectedSlot.clientTimeDisplay} (${selectedSlot.egyptTimeDisplay})`
+            `${selectedSlot[0].clientTimeDisplay} (${selectedSlot[0].egyptTimeDisplay}) - ${selectedSlot.length} teacher(s) available - EXACT SLOT: ${selectedSlot[0].utcStartTime}` :
+            `${selectedSlot.clientTimeDisplay} (${selectedSlot.egyptTimeDisplay}) - EXACT SLOT: ${selectedSlot.utcStartTime}`
           ) : ''
         }
         selectedDate={selectedDate || new Date()}

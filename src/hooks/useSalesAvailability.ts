@@ -51,7 +51,7 @@ export const useSalesAvailability = () => {
     const dateStr = date.toISOString().split('T')[0];
     const timezoneConfig = getTimezoneConfig(timezone);
     
-    console.log('=== RUNNING ENHANCED DIAGNOSTICS (Using Secure RPC) ===');
+    console.log('=== RUNNING ENHANCED DIAGNOSTICS (30-min slots) ===');
     console.log('Diagnostic Parameters:', { dateStr, teacherType, timezone, selectedHour });
     
     if (!timezoneConfig) {
@@ -61,13 +61,13 @@ export const useSalesAvailability = () => {
     
     // Convert client hour to UTC (same as availability service)
     const utcHour = convertClientHourToUTC(selectedHour, timezoneConfig.offset);
-    const startTime = `${String(utcHour).padStart(2, '0')}:00:00`;
-    const endHour = (utcHour + 1) % 24;
+    const startTime = `${String(Math.floor(utcHour)).padStart(2, '0')}:00:00`;
+    const endHour = (Math.floor(utcHour) + 2) % 24;
     const endTime = `${String(endHour).padStart(2, '0')}:00:00`;
     
-    console.log('UTC Time Range:', { startTime, endTime, utcHour, timezoneOffset: timezoneConfig.offset });
+    console.log('Enhanced UTC Time Range:', { startTime, endTime, utcHour, timezoneOffset: timezoneConfig.offset });
     
-    // Build teacher type filter - FIXED TO USE CORRECT TEACHER TYPES
+    // Build teacher type filter
     let teacherTypeFilter: string[];
     if (teacherType === 'mixed') {
       teacherTypeFilter = ['kids', 'adult', 'mixed', 'expert'];
@@ -79,8 +79,8 @@ export const useSalesAvailability = () => {
     
     console.log('Teacher Type Filter:', teacherTypeFilter);
     
-    // Step 1: Test the secure RPC function directly
-    console.log('Step 1: Testing secure RPC function...');
+    // Test the secure RPC function directly
+    console.log('Testing enhanced secure RPC function...');
     const { data: rpcResults, error: rpcError } = await supabase
       .rpc('search_available_teachers', {
         p_date: dateStr,
@@ -89,35 +89,29 @@ export const useSalesAvailability = () => {
         p_teacher_types: teacherTypeFilter
       });
     
-    console.log('Secure RPC result:', { data: rpcResults, error: rpcError });
+    console.log('Enhanced RPC result:', { data: rpcResults, error: rpcError });
     
-    // Build diagnostic message with enhanced details
-    let message = `Diagnostic Results for ${teacherType} teachers on ${dateStr}:\n`;
-    message += `🕒 Searching time range: ${startTime} - ${endTime} UTC (Client: ${selectedHour}:00 ${timezoneConfig.label})\n`;
-    message += `🎯 Teacher type filter: [${teacherTypeFilter.join(', ')}] (FIXED - using correct system teacher types)\n`;
-    message += `🔐 Using secure RPC function to bypass RLS issues\n`;
+    // Build diagnostic message
+    let message = `Enhanced Diagnostic Results for ${teacherType} teachers on ${dateStr}:\n`;
+    message += `🕒 Searching expanded time range: ${startTime} - ${endTime} UTC (Client: ${selectedHour}:00 ${timezoneConfig.label})\n`;
+    message += `🎯 Teacher type filter: [${teacherTypeFilter.join(', ')}]\n`;
+    message += `🔐 Using enhanced secure RPC function\n`;
     
     if (rpcError) {
-      message += `❌ Error calling secure RPC: ${rpcError.message}\n`;
+      message += `❌ Error calling enhanced RPC: ${rpcError.message}\n`;
     } else if (!rpcResults || rpcResults.length === 0) {
-      message += `❌ No available teachers found via secure RPC\n`;
-      message += `💡 This means either no availability exists or no teachers match the criteria\n`;
+      message += `❌ No available teachers found via enhanced RPC\n`;
+      message += `💡 This means no 30-minute slots exist in the expanded search range\n`;
     } else {
-      message += `✅ Found ${rpcResults.length} teacher-slot combinations via secure RPC\n`;
+      message += `✅ Found ${rpcResults.length} teacher-slot combinations via enhanced RPC\n`;
       const teacherNames = [...new Set(rpcResults.map((r: any) => r.teacher_name))];
       message += `👥 Teachers: ${teacherNames.slice(0, 3).join(', ')}${teacherNames.length > 3 ? ` +${teacherNames.length - 3} more` : ''}\n`;
       const timeSlots = [...new Set(rpcResults.map((r: any) => r.time_slot))];
-      message += `⏰ Time slots: ${timeSlots.join(', ')}\n`;
+      message += `⏰ Time slots found: ${timeSlots.join(', ')}\n`;
+      message += `🎯 Should now show all 30-minute slots in the hour range\n`;
     }
     
-    const finalSlotCount = rpcResults?.length || 0;
-    if (finalSlotCount === 0) {
-      message += `❌ No final matching slots\n`;
-    } else {
-      message += `✅ RLS issue resolved - ${finalSlotCount} slots found via secure function\n`;
-    }
-    
-    console.log('Final diagnostic message:', message);
+    console.log('Enhanced diagnostic message:', message);
     toast.info(message, { duration: 15000 });
   };
 
@@ -129,7 +123,7 @@ export const useSalesAvailability = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('=== CHECKING AVAILABILITY (Using Secure RPC) ===');
+      console.log('=== CHECKING ENHANCED AVAILABILITY (30-min slots) ===');
       console.log('Parameters:', { date: date.toDateString(), timezone, teacherType, selectedHour });
       
       const slots = await AvailabilityService.searchAvailableSlots(
@@ -142,19 +136,19 @@ export const useSalesAvailability = () => {
       setAvailableSlots(slots);
       
       if (slots.length === 0) {
-        console.log('No slots found - running detailed diagnostics...');
+        console.log('No slots found - running enhanced diagnostics...');
         await runDiagnostics(date, teacherType, timezone, selectedHour);
       } else {
         const teacherCount = new Set(slots.map(s => s.teacherId)).size;
         const groupedSlots = groupSlotsByTime(slots);
         const timeSlotCount = Object.keys(groupedSlots).length;
-        const successMessage = `Found ${timeSlotCount} time slot(s) with ${teacherCount} teacher(s) available (RLS fix working!)`;
-        console.log('Success:', successMessage);
+        const successMessage = `Found ${timeSlotCount} time slot(s) with ${teacherCount} teacher(s) available - Enhanced 30-min slot search working!`;
+        console.log('Enhanced Success:', successMessage);
         toast.success(successMessage);
       }
       
     } catch (error) {
-      console.error('Error checking availability:', error);
+      console.error('Error checking enhanced availability:', error);
       toast.error(`Failed to check availability: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setAvailableSlots([]);
     } finally {
@@ -176,7 +170,7 @@ export const useSalesAvailability = () => {
       return 'Access denied. Only approved sales agents can book sessions.';
     }
     if (message.includes('P0003')) {
-      return 'No teachers available for this time slot. Please try a different time.';
+      return 'No teachers available for this exact time slot. Please try a different time.';
     }
     if (message.includes('P0004')) {
       return 'Invalid booking information provided. Please check your data and try again.';
@@ -202,7 +196,7 @@ export const useSalesAvailability = () => {
     isMultiStudent: boolean = false
   ) => {
     try {
-      console.log('=== BOOKING WITH SECURE RPC (Fixed Version) ===');
+      console.log('=== BOOKING WITH ENHANCED VALIDATION ===');
       console.log('Booking Parameters:', { 
         bookingData, 
         selectedDate: selectedDate.toDateString(), 
@@ -216,10 +210,17 @@ export const useSalesAvailability = () => {
         return false;
       }
 
-      // Prepare data for the secure RPC call
+      // CRITICAL FIX: Use the exact UTC start time from the selected slot
       const dateStr = selectedDate.toISOString().split('T')[0];
-      const utcStartTime = selectedSlots[0].utcStartTime;
+      const exactUtcStartTime = selectedSlots[0].utcStartTime; // This is the EXACT time from the slot
       const availableTeacherIds = selectedSlots.map(slot => slot.teacherId);
+
+      console.log('CRITICAL - Exact booking parameters:', {
+        dateStr,
+        exactUtcStartTime, // This should match what was found in search
+        availableTeacherIds,
+        teacherType
+      });
 
       // Prepare booking data as JSONB
       const rpcBookingData = isMultiStudent ? {
@@ -238,28 +239,28 @@ export const useSalesAvailability = () => {
         notes: bookingData.notes || null
       };
 
-      console.log('Calling secure RPC with:', {
+      console.log('Enhanced RPC booking call with exact time:', {
         p_booking_data: rpcBookingData,
         p_is_multi_student: isMultiStudent,
         p_selected_date: dateStr,
-        p_utc_start_time: utcStartTime,
+        p_utc_start_time: exactUtcStartTime, // EXACT match with search result
         p_teacher_type: teacherType,
         p_available_teacher_ids: availableTeacherIds
       });
 
-      // Call the secure RPC function with proper typing
+      // Call the enhanced RPC function with exact timing
       const { data, error } = await supabase
         .rpc('book_trial_session', {
           p_booking_data: rpcBookingData,
           p_is_multi_student: isMultiStudent,
           p_selected_date: dateStr,
-          p_utc_start_time: utcStartTime,
+          p_utc_start_time: exactUtcStartTime, // CRITICAL: exact time from slot
           p_teacher_type: teacherType,
           p_available_teacher_ids: availableTeacherIds
         });
 
       if (error) {
-        console.error('RPC Booking Error:', error);
+        console.error('Enhanced RPC Booking Error:', error);
         const userMessage = getErrorMessage(error);
         toast.error(userMessage);
         return false;
@@ -269,29 +270,29 @@ export const useSalesAvailability = () => {
       const result = data as unknown as BookingResult;
       
       if (!result || !result.success) {
-        console.error('Booking failed - no result or success=false:', result);
+        console.error('Enhanced booking failed - no result or success=false:', result);
         toast.error('Booking failed. Please try again.');
         return false;
       }
 
       // Success handling with proper typing
-      console.log('Booking Success:', result);
+      console.log('Enhanced Booking Success:', result);
       
       if (isMultiStudent && result.student_names?.length > 1) {
         toast.success(
-          `Family trial session booked successfully! Students: ${result.student_names.join(', ')} with teacher ${result.teacher_name}`
+          `Family trial session booked successfully! Students: ${result.student_names.join(', ')} with teacher ${result.teacher_name} at exact time ${exactUtcStartTime}`
         );
       } else {
         const studentName = isMultiStudent ? result.student_names?.[0] : bookingData.studentName;
         toast.success(
-          `Trial session booked successfully for ${studentName} with teacher ${result.teacher_name}!`
+          `Trial session booked successfully for ${studentName} with teacher ${result.teacher_name} at exact time ${exactUtcStartTime}!`
         );
       }
 
       return true;
 
     } catch (error) {
-      console.error('Unexpected booking error:', error);
+      console.error('Unexpected enhanced booking error:', error);
       const userMessage = getErrorMessage(error);
       toast.error(userMessage);
       return false;

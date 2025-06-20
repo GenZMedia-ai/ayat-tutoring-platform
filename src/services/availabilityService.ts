@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { GranularTimeSlot } from '@/types/availability';
 import { convertClientHourToUTC, getTimezoneConfig } from '@/utils/timezoneUtils';
@@ -9,7 +10,7 @@ export class AvailabilityService {
     teacherType: string,
     selectedHour: number
   ): Promise<GranularTimeSlot[]> {
-    console.log('=== AVAILABILITY SERVICE START (Using Secure RPC) ===');
+    console.log('=== AVAILABILITY SERVICE START (Enhanced for 30-min slots) ===');
     console.log('Search Parameters:', { 
       date: date.toDateString(), 
       dateStr: date.toISOString().split('T')[0],
@@ -27,25 +28,23 @@ export class AvailabilityService {
     
     console.log('Timezone Config:', timezoneConfig);
     
-    // Convert client hour to UTC
+    // Convert client hour to UTC for the search range
     const utcHour = convertClientHourToUTC(selectedHour, timezoneConfig.offset);
-    console.log('Converted UTC Hour:', utcHour);
+    console.log('Client hour to UTC conversion:', { selectedHour, utcHour });
     
-    // Build teacher type filter - FIXED TO USE CORRECT TEACHER TYPES
+    // Build teacher type filter
     let teacherTypeFilter: string[];
     if (teacherType === 'mixed') {
-      // When searching for 'mixed', include all teacher types since mixed teachers can handle any type
       teacherTypeFilter = ['kids', 'adult', 'mixed', 'expert'];
       console.log('Searching for mixed teachers - including all types');
     } else {
-      // When searching for specific type, include that type + mixed teachers
       teacherTypeFilter = [teacherType, 'mixed'];
       console.log(`Searching for ${teacherType} teachers - including mixed`);
     }
     
     console.log('Teacher Type Filter:', teacherTypeFilter);
     
-    // Use the secure RPC function to get available teachers
+    // Use the secure RPC function to get available teachers for a broader range
     const slots = await this.searchUsingSecureRPC(
       dateStr,
       utcHour,
@@ -62,20 +61,21 @@ export class AvailabilityService {
 
   private static async searchUsingSecureRPC(
     dateStr: string,
-    utcHour: number,
+    baseUtcHour: number,
     teacherTypeFilter: string[],
     clientHour: number,
     timezoneConfig: any
   ): Promise<GranularTimeSlot[]> {
-    console.log('--- SECURE RPC SEARCH ---');
-    console.log('RPC Parameters:', { dateStr, utcHour, teacherTypeFilter, clientHour });
+    console.log('--- SECURE RPC SEARCH (Enhanced) ---');
+    console.log('RPC Parameters:', { dateStr, baseUtcHour, teacherTypeFilter, clientHour });
     
-    // Define the hour range in UTC - search the entire hour for 30-minute slots
-    const startTime = `${String(utcHour).padStart(2, '0')}:00:00`;
-    const endHour = (utcHour + 1) % 24;
+    // Search for a 2-hour window to catch all relevant 30-minute slots
+    // This ensures we get both :00 and :30 slots in the client's preferred hour
+    const startTime = `${String(Math.floor(baseUtcHour)).padStart(2, '0')}:00:00`;
+    const endHour = (Math.floor(baseUtcHour) + 2) % 24;
     const endTime = `${String(endHour).padStart(2, '0')}:00:00`;
     
-    console.log('UTC Time Range for RPC:', { startTime, endTime });
+    console.log('Enhanced UTC Time Range for RPC:', { startTime, endTime });
     
     // Call the secure RPC function
     const { data: rpcResults, error: rpcError } = await supabase
@@ -116,7 +116,6 @@ export class AvailabilityService {
       const displayInfo = this.generateSlotDisplay(
         slotHour,
         slotMinutes,
-        clientHour,
         timezoneConfig.offset
       );
 
@@ -145,7 +144,6 @@ export class AvailabilityService {
   private static generateSlotDisplay(
     utcHour: number,
     utcMinutes: number,
-    clientHour: number,
     timezoneOffset: number
   ) {
     // Calculate end time (30 minutes later)
@@ -164,10 +162,9 @@ export class AvailabilityService {
       return `${displayHour}:${String(min).padStart(2, '0')} ${period}`;
     };
 
-    // Client timezone display
-    const clientStartMinutes = utcMinutes;
-    const clientEndMinutes = endMinutes;
-    const clientEndHour = clientStartMinutes + 30 >= 60 ? clientHour + 1 : clientHour;
+    // Client timezone display (convert from UTC)
+    const clientHour = (utcHour + timezoneOffset + 24) % 24;
+    const clientEndHour = (endHour + timezoneOffset + 24) % 24;
 
     // Egypt time (UTC+2)
     const egyptOffset = 2;
@@ -178,7 +175,7 @@ export class AvailabilityService {
       startTime: `${String(utcHour).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`,
       endTime: `${String(endHour).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`,
       utcEndTime: `${String(endHour).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}:00`,
-      clientDisplay: `${formatTime(clientHour, clientStartMinutes)}-${formatTime(clientEndHour, clientEndMinutes)}`,
+      clientDisplay: `${formatTime(clientHour, utcMinutes)}-${formatTime(clientEndHour, endMinutes)}`,
       egyptDisplay: `${formatTime(egyptHour, utcMinutes)}-${formatTime(egyptEndHour, endMinutes)} (Egypt)`
     };
   }
