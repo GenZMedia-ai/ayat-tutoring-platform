@@ -4,17 +4,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CountryPhoneInput } from '@/components/ui/CountryPhoneInput';
-import { RoundRobinBookingData } from '@/types/groupedSlots';
-import { isValidPhoneNumber } from 'react-phone-number-input';
+import { BookingData } from '@/hooks/useSalesAvailability';
 
 interface MultiStudentFormProps {
-  onSubmit: (data: RoundRobinBookingData) => void;
+  onSubmit: (data: BookingData) => void;
   loading?: boolean;
 }
 
+const countries = [
+  { code: 'SA', name: 'Saudi Arabia', prefix: '+966' },
+  { code: 'AE', name: 'UAE', prefix: '+971' },
+  { code: 'QA', name: 'Qatar', prefix: '+974' },
+  { code: 'KW', name: 'Kuwait', prefix: '+965' },
+  { code: 'BH', name: 'Bahrain', prefix: '+973' },
+  { code: 'OM', name: 'Oman', prefix: '+968' },
+  { code: 'EG', name: 'Egypt', prefix: '+20' }
+];
+
 export const MultiStudentForm: React.FC<MultiStudentFormProps> = ({ onSubmit, loading }) => {
-  const [formData, setFormData] = useState<RoundRobinBookingData>({
+  const [formData, setFormData] = useState<BookingData>({
     studentName: '',
     country: '',
     phone: '',
@@ -24,19 +32,20 @@ export const MultiStudentForm: React.FC<MultiStudentFormProps> = ({ onSubmit, lo
     students: [{ name: '', age: 0 }, { name: '', age: 0 }]
   });
 
+  const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [studentCount, setStudentCount] = useState<number>(2);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.parentName || !formData.phone || !formData.students?.every(s => s.name && s.age)) {
+    if (!formData.parentName || !formData.country || !formData.phone || !formData.students?.every(s => s.name && s.age)) {
       return;
     }
-    
-    if (!isValidPhoneNumber(formData.phone)) {
-      return;
-    }
-    
     onSubmit(formData);
+  };
+
+  const handleCountryChange = (countryCode: string) => {
+    setSelectedCountry(countryCode);
+    setFormData(prev => ({ ...prev, country: countryCode, phone: '' }));
   };
 
   const handleStudentCountChange = (count: number) => {
@@ -53,10 +62,7 @@ export const MultiStudentForm: React.FC<MultiStudentFormProps> = ({ onSubmit, lo
     setFormData(prev => ({ ...prev, students: newStudents }));
   };
 
-  const isFormValid = formData.parentName && 
-                     formData.phone && 
-                     isValidPhoneNumber(formData.phone) &&
-                     formData.students?.every(s => s.name && s.age > 0);
+  const selectedCountryData = countries.find(c => c.code === selectedCountry);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -64,7 +70,7 @@ export const MultiStudentForm: React.FC<MultiStudentFormProps> = ({ onSubmit, lo
       <div className="space-y-4">
         <h4 className="font-medium text-lg">Parent Information</h4>
         
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="parentName">Parent Name *</Label>
             <Input
@@ -75,14 +81,42 @@ export const MultiStudentForm: React.FC<MultiStudentFormProps> = ({ onSubmit, lo
               required
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="country">Country *</Label>
+            <Select value={selectedCountry} onValueChange={handleCountryChange} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select country" />
+              </SelectTrigger>
+              <SelectContent>
+                {countries.map((country) => (
+                  <SelectItem key={country.code} value={country.code}>
+                    {country.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-          <CountryPhoneInput
-            label="WhatsApp Phone"
-            value={formData.phone}
-            onChange={(phone) => setFormData(prev => ({ ...prev, phone }))}
-            required
-          />
-
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="phone">WhatsApp Phone *</Label>
+            <div className="flex">
+              {selectedCountryData && (
+                <span className="inline-flex items-center px-3 text-sm text-gray-900 bg-gray-200 border border-r-0 border-gray-300 rounded-l-md">
+                  {selectedCountryData.prefix}
+                </span>
+              )}
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="501234567"
+                className={selectedCountryData ? "rounded-l-none" : ""}
+                required
+              />
+            </div>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="platform">Platform Preference *</Label>
             <Select 
@@ -151,11 +185,7 @@ export const MultiStudentForm: React.FC<MultiStudentFormProps> = ({ onSubmit, lo
         </div>
       </div>
 
-      <Button 
-        type="submit" 
-        className="w-full ayat-button-primary" 
-        disabled={loading || !isFormValid}
-      >
+      <Button type="submit" className="w-full ayat-button-primary" disabled={loading}>
         {loading ? 'Booking...' : 'Book Family Trial'}
       </Button>
     </form>
