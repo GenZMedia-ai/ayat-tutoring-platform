@@ -14,6 +14,20 @@ export interface SimpleTimeSlot {
   egyptTimeDisplay: string;
 }
 
+// Define the proper type for the joined query result
+interface AvailabilityWithProfile {
+  id: string;
+  time_slot: string;
+  teacher_id: string;
+  profiles: {
+    id: string;
+    full_name: string;
+    teacher_type: string;
+    status: string;
+    role: string;
+  } | null;
+}
+
 export class SimpleAvailabilityService {
   static async searchAvailableSlots(
     date: Date,
@@ -66,17 +80,19 @@ export class SimpleAvailabilityService {
     
     console.log('Teacher type filter:', teacherTypeFilter);
     
-    // Search for available slots using direct Supabase query with proper join syntax
+    // Search for available slots using proper Supabase join syntax
     const { data: availability, error } = await supabase
       .from('teacher_availability')
       .select(`
         id,
         time_slot,
         teacher_id,
-        profiles!teacher_availability_teacher_id_fkey(
+        profiles!teacher_id(
           id,
           full_name,
-          teacher_type
+          teacher_type,
+          status,
+          role
         )
       `)
       .eq('date', dateStr)
@@ -97,17 +113,31 @@ export class SimpleAvailabilityService {
     console.log(`Found ${availability.length} availability records`);
     
     // Filter by teacher type and convert to SimpleTimeSlot format
-    const slots: SimpleTimeSlot[] = availability
+    const slots: SimpleTimeSlot[] = (availability as AvailabilityWithProfile[])
       .filter(record => {
         const profile = record.profiles;
-        if (!profile || Array.isArray(profile)) return false;
+        if (!profile) {
+          console.log('No profile found for record:', record.id);
+          return false;
+        }
         
-        return profile.status === 'approved' && 
-               profile.role === 'teacher' &&
-               teacherTypeFilter.includes(profile.teacher_type);
+        const isValidTeacher = profile.status === 'approved' && 
+                              profile.role === 'teacher' &&
+                              teacherTypeFilter.includes(profile.teacher_type);
+        
+        if (!isValidTeacher) {
+          console.log('Invalid teacher profile:', {
+            status: profile.status,
+            role: profile.role,
+            teacherType: profile.teacher_type,
+            requiredTypes: teacherTypeFilter
+          });
+        }
+        
+        return isValidTeacher;
       })
       .map(record => {
-        const profile = record.profiles as any;
+        const profile = record.profiles!;
         const timeSlotStr = record.time_slot;
         
         // Create UTC date for this slot
