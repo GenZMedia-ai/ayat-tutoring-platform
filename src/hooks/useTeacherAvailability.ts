@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
 
 const EGYPT_TIMEZONE = 'Africa/Cairo';
 
@@ -41,27 +41,26 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
   const egyptTimeToUTC = (date: Date, time: string): string => {
     console.log('🔄 Converting Egypt time to UTC:', { date: date.toDateString(), time });
     
-    // Create a date string in YYYY-MM-DD format
+    // Create date string in YYYY-MM-DD format
     const dateString = format(date, 'yyyy-MM-dd');
     console.log('📅 Date String:', dateString);
     
-    // Parse date and time components manually to avoid browser timezone contamination
-    const [year, month, day] = dateString.split('-').map(Number);
-    const [hours, minutes] = time.split(':').map(Number);
-    console.log('🔢 Date components:', { year, month, day, hours, minutes });
+    // Create full datetime string AS IF IT'S IN EGYPT TIME
+    // This is the key - we're telling the system this IS Egypt time
+    const egyptDateTimeString = `${dateString}T${time}:00`;
+    console.log('📅 Egypt DateTime String:', egyptDateTimeString);
     
-    // Create date in Egypt timezone directly (month is 0-indexed in JS Date)
-    const egyptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
-    console.log('🕰️ Egypt DateTime (neutral):', egyptDateTime);
-    
-    // Convert from Egypt timezone to UTC using fromZonedTime
-    // fromZonedTime treats the input as being in the specified timezone
-    const utcDateTime = fromZonedTime(egyptDateTime, EGYPT_TIMEZONE);
+    // Use zonedTimeToUtc to convert Egypt time to UTC
+    // This function treats the input string as being in the specified timezone
+    const utcDateTime = zonedTimeToUtc(egyptDateTimeString, EGYPT_TIMEZONE);
     console.log('🌐 UTC DateTime:', utcDateTime);
     
     // Format as HH:mm:ss for database storage
     const utcTime = format(utcDateTime, 'HH:mm:ss');
-    console.log('✅ Final UTC time for storage:', utcTime);
+    console.log('✅ UTC time for storage:', utcTime);
+    
+    // Also log the full UTC datetime to verify date hasn't shifted
+    console.log('📅 Full UTC DateTime:', utcDateTime.toISOString());
     
     return utcTime;
   };
@@ -70,25 +69,22 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
   const utcToEgyptTime = (utcTime: string): string => {
     console.log('🔄 Converting UTC to Egypt time:', utcTime);
     
-    // Create a date object for today with the UTC time
+    // Get today's date for the conversion
     const today = new Date();
     const todayString = format(today, 'yyyy-MM-dd');
     
-    // Create proper UTC datetime string
-    const utcDateTimeString = `${todayString}T${utcTime}`;
+    // Create proper UTC datetime by adding 'Z' to indicate UTC
+    const utcDateTimeString = `${todayString}T${utcTime}Z`;
     console.log('📅 UTC DateTime String:', utcDateTimeString);
     
-    // Parse as UTC (Z indicates UTC timezone)
-    const utcDateTime = new Date(utcDateTimeString + 'Z');
-    console.log('🌐 Parsed UTC DateTime:', utcDateTime);
-    
-    // Convert from UTC to Egypt timezone using toZonedTime
-    const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
+    // Parse as UTC and convert to Egypt timezone
+    const utcDateTime = new Date(utcDateTimeString);
+    const egyptDateTime = utcToZonedTime(utcDateTime, EGYPT_TIMEZONE);
     console.log('🇪🇬 Egypt DateTime:', egyptDateTime);
     
     // Return formatted time as HH:mm
     const egyptTime = format(egyptDateTime, 'HH:mm');
-    console.log('✅ Final Egypt time for display:', egyptTime);
+    console.log('✅ Egypt time for display:', egyptTime);
     
     return egyptTime;
   };
@@ -166,11 +162,13 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     const dateString = selectedDate.toISOString().split('T')[0];
     const utcTime = egyptTimeToUTC(selectedDate, time);
 
-    console.log('💾 Database operation:', { 
-      action: slot.isAvailable ? 'remove' : 'add',
+    // IMPORTANT: Log to verify date hasn't changed
+    console.log('💾 Saving availability:', {
+      originalDate: dateString,
       egyptTime: time,
-      utcTime,
-      dateString 
+      utcTime: utcTime,
+      // This should show the same date!
+      verifyDate: `Original: ${dateString}, After conversion: ${selectedDate.toISOString().split('T')[0]}`
     });
 
     try {
