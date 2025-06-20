@@ -1,7 +1,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { GranularTimeSlot } from '@/types/availability';
-import { convertClientHourToUTC, getTimezoneConfig } from '@/utils/timezoneUtils';
+import { fromZonedTime, toZonedTime, format } from 'date-fns-tz';
+import { getTimezoneConfig } from '@/utils/timezoneUtils';
 
 export class AvailabilityService {
   static async searchAvailableSlots(
@@ -10,7 +11,7 @@ export class AvailabilityService {
     teacherType: string,
     selectedHour: number
   ): Promise<GranularTimeSlot[]> {
-    console.log('=== AVAILABILITY SERVICE START (Enhanced for 30-min slots) ===');
+    console.log('=== AVAILABILITY SERVICE START (Enhanced with date-fns-tz) ===');
     console.log('Search Parameters:', { 
       date: date.toDateString(), 
       dateStr: date.toISOString().split('T')[0],
@@ -28,9 +29,27 @@ export class AvailabilityService {
     
     console.log('Timezone Config:', timezoneConfig);
     
-    // Convert client hour to UTC for the search range
-    const utcHour = convertClientHourToUTC(selectedHour, timezoneConfig.offset);
-    console.log('Client hour to UTC conversion:', { selectedHour, utcHour });
+    // Use date-fns-tz for proper timezone conversion with DST handling
+    const clientDateTime = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      selectedHour,
+      0,
+      0
+    );
+    
+    // Convert to UTC using date-fns-tz
+    const utcDateTime = fromZonedTime(clientDateTime, timezoneConfig.iana);
+    const utcHour = utcDateTime.getUTCHours();
+    const utcMinutes = utcDateTime.getUTCMinutes();
+    
+    console.log('Enhanced timezone conversion:', { 
+      clientDateTime: clientDateTime.toISOString(),
+      utcDateTime: utcDateTime.toISOString(),
+      utcHour,
+      utcMinutes
+    });
     
     // Build teacher type filter
     let teacherTypeFilter: string[];
@@ -44,7 +63,7 @@ export class AvailabilityService {
     
     console.log('Teacher Type Filter:', teacherTypeFilter);
     
-    // Use the secure RPC function to get available teachers for a broader range
+    // Search for 30-minute slots in a 2-hour window
     const slots = await this.searchUsingSecureRPC(
       dateStr,
       utcHour,
@@ -66,14 +85,16 @@ export class AvailabilityService {
     clientHour: number,
     timezoneConfig: any
   ): Promise<GranularTimeSlot[]> {
-    console.log('--- SECURE RPC SEARCH (Enhanced) ---');
+    console.log('--- SECURE RPC SEARCH (Enhanced with precise timing) ---');
     console.log('RPC Parameters:', { dateStr, baseUtcHour, teacherTypeFilter, clientHour });
     
-    // Search for a 2-hour window to catch all relevant 30-minute slots
-    // This ensures we get both :00 and :30 slots in the client's preferred hour
-    const startTime = `${String(Math.floor(baseUtcHour)).padStart(2, '0')}:00:00`;
-    const endHour = (Math.floor(baseUtcHour) + 2) % 24;
-    const endTime = `${String(endHour).padStart(2, '0')}:00:00`;
+    // Create a wider search window to catch all 30-minute slots
+    // Search from 1 hour before to 2 hours after to ensure we get all relevant slots
+    const searchStartHour = Math.max(0, baseUtcHour - 1);
+    const searchEndHour = Math.min(24, baseUtcHour + 2);
+    
+    const startTime = `${String(searchStartHour).padStart(2, '0')}:00:00`;
+    const endTime = `${String(searchEndHour).padStart(2, '0')}:00:00`;
     
     console.log('Enhanced UTC Time Range for RPC:', { startTime, endTime });
     
@@ -100,8 +121,10 @@ export class AvailabilityService {
 
     console.log(`RPC returned ${rpcResults.length} teacher-slot combinations`);
 
-    // Process RPC results into GranularTimeSlot format
-    const slots: GranularTimeSlot[] = rpcResults.map((result: any) => {
+    // Filter and process RPC results into GranularTimeSlot format
+    const slots: GranularTimeSlot[] = [];
+    
+    for (const result of rpcResults) {
       const timeSlotStr = result.time_slot;
       const [slotHour, slotMinutes] = timeSlotStr.split(':').map(Number);
 
@@ -112,11 +135,12 @@ export class AvailabilityService {
         teacherType: result.teacher_type 
       });
 
-      // Generate display times for this specific slot
-      const displayInfo = this.generateSlotDisplay(
+      // Generate display times for this specific slot using date-fns-tz
+      const displayInfo = this.generateSlotDisplayWithDateFns(
         slotHour,
         slotMinutes,
-        timezoneConfig.offset
+        timezoneConfig,
+        dateStr
       );
 
       const finalSlot = {
@@ -134,49 +158,49 @@ export class AvailabilityService {
       };
 
       console.log('Generated slot from RPC:', finalSlot);
-      return finalSlot;
-    });
+      slots.push(finalSlot);
+    }
 
     console.log(`Final result: ${slots.length} slots generated from secure RPC`);
     return slots;
   }
 
-  private static generateSlotDisplay(
+  private static generateSlotDisplayWithDateFns(
     utcHour: number,
     utcMinutes: number,
-    timezoneOffset: number
+    timezoneConfig: any,
+    dateStr: string
   ) {
+    // Create UTC date for the slot
+    const utcSlotDate = new Date(`${dateStr}T${String(utcHour).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}:00.000Z`);
+    
     // Calculate end time (30 minutes later)
-    let endMinutes = utcMinutes + 30;
-    let endHour = utcHour;
+    const utcEndDate = new Date(utcSlotDate.getTime() + 30 * 60 * 1000);
 
-    if (endMinutes >= 60) {
-      endMinutes = 0;
-      endHour = (utcHour + 1) % 24;
-    }
-
-    // Format times
-    const formatTime = (hour: number, min: number) => {
+    // Format times using date-fns-tz for accurate timezone conversion
+    const formatTime = (date: Date, timeZone: string) => {
+      const zonedDate = toZonedTime(date, timeZone);
+      const hour = zonedDate.getHours();
+      const minutes = zonedDate.getMinutes();
       const period = hour >= 12 ? 'PM' : 'AM';
       const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      return `${displayHour}:${String(min).padStart(2, '0')} ${period}`;
+      return `${displayHour}:${String(minutes).padStart(2, '0')} ${period}`;
     };
 
-    // Client timezone display (convert from UTC)
-    const clientHour = (utcHour + timezoneOffset + 24) % 24;
-    const clientEndHour = (endHour + timezoneOffset + 24) % 24;
+    // Client timezone display
+    const clientStartTime = formatTime(utcSlotDate, timezoneConfig.iana);
+    const clientEndTime = formatTime(utcEndDate, timezoneConfig.iana);
 
-    // Egypt time (UTC+2)
-    const egyptOffset = 2;
-    const egyptHour = (utcHour + egyptOffset + 24) % 24;
-    const egyptEndHour = (endHour + egyptOffset + 24) % 24;
+    // Egypt time (Africa/Cairo)
+    const egyptStartTime = formatTime(utcSlotDate, 'Africa/Cairo');
+    const egyptEndTime = formatTime(utcEndDate, 'Africa/Cairo');
 
     return {
       startTime: `${String(utcHour).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`,
-      endTime: `${String(endHour).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`,
-      utcEndTime: `${String(endHour).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}:00`,
-      clientDisplay: `${formatTime(clientHour, utcMinutes)}-${formatTime(clientEndHour, endMinutes)}`,
-      egyptDisplay: `${formatTime(egyptHour, utcMinutes)}-${formatTime(egyptEndHour, endMinutes)} (Egypt)`
+      endTime: format(utcEndDate, 'HH:mm', { timeZone: 'UTC' }),
+      utcEndTime: format(utcEndDate, 'HH:mm:ss', { timeZone: 'UTC' }),
+      clientDisplay: `${clientStartTime}-${clientEndTime}`,
+      egyptDisplay: `${egyptStartTime}-${egyptEndTime} (Egypt)`
     };
   }
 }
