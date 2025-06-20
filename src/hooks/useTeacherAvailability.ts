@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { zonedTimeToUtc, toZonedTime } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 
 const EGYPT_TIMEZONE = 'Africa/Cairo';
 
@@ -50,9 +50,9 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     const egyptDateTimeString = `${dateString}T${time}:00`;
     console.log('📅 Egypt DateTime String:', egyptDateTimeString);
     
-    // Use zonedTimeToUtc to convert FROM Egypt timezone TO UTC
+    // Use fromZonedTime to convert FROM Egypt timezone TO UTC
     // This function treats the input as being in the specified timezone and converts to UTC
-    const utcDateTime = zonedTimeToUtc(egyptDateTimeString, EGYPT_TIMEZONE);
+    const utcDateTime = fromZonedTime(egyptDateTimeString, EGYPT_TIMEZONE);
     console.log('🌐 UTC DateTime:', utcDateTime);
     
     // Format as HH:mm:ss for database storage
@@ -66,15 +66,14 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
   };
 
   // Convert UTC time from database to Egypt time for display
-  const utcToEgyptTime = (utcTime: string): string => {
+  const utcToEgyptTime = (utcTime: string, contextDate: Date): string => {
     console.log('🔄 Converting UTC to Egypt time:', utcTime);
     
-    // Get today's date for the conversion
-    const today = new Date();
-    const todayString = format(today, 'yyyy-MM-dd');
+    // Use the context date for the conversion
+    const dateString = format(contextDate, 'yyyy-MM-dd');
     
     // Create proper UTC datetime by adding 'Z' to indicate UTC
-    const utcDateTimeString = `${todayString}T${utcTime}Z`;
+    const utcDateTimeString = `${dateString}T${utcTime}Z`;
     console.log('📅 UTC DateTime String:', utcDateTimeString);
     
     // Parse as UTC and convert to Egypt timezone
@@ -95,7 +94,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
 
     setLoading(true);
     try {
-      const dateString = selectedDate.toISOString().split('T')[0];
+      const dateString = format(selectedDate, 'yyyy-MM-dd');
       console.log('📊 Fetching availability for date:', dateString);
       
       const { data, error } = await supabase
@@ -118,7 +117,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
       // Update slots with database data
       const updatedSlots = allSlots.map(slot => {
         const dbSlot = data?.find(d => {
-          const convertedTime = utcToEgyptTime(d.time_slot);
+          const convertedTime = utcToEgyptTime(d.time_slot, selectedDate);
           console.log(`🔍 Comparing slot ${slot.time} with DB slot ${d.time_slot} (converted: ${convertedTime})`);
           return convertedTime === slot.time;
         });
@@ -159,7 +158,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
       return; // Can't modify booked slots
     }
 
-    const dateString = selectedDate.toISOString().split('T')[0];
+    const dateString = format(selectedDate, 'yyyy-MM-dd');
     const utcTime = egyptTimeToUTC(selectedDate, time);
 
     // IMPORTANT: Log to verify date hasn't changed
