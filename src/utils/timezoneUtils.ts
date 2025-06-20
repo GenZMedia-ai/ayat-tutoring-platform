@@ -8,34 +8,44 @@ export interface TimeRange {
   egyptDisplay: string;
 }
 
-// Convert client timezone hour to UTC with proper granular slots
-export const convertClientHourToUTCRanges = (
+// Simple and accurate UTC conversion for exact hour matching
+export const convertClientHourToUTC = (clientHour: number, timezoneOffset: number): number => {
+  console.log('=== TIMEZONE CONVERSION ===');
+  console.log('Input - Client Hour:', clientHour, 'Timezone Offset:', timezoneOffset);
+  
+  const utcHour = clientHour - timezoneOffset;
+  console.log('Raw UTC Hour:', utcHour);
+  
+  let adjustedUtcHour = utcHour;
+  if (utcHour < 0) {
+    adjustedUtcHour = utcHour + 24;
+  } else if (utcHour >= 24) {
+    adjustedUtcHour = utcHour - 24;
+  }
+  
+  console.log('Final UTC Hour:', adjustedUtcHour);
+  console.log('=== END TIMEZONE CONVERSION ===');
+  
+  return adjustedUtcHour;
+};
+
+// Generate 30-minute display slots from hourly data
+export const generateDisplaySlots = (
   clientHour: number,
   timezoneOffset: number
 ): TimeRange[] => {
-  console.log('=== TIMEZONE CONVERSION DEBUG ===');
-  console.log('Input - Client Hour:', clientHour, 'Timezone Offset:', timezoneOffset);
+  console.log('=== GENERATING DISPLAY SLOTS ===');
   
   const ranges: TimeRange[] = [];
   
   // Create two 30-minute slots within the hour
   for (let minutes = 0; minutes < 60; minutes += 30) {
-    // Calculate UTC time correctly
-    const utcHour = clientHour - timezoneOffset;
-    let adjustedUtcHour = utcHour;
-    
-    // Handle day boundary crossings
-    if (utcHour < 0) {
-      adjustedUtcHour = utcHour + 24;
-    } else if (utcHour >= 24) {
-      adjustedUtcHour = utcHour - 24;
-    }
-    
-    const startUtcTime = `${String(adjustedUtcHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+    const utcHour = convertClientHourToUTC(clientHour, timezoneOffset);
+    const startUtcTime = `${String(utcHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
     
     // Calculate end time (30 minutes later)
     const endMinutes = minutes + 30;
-    let endHour = adjustedUtcHour;
+    let endHour = utcHour;
     let finalEndMinutes = endMinutes;
     
     if (endMinutes >= 60) {
@@ -49,7 +59,7 @@ export const convertClientHourToUTCRanges = (
     const endUtcTime = `${String(endHour).padStart(2, '0')}:${String(finalEndMinutes).padStart(2, '0')}:00`;
     
     // Calculate Egypt time (UTC+2)
-    const egyptHour = adjustedUtcHour + 2;
+    const egyptHour = utcHour + 2;
     let adjustedEgyptHour = egyptHour;
     
     if (egyptHour >= 24) {
@@ -85,27 +95,12 @@ export const convertClientHourToUTCRanges = (
     console.log(`Slot ${minutes/30 + 1}:`, {
       clientTime: clientDisplay,
       egyptTime: egyptDisplay,
-      utcRange: `${startUtcTime} - ${endUtcTime}`,
-      calculations: {
-        originalClientHour: clientHour,
-        timezoneOffset: timezoneOffset,
-        rawUtcHour: utcHour,
-        adjustedUtcHour: adjustedUtcHour,
-        egyptHour: adjustedEgyptHour
-      }
+      utcRange: `${startUtcTime} - ${endUtcTime}`
     });
   }
   
-  console.log('=== END TIMEZONE CONVERSION ===');
+  console.log('=== END DISPLAY SLOTS GENERATION ===');
   return ranges;
-};
-
-// Simple UTC conversion for direct hour matching (fallback approach)
-export const convertClientHourToUTC = (clientHour: number, timezoneOffset: number): number => {
-  const utcHour = clientHour - timezoneOffset;
-  if (utcHour < 0) return utcHour + 24;
-  if (utcHour >= 24) return utcHour - 24;
-  return utcHour;
 };
 
 export const getTimezoneConfig = (timezoneValue: string) => {

@@ -14,11 +14,11 @@ import { BookingModal } from '@/components/booking/BookingModal';
 import { supabase } from '@/integrations/supabase/client';
 
 const SalesDashboard: React.FC = () => {
-  // Set default date to 2025-06-20 where we know there's test data
+  // Set default date to 2025-06-20 where test data exists
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date('2025-06-20'));
-  const [timezone, setTimezone] = useState('saudi');
+  const [timezone, setTimezone] = useState('uae'); // Default to UAE for testing
   const [teacherType, setTeacherType] = useState('mixed');
-  const [selectedHour, setSelectedHour] = useState(18); // Default to 6 PM
+  const [selectedHour, setSelectedHour] = useState(18); // Default to 6 PM (UAE 6PM = UTC 14:00)
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [salesStats, setSalesStats] = useState({
@@ -205,7 +205,10 @@ const SalesDashboard: React.FC = () => {
                 <div className="space-y-4">
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-sm text-blue-800">
-                      <strong>Testing Note:</strong> Try date 2025-06-20 with Mixed teacher type and any time to see test data.
+                      <strong>Test with:</strong> Date: 2025-06-20, Type: Mixed, Time: 6 PM, Timezone: UAE
+                    </p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      This should find teacher availability at UTC 14:00:00
                     </p>
                   </div>
                   
@@ -289,8 +292,10 @@ const SalesDashboard: React.FC = () => {
                   {!loading && availableSlots.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground space-y-2">
                       <p>No available slots found for the selected criteria.</p>
-                      <p className="text-sm">Check the browser console for detailed debugging information.</p>
-                      <p className="text-xs">Try: 2025-06-20, Mixed teacher, any time for test data.</p>
+                      <p className="text-sm">Check browser console for detailed debugging info.</p>
+                      <p className="text-xs text-blue-600">
+                        Try: Date 2025-06-20, UAE timezone, Mixed teacher, 6 PM
+                      </p>
                     </div>
                   )}
                   
@@ -328,7 +333,7 @@ const SalesDashboard: React.FC = () => {
                         <strong>Found {availableSlots.length} available slot(s)</strong> from {new Set(availableSlots.map(s => s.teacherId)).size} qualified teacher(s)
                       </p>
                       <p className="text-xs text-green-600 mt-1">
-                        All times shown are real data from the database with accurate timezone conversion
+                        All times shown with accurate timezone conversion
                       </p>
                     </div>
                   )}

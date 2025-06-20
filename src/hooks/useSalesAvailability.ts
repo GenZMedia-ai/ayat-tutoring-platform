@@ -40,45 +40,41 @@ export const useSalesAvailability = () => {
       setAvailableSlots(slots);
       
       if (slots.length === 0) {
-        // Provide detailed diagnostic information
-        const dateStr = date.toISOString().split('T')[0];
-        console.log('No slots found. Running diagnostic...');
+        console.log('No slots found - running diagnostics...');
         
-        // Check if there's any availability at all for this date
-        const { data: anyAvailability } = await supabase
+        const dateStr = date.toISOString().split('T')[0];
+        
+        // Check what data exists
+        const { data: allAvailability } = await supabase
           .from('teacher_availability')
-          .select('time_slot, teacher_id')
+          .select('time_slot, teacher_id, date')
           .eq('date', dateStr)
           .eq('is_available', true)
           .eq('is_booked', false);
         
-        // Check if there are any approved teachers of the requested type
-        const { data: teachersOfType } = await supabase
+        const { data: allTeachers } = await supabase
           .from('profiles')
           .select('id, full_name, teacher_type')
           .eq('role', 'teacher')
-          .eq('status', 'approved')
-          .or(`teacher_type.eq.${teacherType},teacher_type.eq.mixed`);
+          .eq('status', 'approved');
         
-        console.log('Diagnostic Results:', {
-          anyAvailabilityForDate: anyAvailability,
-          teachersOfRequestedType: teachersOfType
-        });
+        console.log('Available data on this date:', allAvailability);
+        console.log('All teachers:', allTeachers);
         
-        let message = `No available ${teacherType} teachers found for the selected hour.`;
-        
-        if (!anyAvailability || anyAvailability.length === 0) {
-          message += ` No availability data exists for ${dateStr}.`;
-        } else if (!teachersOfType || teachersOfType.length === 0) {
-          message += ` No approved ${teacherType} teachers found in the system.`;
+        let message = `No ${teacherType} teachers available for the selected time.`;
+        if (allAvailability?.length === 0) {
+          message += ` No availability data for ${dateStr}.`;
+        } else if (allTeachers?.length === 0) {
+          message += ` No approved teachers in system.`;
         } else {
-          message += ` Try a different time or date. Available times: ${anyAvailability.map(a => a.time_slot).join(', ')}`;
+          const availableTimes = allAvailability?.map(a => a.time_slot).join(', ') || 'none';
+          message += ` Available times: ${availableTimes}`;
         }
         
         toast.info(message);
       } else {
         const teacherCount = new Set(slots.map(s => s.teacherId)).size;
-        toast.success(`Found ${slots.length} available slot(s) from ${teacherCount} teacher(s)`);
+        toast.success(`Found ${slots.length} slot(s) from ${teacherCount} teacher(s)`);
       }
       
     } catch (error) {

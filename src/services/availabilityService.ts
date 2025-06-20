@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { GranularTimeSlot } from '@/types/availability';
-import { convertClientHourToUTCRanges, convertClientHourToUTC, getTimezoneConfig } from '@/utils/timezoneUtils';
+import { convertClientHourToUTC, generateDisplaySlots, getTimezoneConfig } from '@/utils/timezoneUtils';
 
 export class AvailabilityService {
   static async searchAvailableSlots(
@@ -10,7 +10,7 @@ export class AvailabilityService {
     teacherType: string,
     selectedHour: number
   ): Promise<GranularTimeSlot[]> {
-    console.log('=== AVAILABILITY SERVICE DEBUG ===');
+    console.log('=== AVAILABILITY SERVICE START ===');
     console.log('Search Parameters:', { 
       date: date.toDateString(), 
       dateStr: date.toISOString().split('T')[0],
@@ -28,211 +28,128 @@ export class AvailabilityService {
     
     console.log('Timezone Config:', timezoneConfig);
     
-    // First, let's check what availability data exists in the database
-    const { data: allAvailability, error: allAvailabilityError } = await supabase
-      .from('teacher_availability')
-      .select('*')
-      .eq('date', dateStr);
+    // Convert client hour to UTC
+    const utcHour = convertClientHourToUTC(selectedHour, timezoneConfig.offset);
+    const targetTimeSlot = `${String(utcHour).padStart(2, '0')}:00:00`;
     
-    console.log('All availability for date:', allAvailability);
-    if (allAvailabilityError) {
-      console.error('Error fetching all availability:', allAvailabilityError);
+    console.log('Target UTC Time Slot:', targetTimeSlot);
+    
+    // Primary query: Find exact UTC hour match
+    const availableSlots = await this.findExactTimeSlots(
+      dateStr, 
+      targetTimeSlot, 
+      teacherType, 
+      selectedHour, 
+      timezoneConfig.offset
+    );
+    
+    if (availableSlots.length > 0) {
+      console.log('Found slots with exact time match:', availableSlots.length);
+      return availableSlots;
     }
     
-    // Check what teachers exist
-    const { data: allTeachers, error: teachersError } = await supabase
-      .from('profiles')
-      .select('id, full_name, teacher_type, status, role')
-      .eq('role', 'teacher')
-      .eq('status', 'approved');
+    // Fallback: Broader time search
+    console.log('No exact matches, trying broader search...');
+    const fallbackSlots = await this.findNearbyTimeSlots(
+      dateStr, 
+      utcHour, 
+      teacherType, 
+      selectedHour, 
+      timezoneConfig.offset
+    );
     
-    console.log('All approved teachers:', allTeachers);
-    if (teachersError) {
-      console.error('Error fetching teachers:', teachersError);
-    }
+    console.log('Final available slots:', fallbackSlots.length);
+    console.log('=== AVAILABILITY SERVICE END ===');
     
-    // Method 1: Try granular 30-minute slots
-    const timeRanges = convertClientHourToUTCRanges(selectedHour, timezoneConfig.offset);
-    console.log('Generated time ranges:', timeRanges);
-    
-    let availableSlots: GranularTimeSlot[] = [];
-    
-    // Try granular approach first
-    for (let i = 0; i < timeRanges.length; i++) {
-      const range = timeRanges[i];
-      console.log(`\n--- Querying Slot ${i + 1}: ${range.utcStartTime} - ${range.utcEndTime} ---`);
-      
-      const slots = await this.findSlotsInRange(range, dateStr, teacherType, i);
-      availableSlots.push(...slots);
-    }
-    
-    // Method 2: If no slots found, try direct hour matching (fallback)
-    if (availableSlots.length === 0) {
-      console.log('\n--- FALLBACK: Trying direct hour matching ---');
-      const utcHour = convertClientHourToUTC(selectedHour, timezoneConfig.offset);
-      const hourTimeSlot = `${String(utcHour).padStart(2, '0')}:00:00`;
-      
-      console.log(`Searching for exact time slot: ${hourTimeSlot}`);
-      
-      const { data: hourAvailability, error: hourError } = await supabase
-        .from('teacher_availability')
-        .select('id, teacher_id, time_slot, is_available, is_booked')
-        .eq('date', dateStr)
-        .eq('time_slot', hourTimeSlot)
-        .eq('is_available', true)
-        .eq('is_booked', false);
-      
-      console.log('Direct hour availability:', hourAvailability);
-      
-      if (hourAvailability && hourAvailability.length > 0) {
-        const teacherIds = Array.from(new Set(hourAvailability.map(a => a.teacher_id)));
-        const qualifiedTeachers = await this.getQualifiedTeachers(teacherIds, teacherType);
-        
-        console.log('Qualified teachers for direct hour:', qualifiedTeachers);
-        
-        if (qualifiedTeachers && qualifiedTeachers.length > 0) {
-          qualifiedTeachers.forEach((teacher) => {
-            const teacherAvailability = hourAvailability.find(a => a.teacher_id === teacher.id);
-            if (teacherAvailability) {
-              // Create both 30-minute slots for the hour
-              for (let minutes = 0; minutes < 60; minutes += 30) {
-                const range = timeRanges[minutes / 30];
-                availableSlots.push({
-                  id: `${teacherAvailability.id}-${minutes/30}`,
-                  startTime: range.utcStartTime.substring(0, 5),
-                  endTime: range.utcEndTime.substring(0, 5),
-                  clientTimeDisplay: range.clientDisplay,
-                  egyptTimeDisplay: range.egyptDisplay,
-                  utcStartTime: range.utcStartTime,
-                  utcEndTime: range.utcEndTime,
-                  teacherId: teacher.id,
-                  teacherName: teacher.full_name || 'Unnamed Teacher',
-                  teacherType: teacher.teacher_type,
-                  isBooked: teacherAvailability.is_booked || false
-                });
-              }
-            }
-          });
-        }
-      }
-    }
-    
-    // Method 3: If still no slots, try broader search
-    if (availableSlots.length === 0) {
-      console.log('\n--- FALLBACK 2: Trying broader time search ---');
-      availableSlots = await this.broadTimeSearch(dateStr, teacherType, selectedHour, timezoneConfig.offset);
-    }
-    
-    console.log('Final available slots:', availableSlots);
-    console.log('=== END AVAILABILITY SERVICE ===');
-    
-    return availableSlots;
+    return fallbackSlots;
   }
   
-  private static async findSlotsInRange(
-    range: any, 
-    dateStr: string, 
-    teacherType: string, 
-    slotIndex: number
+  private static async findExactTimeSlots(
+    dateStr: string,
+    targetTimeSlot: string,
+    teacherType: string,
+    selectedHour: number,
+    timezoneOffset: number
   ): Promise<GranularTimeSlot[]> {
-    // Query for availability in this specific 30-minute window
+    console.log('--- EXACT TIME SLOT SEARCH ---');
+    console.log('Searching for time slot:', targetTimeSlot);
+    
+    // Query for exact time slot availability
     const { data: availability, error: availabilityError } = await supabase
       .from('teacher_availability')
       .select('id, teacher_id, time_slot, is_available, is_booked')
       .eq('date', dateStr)
-      .gte('time_slot', range.utcStartTime)
-      .lt('time_slot', range.utcEndTime)
+      .eq('time_slot', targetTimeSlot)
       .eq('is_available', true)
       .eq('is_booked', false);
     
-    console.log(`Raw availability data for slot ${slotIndex + 1}:`, availability);
+    console.log('Raw availability query result:', availability);
+    console.log('Availability error:', availabilityError);
     
-    if (availabilityError) {
-      console.error('Availability query error:', availabilityError);
+    if (availabilityError || !availability || availability.length === 0) {
+      console.log('No availability found for exact time slot');
       return [];
     }
     
-    if (!availability || availability.length === 0) {
-      console.log(`No availability found for slot ${slotIndex + 1}`);
-      return [];
-    }
-    
+    // Get qualified teachers (include mixed teachers for any request)
     const teacherIds = Array.from(new Set(availability.map(a => a.teacher_id)));
-    const qualifiedTeachers = await this.getQualifiedTeachers(teacherIds, teacherType);
+    console.log('Teacher IDs from availability:', teacherIds);
     
+    const qualifiedTeachers = await this.getQualifiedTeachers(teacherIds, teacherType);
+    console.log('Qualified teachers:', qualifiedTeachers);
+    
+    if (!qualifiedTeachers || qualifiedTeachers.length === 0) {
+      console.log('No qualified teachers found');
+      return [];
+    }
+    
+    // Generate display slots for qualified teachers
+    const displaySlots = generateDisplaySlots(selectedHour, timezoneOffset);
     const slots: GranularTimeSlot[] = [];
     
-    if (qualifiedTeachers && qualifiedTeachers.length > 0) {
-      qualifiedTeachers.forEach((teacher) => {
-        const teacherAvailability = availability.find(a => a.teacher_id === teacher.id);
-        if (teacherAvailability) {
+    qualifiedTeachers.forEach((teacher) => {
+      const teacherAvailability = availability.find(a => a.teacher_id === teacher.id);
+      if (teacherAvailability) {
+        displaySlots.forEach((displaySlot, index) => {
           slots.push({
-            id: `${teacherAvailability.id}-${slotIndex}`,
-            startTime: range.utcStartTime.substring(0, 5),
-            endTime: range.utcEndTime.substring(0, 5),
-            clientTimeDisplay: range.clientDisplay,
-            egyptTimeDisplay: range.egyptDisplay,
-            utcStartTime: range.utcStartTime,
-            utcEndTime: range.utcEndTime,
+            id: `${teacherAvailability.id}-${index}`,
+            startTime: displaySlot.utcStartTime.substring(0, 5),
+            endTime: displaySlot.utcEndTime.substring(0, 5),
+            clientTimeDisplay: displaySlot.clientDisplay,
+            egyptTimeDisplay: displaySlot.egyptDisplay,
+            utcStartTime: displaySlot.utcStartTime,
+            utcEndTime: displaySlot.utcEndTime,
             teacherId: teacher.id,
             teacherName: teacher.full_name || 'Unnamed Teacher',
             teacherType: teacher.teacher_type,
             isBooked: teacherAvailability.is_booked || false
           });
-        }
-      });
-    }
+        });
+      }
+    });
     
+    console.log('Generated slots:', slots);
     return slots;
   }
   
-  private static async getQualifiedTeachers(teacherIds: string[], teacherType: string) {
-    console.log(`Searching for teachers with IDs: ${teacherIds} and type: ${teacherType}`);
-    
-    let teacherQuery = supabase
-      .from('profiles')
-      .select('id, full_name, teacher_type, status, role')
-      .in('id', teacherIds)
-      .eq('status', 'approved')
-      .eq('role', 'teacher');
-    
-    // Enhanced teacher type filtering logic
-    if (teacherType === 'mixed') {
-      // If looking for mixed, only get mixed teachers
-      teacherQuery = teacherQuery.eq('teacher_type', 'mixed');
-    } else {
-      // If looking for specific type, get that type OR mixed (since mixed can handle any type)
-      teacherQuery = teacherQuery.or(`teacher_type.eq.${teacherType},teacher_type.eq.mixed`);
-    }
-    
-    const { data: teachers, error: teachersError } = await teacherQuery;
-    
-    if (teachersError) {
-      console.error('Teachers query error:', teachersError);
-      return [];
-    }
-    
-    console.log(`Qualified teachers found:`, teachers);
-    return teachers || [];
-  }
-  
-  private static async broadTimeSearch(
-    dateStr: string, 
-    teacherType: string, 
-    selectedHour: number, 
+  private static async findNearbyTimeSlots(
+    dateStr: string,
+    targetUtcHour: number,
+    teacherType: string,
+    selectedHour: number,
     timezoneOffset: number
   ): Promise<GranularTimeSlot[]> {
-    // Search for any availability around the target time
-    const utcHour = convertClientHourToUTC(selectedHour, timezoneOffset);
-    const searchHours = [utcHour - 1, utcHour, utcHour + 1].map(h => {
+    console.log('--- NEARBY TIME SLOTS SEARCH ---');
+    
+    // Search 1 hour before and after the target time
+    const searchHours = [targetUtcHour - 1, targetUtcHour, targetUtcHour + 1].map(h => {
       if (h < 0) return h + 24;
       if (h >= 24) return h - 24;
       return h;
     });
     
-    console.log(`Broad search for hours: ${searchHours.map(h => `${h}:00:00`).join(', ')}`);
-    
     const timeSlots = searchHours.map(h => `${String(h).padStart(2, '0')}:00:00`);
+    console.log('Searching time slots:', timeSlots);
     
     const { data: availability, error } = await supabase
       .from('teacher_availability')
@@ -242,44 +159,72 @@ export class AvailabilityService {
       .eq('is_available', true)
       .eq('is_booked', false);
     
-    console.log('Broad search availability:', availability);
+    console.log('Nearby availability:', availability);
     
-    if (!availability || availability.length === 0) return [];
+    if (!availability || availability.length === 0) {
+      return [];
+    }
     
     const teacherIds = Array.from(new Set(availability.map(a => a.teacher_id)));
     const qualifiedTeachers = await this.getQualifiedTeachers(teacherIds, teacherType);
     
-    // Return results for the target hour if found
-    const targetTimeSlot = `${String(utcHour).padStart(2, '0')}:00:00`;
-    const targetAvailability = availability.filter(a => a.time_slot === targetTimeSlot);
-    
+    // Return results for any available time
     const slots: GranularTimeSlot[] = [];
+    const displaySlots = generateDisplaySlots(selectedHour, timezoneOffset);
     
-    if (targetAvailability.length > 0 && qualifiedTeachers && qualifiedTeachers.length > 0) {
-      const timeRanges = convertClientHourToUTCRanges(selectedHour, timezoneOffset);
-      
-      qualifiedTeachers.forEach((teacher) => {
-        const teacherAvailability = targetAvailability.find(a => a.teacher_id === teacher.id);
-        if (teacherAvailability) {
-          timeRanges.forEach((range, index) => {
-            slots.push({
-              id: `${teacherAvailability.id}-broad-${index}`,
-              startTime: range.utcStartTime.substring(0, 5),
-              endTime: range.utcEndTime.substring(0, 5),
-              clientTimeDisplay: range.clientDisplay,
-              egyptTimeDisplay: range.egyptDisplay,
-              utcStartTime: range.utcStartTime,
-              utcEndTime: range.utcEndTime,
-              teacherId: teacher.id,
-              teacherName: teacher.full_name || 'Unnamed Teacher',
-              teacherType: teacher.teacher_type,
-              isBooked: teacherAvailability.is_booked || false
-            });
+    qualifiedTeachers?.forEach((teacher) => {
+      const teacherAvailability = availability.find(a => a.teacher_id === teacher.id);
+      if (teacherAvailability) {
+        displaySlots.forEach((displaySlot, index) => {
+          slots.push({
+            id: `${teacherAvailability.id}-nearby-${index}`,
+            startTime: displaySlot.utcStartTime.substring(0, 5),
+            endTime: displaySlot.utcEndTime.substring(0, 5),
+            clientTimeDisplay: displaySlot.clientDisplay,
+            egyptTimeDisplay: displaySlot.egyptDisplay,
+            utcStartTime: displaySlot.utcStartTime,
+            utcEndTime: displaySlot.utcEndTime,
+            teacherId: teacher.id,
+            teacherName: teacher.full_name || 'Unnamed Teacher',
+            teacherType: teacher.teacher_type,
+            isBooked: teacherAvailability.is_booked || false
           });
-        }
-      });
-    }
+        });
+      }
+    });
     
     return slots;
+  }
+  
+  private static async getQualifiedTeachers(teacherIds: string[], teacherType: string) {
+    console.log('--- TEACHER QUALIFICATION CHECK ---');
+    console.log(`Checking teachers: ${teacherIds} for type: ${teacherType}`);
+    
+    // Simple query: Always include mixed teachers, plus specific type if requested
+    let query = supabase
+      .from('profiles')
+      .select('id, full_name, teacher_type, status, role')
+      .in('id', teacherIds)
+      .eq('status', 'approved')
+      .eq('role', 'teacher');
+    
+    // Always include mixed teachers, plus the requested type
+    if (teacherType === 'mixed') {
+      query = query.eq('teacher_type', 'mixed');
+    } else {
+      query = query.or(`teacher_type.eq.${teacherType},teacher_type.eq.mixed`);
+    }
+    
+    const { data: teachers, error: teachersError } = await query;
+    
+    console.log('Teacher query result:', teachers);
+    console.log('Teacher query error:', teachersError);
+    
+    if (teachersError) {
+      console.error('Teachers query error:', teachersError);
+      return [];
+    }
+    
+    return teachers || [];
   }
 }
