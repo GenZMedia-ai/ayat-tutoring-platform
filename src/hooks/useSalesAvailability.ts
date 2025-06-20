@@ -102,30 +102,23 @@ export const useSalesAvailability = () => {
       
       const firstSlot = slots[0];
       const utcStartTime = firstSlot.utcStartTime;
-      const availableTeacherIds = slots.map(slot => slot.teacherId);
+      const teacherId = firstSlot.teacherId;
       
       console.log('Enhanced booking details:', {
         utcStartTime,
-        availableTeacherIds: availableTeacherIds.length,
+        teacherId,
         teacherType,
         isMultiStudent
       });
       
-      // Validate that we have teacher IDs
-      if (availableTeacherIds.length === 0) {
-        console.error('No teacher IDs available for booking');
-        toast.error('No teachers available for this slot');
-        return false;
-      }
-      
-      // Format teacher IDs array properly for PostgreSQL
-      const { data, error } = await supabase.rpc('book_trial_session', {
+      // Use the simplified booking function instead of the removed one
+      const { data, error } = await supabase.rpc('simple_book_trial_session', {
         p_booking_data: bookingData,
         p_is_multi_student: isMultiStudent,
         p_selected_date: selectedDate.toISOString().split('T')[0],
         p_utc_start_time: utcStartTime,
         p_teacher_type: teacherType,
-        p_available_teacher_ids: availableTeacherIds // Pass as array directly
+        p_teacher_id: teacherId
       });
 
       console.log('Enhanced booking response:', { data, error });
@@ -145,12 +138,13 @@ export const useSalesAvailability = () => {
         
         console.log('Enhanced booking success:', {
           teacherName,
-          studentCount: studentNames.length,
+          studentCount: Array.isArray(studentNames) ? studentNames.length : 1,
           sessionId: bookingResult.session_id
         });
         
+        const displayNames = Array.isArray(studentNames) ? studentNames.join(', ') : studentNames;
         toast.success(
-          `Trial session booked successfully with ${teacherName} for ${studentNames.join(', ')}`
+          `Trial session booked successfully with ${teacherName} for ${displayNames}`
         );
         return true;
       } else {

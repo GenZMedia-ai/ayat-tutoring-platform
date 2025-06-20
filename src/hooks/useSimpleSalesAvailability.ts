@@ -15,6 +15,16 @@ export type SimpleBookingData = {
   students?: { name: string; age: number }[];
 };
 
+// Type for the simple booking response
+type SimpleBookingResponse = {
+  success: boolean;
+  teacher_name: string;
+  teacher_id: string;
+  session_id: string;
+  student_names: string;
+  booked_time_slot: string;
+};
+
 export const useSimpleSalesAvailability = () => {
   const [loading, setLoading] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<SimpleTimeSlot[]>([]);
@@ -83,14 +93,17 @@ export const useSimpleSalesAvailability = () => {
         return false;
       }
 
-      if (data?.success) {
-        const teacherName = data.teacher_name || 'Unknown Teacher';
-        const studentNames = data.student_names || '';
+      // Properly type cast the response
+      const bookingResult = data as SimpleBookingResponse;
+
+      if (bookingResult?.success) {
+        const teacherName = bookingResult.teacher_name || 'Unknown Teacher';
+        const studentNames = bookingResult.student_names || '';
         
         console.log('Simple booking success:', {
           teacherName,
           studentNames,
-          sessionId: data.session_id
+          sessionId: bookingResult.session_id
         });
         
         toast.success(

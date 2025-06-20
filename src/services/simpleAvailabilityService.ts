@@ -66,14 +66,14 @@ export class SimpleAvailabilityService {
     
     console.log('Teacher type filter:', teacherTypeFilter);
     
-    // Search for available slots using direct Supabase query
+    // Search for available slots using direct Supabase query with proper join syntax
     const { data: availability, error } = await supabase
       .from('teacher_availability')
       .select(`
         id,
         time_slot,
         teacher_id,
-        profiles!inner(
+        profiles!teacher_availability_teacher_id_fkey(
           id,
           full_name,
           teacher_type
@@ -82,9 +82,6 @@ export class SimpleAvailabilityService {
       .eq('date', dateStr)
       .eq('is_available', true)
       .eq('is_booked', false)
-      .in('profiles.teacher_type', teacherTypeFilter)
-      .eq('profiles.status', 'approved')
-      .eq('profiles.role', 'teacher')
       .order('time_slot');
     
     if (error) {
@@ -99,34 +96,43 @@ export class SimpleAvailabilityService {
     
     console.log(`Found ${availability.length} availability records`);
     
-    // Convert to SimpleTimeSlot format
-    const slots: SimpleTimeSlot[] = availability.map(record => {
-      const timeSlotStr = record.time_slot;
-      const [slotHour, slotMinutes] = timeSlotStr.split(':').map(Number);
-      
-      // Create UTC date for this slot
-      const utcSlotDate = new Date(`${dateStr}T${timeSlotStr}.000Z`);
-      const utcEndDate = new Date(utcSlotDate.getTime() + 30 * 60 * 1000);
-      
-      // Format times for client timezone
-      const clientStartTime = this.formatTimeInTimezone(utcSlotDate, timezoneConfig.iana);
-      const clientEndTime = this.formatTimeInTimezone(utcEndDate, timezoneConfig.iana);
-      
-      // Format times for Egypt timezone
-      const egyptStartTime = this.formatTimeInTimezone(utcSlotDate, 'Africa/Cairo');
-      const egyptEndTime = this.formatTimeInTimezone(utcEndDate, 'Africa/Cairo');
-      
-      return {
-        id: record.id,
-        teacherId: record.teacher_id,
-        teacherName: record.profiles.full_name,
-        teacherType: record.profiles.teacher_type,
-        utcStartTime: timeSlotStr,
-        utcEndTime: format(utcEndDate, 'HH:mm:ss', { timeZone: 'UTC' }),
-        clientTimeDisplay: `${clientStartTime}-${clientEndTime}`,
-        egyptTimeDisplay: `${egyptStartTime}-${egyptEndTime} (Egypt)`
-      };
-    });
+    // Filter by teacher type and convert to SimpleTimeSlot format
+    const slots: SimpleTimeSlot[] = availability
+      .filter(record => {
+        const profile = record.profiles;
+        if (!profile || Array.isArray(profile)) return false;
+        
+        return profile.status === 'approved' && 
+               profile.role === 'teacher' &&
+               teacherTypeFilter.includes(profile.teacher_type);
+      })
+      .map(record => {
+        const profile = record.profiles as any;
+        const timeSlotStr = record.time_slot;
+        
+        // Create UTC date for this slot
+        const utcSlotDate = new Date(`${dateStr}T${timeSlotStr}.000Z`);
+        const utcEndDate = new Date(utcSlotDate.getTime() + 30 * 60 * 1000);
+        
+        // Format times for client timezone
+        const clientStartTime = this.formatTimeInTimezone(utcSlotDate, timezoneConfig.iana);
+        const clientEndTime = this.formatTimeInTimezone(utcEndDate, timezoneConfig.iana);
+        
+        // Format times for Egypt timezone
+        const egyptStartTime = this.formatTimeInTimezone(utcSlotDate, 'Africa/Cairo');
+        const egyptEndTime = this.formatTimeInTimezone(utcEndDate, 'Africa/Cairo');
+        
+        return {
+          id: record.id,
+          teacherId: record.teacher_id,
+          teacherName: profile.full_name,
+          teacherType: profile.teacher_type,
+          utcStartTime: timeSlotStr,
+          utcEndTime: format(utcEndDate, 'HH:mm:ss', { timeZone: 'UTC' }),
+          clientTimeDisplay: `${clientStartTime}-${clientEndTime}`,
+          egyptTimeDisplay: `${egyptStartTime}-${egyptEndTime} (Egypt)`
+        };
+      });
     
     console.log('Generated slots:', slots);
     console.log('=== SIMPLE AVAILABILITY SEARCH END ===');
