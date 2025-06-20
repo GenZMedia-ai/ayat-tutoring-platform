@@ -62,79 +62,84 @@ export class AvailabilityService {
     
     console.log('UTC Time Range:', { startTime, endTime });
     
-    // Build teacher type filter
-    const teacherTypeFilter = teacherType === 'mixed'
-      ? 'teacher_type.eq.mixed'
-      : `teacher_type.in.(${teacherType},mixed)`;
-    
-    console.log('Teacher Type Filter:', teacherTypeFilter);
-    
-    // Query with joined teacher profiles for efficiency
+    // First, get available teacher slots
     const { data: availability, error } = await supabase
       .from('teacher_availability')
-      .select(`
-        id,
-        time_slot,
-        is_available,
-        is_booked,
-        teacher_id,
-        profiles!inner(
-          id,
-          full_name,
-          teacher_type,
-          status,
-          role
-        )
-      `)
+      .select('id, time_slot, teacher_id')
       .eq('date', dateStr)
       .gte('time_slot', startTime)
       .lt('time_slot', endTime)
       .eq('is_available', true)
-      .eq('is_booked', false)
-      .eq('profiles.status', 'approved')
-      .eq('profiles.role', 'teacher')
-      .or(teacherTypeFilter, { foreignTable: 'profiles' });
+      .eq('is_booked', false);
 
-    console.log('Query Result:', { availability, error });
+    console.log('Available slots query result:', { availability, error });
 
     if (error || !availability || availability.length === 0) {
       console.log('No availability found');
       return [];
     }
 
-    // Process each slot individually - one database slot = one display slot
-    const slots: GranularTimeSlot[] = availability.map(slot => {
-      const [slotHour, slotMinutes] = slot.time_slot.split(':').map(Number);
-      const teacher = slot.profiles;
+    // Get unique teacher IDs
+    const teacherIds = [...new Set(availability.map(slot => slot.teacher_id))];
+    
+    // Get teacher profiles separately
+    const teacherTypeFilter = teacherType === 'mixed'
+      ? ['mixed']
+      : [teacherType, 'mixed'];
+    
+    const { data: teachers, error: teacherError } = await supabase
+      .from('profiles')
+      .select('id, full_name, teacher_type')
+      .in('id', teacherIds)
+      .in('teacher_type', teacherTypeFilter)
+      .eq('status', 'approved')
+      .eq('role', 'teacher');
 
-      console.log('Processing slot:', { 
-        slotTime: slot.time_slot, 
-        teacher: teacher.full_name,
-        teacherType: teacher.teacher_type 
+    console.log('Teachers query result:', { teachers, teacherError });
+
+    if (teacherError || !teachers || teachers.length === 0) {
+      console.log('No matching teachers found');
+      return [];
+    }
+
+    // Create a map of teacher data for quick lookup
+    const teacherMap = new Map(teachers.map(teacher => [teacher.id, teacher]));
+
+    // Process slots and filter by available teachers
+    const slots: GranularTimeSlot[] = availability
+      .filter(slot => teacherMap.has(slot.teacher_id))
+      .map(slot => {
+        const [slotHour, slotMinutes] = slot.time_slot.split(':').map(Number);
+        const teacher = teacherMap.get(slot.teacher_id)!;
+
+        console.log('Processing slot:', { 
+          slotTime: slot.time_slot, 
+          teacher: teacher.full_name,
+          teacherType: teacher.teacher_type 
+        });
+
+        // Generate display times for this specific slot
+        const displayInfo = this.generateSlotDisplay(
+          slotHour,
+          slotMinutes,
+          clientHour,
+          timezoneConfig.offset
+        );
+
+        return {
+          id: slot.id,
+          startTime: displayInfo.startTime,
+          endTime: displayInfo.endTime,
+          clientTimeDisplay: displayInfo.clientDisplay,
+          egyptTimeDisplay: displayInfo.egyptDisplay,
+          utcStartTime: slot.time_slot,
+          utcEndTime: displayInfo.utcEndTime,
+          teacherId: teacher.id,
+          teacherName: teacher.full_name || 'Unnamed Teacher',
+          teacherType: teacher.teacher_type,
+          isBooked: false
+        };
       });
-
-      // Generate display times for this specific slot
-      const displayInfo = this.generateSlotDisplay(
-        slotHour,
-        slotMinutes,
-        clientHour,
-        timezoneConfig.offset
-      );
-
-      return {
-        id: slot.id,
-        startTime: displayInfo.startTime,
-        endTime: displayInfo.endTime,
-        clientTimeDisplay: displayInfo.clientDisplay,
-        egyptTimeDisplay: displayInfo.egyptDisplay,
-        utcStartTime: slot.time_slot,
-        utcEndTime: displayInfo.utcEndTime,
-        teacherId: teacher.id,
-        teacherName: teacher.full_name || 'Unnamed Teacher',
-        teacherType: teacher.teacher_type,
-        isBooked: false
-      };
-    });
 
     console.log('Generated slots:', slots);
     return slots;
