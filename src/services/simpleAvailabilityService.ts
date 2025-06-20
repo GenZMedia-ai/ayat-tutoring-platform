@@ -14,20 +14,6 @@ export interface SimpleTimeSlot {
   egyptTimeDisplay: string;
 }
 
-// Define the proper type for the joined query result
-interface AvailabilityWithProfile {
-  id: string;
-  time_slot: string;
-  teacher_id: string;
-  profiles: {
-    id: string;
-    full_name: string;
-    teacher_type: string;
-    status: string;
-    role: string;
-  } | null;
-}
-
 export class SimpleAvailabilityService {
   static async searchAvailableSlots(
     date: Date,
@@ -80,29 +66,18 @@ export class SimpleAvailabilityService {
     
     console.log('Teacher type filter:', teacherTypeFilter);
     
-    // Search for available slots using proper Supabase join syntax
-    const { data: availability, error } = await supabase
+    // First, get available slots
+    const { data: availability, error: availabilityError } = await supabase
       .from('teacher_availability')
-      .select(`
-        id,
-        time_slot,
-        teacher_id,
-        profiles!teacher_id(
-          id,
-          full_name,
-          teacher_type,
-          status,
-          role
-        )
-      `)
+      .select('id, time_slot, teacher_id')
       .eq('date', dateStr)
       .eq('is_available', true)
       .eq('is_booked', false)
       .order('time_slot');
     
-    if (error) {
-      console.error('Database query error:', error);
-      throw error;
+    if (availabilityError) {
+      console.error('Availability query error:', availabilityError);
+      throw availabilityError;
     }
     
     if (!availability || availability.length === 0) {
@@ -112,33 +87,39 @@ export class SimpleAvailabilityService {
     
     console.log(`Found ${availability.length} availability records`);
     
-    // Filter by teacher type and convert to SimpleTimeSlot format
-    const slots: SimpleTimeSlot[] = (availability as AvailabilityWithProfile[])
-      .filter(record => {
-        const profile = record.profiles;
-        if (!profile) {
-          console.log('No profile found for record:', record.id);
-          return false;
-        }
-        
-        const isValidTeacher = profile.status === 'approved' && 
-                              profile.role === 'teacher' &&
-                              teacherTypeFilter.includes(profile.teacher_type);
-        
-        if (!isValidTeacher) {
-          console.log('Invalid teacher profile:', {
-            status: profile.status,
-            role: profile.role,
-            teacherType: profile.teacher_type,
-            requiredTypes: teacherTypeFilter
-          });
-        }
-        
-        return isValidTeacher;
-      })
-      .map(record => {
-        const profile = record.profiles!;
-        const timeSlotStr = record.time_slot;
+    // Get unique teacher IDs
+    const teacherIds = [...new Set(availability.map(slot => slot.teacher_id))];
+    
+    // Get teacher profiles separately
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, teacher_type, status, role')
+      .in('id', teacherIds)
+      .eq('status', 'approved')
+      .eq('role', 'teacher')
+      .in('teacher_type', teacherTypeFilter);
+    
+    if (profilesError) {
+      console.error('Profiles query error:', profilesError);
+      throw profilesError;
+    }
+    
+    if (!profiles || profiles.length === 0) {
+      console.log('No valid teacher profiles found');
+      return [];
+    }
+    
+    console.log(`Found ${profiles.length} valid teacher profiles`);
+    
+    // Create a map of teacher profiles for quick lookup
+    const profileMap = new Map(profiles.map(profile => [profile.id, profile]));
+    
+    // Filter availability by valid teachers and convert to SimpleTimeSlot format
+    const slots: SimpleTimeSlot[] = availability
+      .filter(slot => profileMap.has(slot.teacher_id))
+      .map(slot => {
+        const profile = profileMap.get(slot.teacher_id)!;
+        const timeSlotStr = slot.time_slot;
         
         // Create UTC date for this slot
         const utcSlotDate = new Date(`${dateStr}T${timeSlotStr}.000Z`);
@@ -153,8 +134,8 @@ export class SimpleAvailabilityService {
         const egyptEndTime = this.formatTimeInTimezone(utcEndDate, 'Africa/Cairo');
         
         return {
-          id: record.id,
-          teacherId: record.teacher_id,
+          id: slot.id,
+          teacherId: slot.teacher_id,
           teacherName: profile.full_name,
           teacherType: profile.teacher_type,
           utcStartTime: timeSlotStr,
