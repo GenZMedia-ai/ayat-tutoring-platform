@@ -29,7 +29,7 @@ export const convertClientHourToUTC = (clientHour: number, timezoneOffset: numbe
   return adjustedUtcHour;
 };
 
-// Generate 30-minute display slots from hourly data
+// Generate 30-minute display slots from hourly data - optimized for multiple slots
 export const generateDisplaySlots = (
   clientHour: number,
   timezoneOffset: number
@@ -37,10 +37,10 @@ export const generateDisplaySlots = (
   console.log('=== GENERATING DISPLAY SLOTS ===');
   
   const ranges: TimeRange[] = [];
+  const utcHour = convertClientHourToUTC(clientHour, timezoneOffset);
   
   // Create two 30-minute slots within the hour
   for (let minutes = 0; minutes < 60; minutes += 30) {
-    const utcHour = convertClientHourToUTC(clientHour, timezoneOffset);
     const startUtcTime = `${String(utcHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
     
     // Calculate end time (30 minutes later)

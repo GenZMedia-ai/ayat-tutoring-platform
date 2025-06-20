@@ -40,41 +40,12 @@ export const useSalesAvailability = () => {
       setAvailableSlots(slots);
       
       if (slots.length === 0) {
-        console.log('No slots found - running diagnostics...');
-        
-        const dateStr = date.toISOString().split('T')[0];
-        
-        // Check what data exists
-        const { data: allAvailability } = await supabase
-          .from('teacher_availability')
-          .select('time_slot, teacher_id, date')
-          .eq('date', dateStr)
-          .eq('is_available', true)
-          .eq('is_booked', false);
-        
-        const { data: allTeachers } = await supabase
-          .from('profiles')
-          .select('id, full_name, teacher_type')
-          .eq('role', 'teacher')
-          .eq('status', 'approved');
-        
-        console.log('Available data on this date:', allAvailability);
-        console.log('All teachers:', allTeachers);
-        
-        let message = `No ${teacherType} teachers available for the selected time.`;
-        if (allAvailability?.length === 0) {
-          message += ` No availability data for ${dateStr}.`;
-        } else if (allTeachers?.length === 0) {
-          message += ` No approved teachers in system.`;
-        } else {
-          const availableTimes = allAvailability?.map(a => a.time_slot).join(', ') || 'none';
-          message += ` Available times: ${availableTimes}`;
-        }
-        
-        toast.info(message);
+        console.log('No slots found - running detailed diagnostics...');
+        await this.runDiagnostics(date, teacherType);
       } else {
         const teacherCount = new Set(slots.map(s => s.teacherId)).size;
-        toast.success(`Found ${slots.length} slot(s) from ${teacherCount} teacher(s)`);
+        const timeSlots = new Set(slots.map(s => s.clientTimeDisplay)).size;
+        toast.success(`Found ${slots.length} slot(s) from ${teacherCount} teacher(s) across ${timeSlots} time(s)`);
       }
       
     } catch (error) {
@@ -84,6 +55,63 @@ export const useSalesAvailability = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const runDiagnostics = async (date: Date, teacherType: string) => {
+    const dateStr = date.toISOString().split('T')[0];
+    
+    console.log('=== RUNNING DIAGNOSTICS ===');
+    
+    // Check what availability data exists
+    const { data: allAvailability } = await supabase
+      .from('teacher_availability')
+      .select('time_slot, teacher_id, date, is_available, is_booked')
+      .eq('date', dateStr)
+      .order('time_slot');
+    
+    console.log('All availability for date:', allAvailability);
+    
+    // Check available (not booked) slots
+    const { data: availableData } = await supabase
+      .from('teacher_availability')
+      .select('time_slot, teacher_id')
+      .eq('date', dateStr)
+      .eq('is_available', true)
+      .eq('is_booked', false);
+    
+    console.log('Available slots:', availableData);
+    
+    // Check teachers by type
+    const { data: allTeachers } = await supabase
+      .from('profiles')
+      .select('id, full_name, teacher_type, status, role')
+      .eq('role', 'teacher')
+      .eq('status', 'approved');
+    
+    console.log('All approved teachers:', allTeachers);
+    
+    const teachersOfType = allTeachers?.filter(t => 
+      t.teacher_type === teacherType || t.teacher_type === 'mixed'
+    );
+    
+    console.log(`Teachers of type ${teacherType} (including mixed):`, teachersOfType);
+    
+    // Build diagnostic message
+    let message = `No ${teacherType} teachers available for the selected time.`;
+    
+    if (!allAvailability || allAvailability.length === 0) {
+      message += ` No availability data found for ${dateStr}.`;
+    } else if (!teachersOfType || teachersOfType.length === 0) {
+      message += ` No approved ${teacherType}/mixed teachers in system.`;
+    } else if (!availableData || availableData.length === 0) {
+      message += ` All time slots are booked for ${dateStr}.`;
+    } else {
+      const availableTimes = availableData.map(a => a.time_slot).join(', ');
+      message += ` Available times on ${dateStr}: ${availableTimes}`;
+    }
+    
+    console.log('Diagnostic message:', message);
+    toast.info(message);
   };
 
   const bookTrialSession = async (
