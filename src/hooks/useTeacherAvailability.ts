@@ -49,8 +49,8 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     const egyptDateTimeString = `${dateString}T${time}:00`;
     console.log('📅 Egypt DateTime String:', egyptDateTimeString);
     
-    // Use fromZonedTime to convert Egypt time to UTC
-    // This function treats the input string as being in the specified timezone
+    // Use fromZonedTime to convert FROM Egypt timezone TO UTC
+    // This function treats the input as being in the specified timezone and converts to UTC
     const utcDateTime = fromZonedTime(egyptDateTimeString, EGYPT_TIMEZONE);
     console.log('🌐 UTC DateTime:', utcDateTime);
     
