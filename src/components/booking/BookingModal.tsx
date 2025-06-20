@@ -4,12 +4,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { SingleStudentForm } from './SingleStudentForm';
 import { MultiStudentForm } from './MultiStudentForm';
-import { BookingData } from '@/hooks/useSalesAvailability';
+import { RoundRobinBookingData } from '@/types/groupedSlots';
 
 interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: BookingData, isMultiStudent: boolean) => Promise<boolean>;
+  onSubmit: (data: RoundRobinBookingData, isMultiStudent: boolean) => Promise<boolean>;
   selectedSlot: string;
   selectedDate: Date;
 }
@@ -24,7 +24,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [bookingType, setBookingType] = useState<'select' | 'single' | 'multi'>('select');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (data: BookingData) => {
+  const handleSubmit = async (data: RoundRobinBookingData) => {
     setLoading(true);
     const success = await onSubmit(data, bookingType === 'multi');
     setLoading(false);

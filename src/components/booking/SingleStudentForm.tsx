@@ -4,25 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookingData } from '@/hooks/useSalesAvailability';
+import { CountryPhoneInput } from '@/components/ui/CountryPhoneInput';
+import { RoundRobinBookingData } from '@/types/groupedSlots';
+import { isValidPhoneNumber } from 'react-phone-number-input';
 
 interface SingleStudentFormProps {
-  onSubmit: (data: BookingData) => void;
+  onSubmit: (data: RoundRobinBookingData) => void;
   loading?: boolean;
 }
 
-const countries = [
-  { code: 'SA', name: 'Saudi Arabia', prefix: '+966' },
-  { code: 'AE', name: 'UAE', prefix: '+971' },
-  { code: 'QA', name: 'Qatar', prefix: '+974' },
-  { code: 'KW', name: 'Kuwait', prefix: '+965' },
-  { code: 'BH', name: 'Bahrain', prefix: '+973' },
-  { code: 'OM', name: 'Oman', prefix: '+968' },
-  { code: 'EG', name: 'Egypt', prefix: '+20' }
-];
-
 export const SingleStudentForm: React.FC<SingleStudentFormProps> = ({ onSubmit, loading }) => {
-  const [formData, setFormData] = useState<BookingData>({
+  const [formData, setFormData] = useState<RoundRobinBookingData>({
     studentName: '',
     country: '',
     phone: '',
@@ -31,22 +23,23 @@ export const SingleStudentForm: React.FC<SingleStudentFormProps> = ({ onSubmit, 
     notes: ''
   });
 
-  const [selectedCountry, setSelectedCountry] = useState<string>('');
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.studentName || !formData.country || !formData.phone || !formData.age) {
+    if (!formData.studentName || !formData.phone || !formData.age) {
       return;
     }
+    
+    if (!isValidPhoneNumber(formData.phone)) {
+      return;
+    }
+    
     onSubmit(formData);
   };
 
-  const handleCountryChange = (countryCode: string) => {
-    setSelectedCountry(countryCode);
-    setFormData(prev => ({ ...prev, country: countryCode, phone: '' }));
-  };
-
-  const selectedCountryData = countries.find(c => c.code === selectedCountry);
+  const isFormValid = formData.studentName && 
+                     formData.phone && 
+                     formData.age > 0 && 
+                     isValidPhoneNumber(formData.phone);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -76,41 +69,12 @@ export const SingleStudentForm: React.FC<SingleStudentFormProps> = ({ onSubmit, 
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="country">Country *</Label>
-          <Select value={selectedCountry} onValueChange={handleCountryChange} required>
-            <SelectTrigger>
-              <SelectValue placeholder="Select country" />
-            </SelectTrigger>
-            <SelectContent>
-              {countries.map((country) => (
-                <SelectItem key={country.code} value={country.code}>
-                  {country.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="phone">WhatsApp Phone *</Label>
-          <div className="flex">
-            {selectedCountryData && (
-              <span className="inline-flex items-center px-3 text-sm text-gray-900 bg-gray-200 border border-r-0 border-gray-300 rounded-l-md">
-                {selectedCountryData.prefix}
-              </span>
-            )}
-            <Input
-              id="phone"
-              value={formData.phone}
-              onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-              placeholder="501234567"
-              className={selectedCountryData ? "rounded-l-none" : ""}
-              required
-            />
-          </div>
-        </div>
-      </div>
+      <CountryPhoneInput
+        label="WhatsApp Phone"
+        value={formData.phone}
+        onChange={(phone) => setFormData(prev => ({ ...prev, phone }))}
+        required
+      />
 
       <div className="space-y-2">
         <Label htmlFor="platform">Platform *</Label>
@@ -138,7 +102,11 @@ export const SingleStudentForm: React.FC<SingleStudentFormProps> = ({ onSubmit, 
         />
       </div>
 
-      <Button type="submit" className="w-full ayat-button-primary" disabled={loading}>
+      <Button 
+        type="submit" 
+        className="w-full ayat-button-primary" 
+        disabled={loading || !isFormValid}
+      >
         {loading ? 'Booking...' : 'Book Trial Session'}
       </Button>
     </form>

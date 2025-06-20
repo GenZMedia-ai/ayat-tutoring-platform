@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
-import { useSalesAvailability, BookingData } from '@/hooks/useSalesAvailability';
+import { useSalesAvailability } from '@/hooks/useSalesAvailability';
 import { TEACHER_TYPES } from '@/constants/teacherTypes';
 import { HOURLY_TIME_SLOTS, TIMEZONES } from '@/constants/timeSlots';
 import { BookingModal } from '@/components/booking/BookingModal';
+import { GroupedTimeSlot, RoundRobinBookingData } from '@/types/groupedSlots';
 import { supabase } from '@/integrations/supabase/client';
 
 const SalesDashboard: React.FC = () => {
@@ -20,7 +22,7 @@ const SalesDashboard: React.FC = () => {
   const [teacherType, setTeacherType] = useState('mixed');
   const [selectedHour, setSelectedHour] = useState(18); // Default to 6 PM (UAE 6PM = UTC 14:00)
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<any>(null);
+  const [selectedGroupedSlot, setSelectedGroupedSlot] = useState<GroupedTimeSlot | null>(null);
   const [salesStats, setSalesStats] = useState({
     todayTrials: 0,
     pendingFollowup: 0,
@@ -28,7 +30,7 @@ const SalesDashboard: React.FC = () => {
     thisWeekBookings: 0
   });
 
-  const { loading, availableSlots, checkAvailability, bookTrialSession } = useSalesAvailability();
+  const { loading, groupedSlots, checkAvailability, bookTrialSession } = useSalesAvailability();
 
   // Load sales statistics
   useEffect(() => {
@@ -100,18 +102,18 @@ const SalesDashboard: React.FC = () => {
     checkAvailability(selectedDate, timezone, teacherType, selectedHour);
   };
 
-  const handleBookNow = (slot: any) => {
-    setSelectedSlot(slot);
+  const handleBookNow = (groupedSlot: GroupedTimeSlot) => {
+    setSelectedGroupedSlot(groupedSlot);
     setIsBookingModalOpen(true);
   };
 
-  const handleBookingSubmit = async (data: BookingData, isMultiStudent: boolean) => {
-    if (!selectedDate || !selectedSlot) return false;
+  const handleBookingSubmit = async (data: RoundRobinBookingData, isMultiStudent: boolean) => {
+    if (!selectedDate || !selectedGroupedSlot) return false;
     
     const success = await bookTrialSession(
       data,
       selectedDate,
-      selectedSlot,
+      selectedGroupedSlot,
       teacherType,
       isMultiStudent
     );
@@ -197,7 +199,7 @@ const SalesDashboard: React.FC = () => {
             <CardHeader>
               <CardTitle>Real-Time Availability Checker</CardTitle>
               <CardDescription>
-                Find exact 30-minute slots with real database data and timezone-accurate times
+                Find exact 30-minute slots with automatic round-robin teacher assignment
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -208,7 +210,7 @@ const SalesDashboard: React.FC = () => {
                       <strong>Test with:</strong> Date: 2025-06-20, Type: Mixed, Time: 6 PM, Timezone: UAE
                     </p>
                     <p className="text-xs text-blue-600 mt-1">
-                      This should find teacher availability at UTC 14:00:00
+                      This should find grouped teacher availability with round-robin assignment
                     </p>
                   </div>
                   
@@ -280,7 +282,7 @@ const SalesDashboard: React.FC = () => {
 
                 <div className="space-y-4">
                   <h4 className="font-medium">
-                    Available Slots for {selectedDate?.toDateString()}
+                    Available Time Slots for {selectedDate?.toDateString()}
                   </h4>
                   
                   {loading && (
@@ -289,7 +291,7 @@ const SalesDashboard: React.FC = () => {
                     </div>
                   )}
                   
-                  {!loading && availableSlots.length === 0 && (
+                  {!loading && groupedSlots.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground space-y-2">
                       <p>No available slots found for the selected criteria.</p>
                       <p className="text-sm">Check browser console for detailed debugging info.</p>
@@ -300,26 +302,26 @@ const SalesDashboard: React.FC = () => {
                   )}
                   
                   <div className="space-y-2">
-                    {availableSlots.map((slot) => (
-                      <div key={slot.id} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
+                    {groupedSlots.map((groupedSlot, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
                         <div className="space-y-1">
                           <div className="font-medium text-primary">
-                            {slot.clientTimeDisplay}
+                            {groupedSlot.timeDisplay}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {slot.egyptTimeDisplay}
+                            {groupedSlot.egyptTimeDisplay}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            Teacher: {slot.teacherName} ({slot.teacherType})
+                            {groupedSlot.availableTeachers} teacher{groupedSlot.availableTeachers > 1 ? 's' : ''} available
                           </div>
                           <div className="text-xs text-green-600">
-                            UTC: {slot.utcStartTime} - {slot.utcEndTime}
+                            Round-robin assignment enabled
                           </div>
                         </div>
                         <Button 
                           size="sm"
                           className="ayat-button-primary"
-                          onClick={() => handleBookNow(slot)}
+                          onClick={() => handleBookNow(groupedSlot)}
                         >
                           Book Slot
                         </Button>
@@ -327,13 +329,13 @@ const SalesDashboard: React.FC = () => {
                     ))}
                   </div>
                   
-                  {availableSlots.length > 0 && (
+                  {groupedSlots.length > 0 && (
                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                       <p className="text-sm text-green-800">
-                        <strong>Found {availableSlots.length} available slot(s)</strong> from {new Set(availableSlots.map(s => s.teacherId)).size} qualified teacher(s)
+                        <strong>Found {groupedSlots.length} time slot(s)</strong> with automatic teacher assignment
                       </p>
                       <p className="text-xs text-green-600 mt-1">
-                        All times shown with accurate timezone conversion
+                        Teachers will be assigned via round-robin algorithm for fair distribution
                       </p>
                     </div>
                   )}
@@ -384,7 +386,7 @@ const SalesDashboard: React.FC = () => {
         isOpen={isBookingModalOpen}
         onClose={() => setIsBookingModalOpen(false)}
         onSubmit={handleBookingSubmit}
-        selectedSlot={selectedSlot ? `${selectedSlot.clientTimeDisplay} (${selectedSlot.egyptTimeDisplay})` : ''}
+        selectedSlot={selectedGroupedSlot ? `${selectedGroupedSlot.timeDisplay} (${selectedGroupedSlot.egyptTimeDisplay}) - ${selectedGroupedSlot.availableTeachers} teachers available` : ''}
         selectedDate={selectedDate || new Date()}
       />
     </div>
