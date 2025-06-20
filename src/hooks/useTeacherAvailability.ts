@@ -183,7 +183,12 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
 
           if (error) {
             console.error('❌ Error removing availability:', error);
-            toast.error('Failed to remove availability');
+            // Check for today's date restriction error
+            if (error.message?.includes('Cannot modify availability for today')) {
+              toast.error('Cannot modify today\'s availability. Today\'s schedule is locked.');
+            } else {
+              toast.error('Failed to remove availability');
+            }
             return;
           }
           console.log('✅ Successfully removed availability');
@@ -210,7 +215,12 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
 
         if (error) {
           console.error('❌ Error adding availability:', error);
-          toast.error('Failed to add availability');
+          // Check for today's date restriction error
+          if (error.message?.includes('Cannot modify availability for today')) {
+            toast.error('Cannot modify today\'s availability. Today\'s schedule is locked.');
+          } else {
+            toast.error('Failed to add availability');
+          }
           return;
         }
         console.log('✅ Successfully added availability');

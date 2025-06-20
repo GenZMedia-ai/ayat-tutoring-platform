@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,11 +6,16 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { useTeacherAvailability } from '@/hooks/useTeacherAvailability';
-import { Trash2, Lock } from 'lucide-react';
+import { useServerDate } from '@/hooks/useServerDate';
+import { Trash2, Lock, Eye } from 'lucide-react';
 
 const TeacherDashboard: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const { timeSlots, loading, toggleAvailability } = useTeacherAvailability(selectedDate);
+  const { isDateToday, loading: dateLoading } = useServerDate();
+  
+  // Check if selected date is today according to server
+  const isSelectedDateToday = isDateToday(selectedDate);
   
   // Mock data for other sections
   const teacherStats = {
@@ -50,8 +54,10 @@ const TeacherDashboard: React.FC = () => {
   };
 
   const renderTimeSlotButton = (slot: { time: string; isAvailable: boolean; isBooked: boolean }) => {
+    const isDisabled = loading || dateLoading || (isSelectedDateToday && !slot.isBooked);
+
     if (slot.isBooked) {
-      // Booked slots - black with red lock icon
+      // Booked slots - black with red lock icon (always shown, never interactive)
       return (
         <Button
           key={slot.time}
@@ -66,33 +72,65 @@ const TeacherDashboard: React.FC = () => {
     }
 
     if (slot.isAvailable) {
-      // Available slots - primary style with trash icon on hover
+      // Available slots
+      if (isSelectedDateToday) {
+        // Today's available slots - show as view-only with eye icon
+        return (
+          <Button
+            key={slot.time}
+            size="sm"
+            disabled
+            className="ayat-button-primary opacity-60 cursor-not-allowed relative"
+          >
+            <Eye className="w-3 h-3 absolute top-1 right-1 opacity-60" />
+            {slot.time}
+          </Button>
+        );
+      } else {
+        // Future available slots - interactive with trash icon on hover
+        return (
+          <Button
+            key={slot.time}
+            size="sm"
+            className="ayat-button-primary relative group"
+            onClick={() => toggleAvailability(slot.time)}
+            disabled={isDisabled}
+          >
+            <Trash2 className="w-3 h-3 absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+            {slot.time}
+          </Button>
+        );
+      }
+    }
+
+    // Unavailable slots
+    if (isSelectedDateToday) {
+      // Today's unavailable slots - show as view-only
       return (
         <Button
           key={slot.time}
           size="sm"
-          className="ayat-button-primary relative group"
-          onClick={() => toggleAvailability(slot.time)}
-          disabled={loading}
+          variant="outline"
+          disabled
+          className="opacity-60 cursor-not-allowed"
         >
-          <Trash2 className="w-3 h-3 absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+          {slot.time}
+        </Button>
+      );
+    } else {
+      // Future unavailable slots - interactive
+      return (
+        <Button
+          key={slot.time}
+          size="sm"
+          variant="outline"
+          onClick={() => toggleAvailability(slot.time)}
+          disabled={isDisabled}
+        >
           {slot.time}
         </Button>
       );
     }
-
-    // Unavailable slots - outline style
-    return (
-      <Button
-        key={slot.time}
-        size="sm"
-        variant="outline"
-        onClick={() => toggleAvailability(slot.time)}
-        disabled={loading}
-      >
-        {slot.time}
-      </Button>
-    );
   };
 
   return (
@@ -338,6 +376,11 @@ const TeacherDashboard: React.FC = () => {
               <CardTitle>Availability Management</CardTitle>
               <CardDescription>
                 Set your available time slots for new bookings (times shown in Egypt time)
+                {isSelectedDateToday && (
+                  <span className="block text-orange-600 font-medium mt-1">
+                    ⚠️ Today's schedule is locked - you can only view existing availability
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -350,18 +393,31 @@ const TeacherDashboard: React.FC = () => {
                     className="rounded-md border"
                     disabled={(date) => date < new Date()}
                   />
+                  {isSelectedDateToday && (
+                    <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <p className="text-sm text-orange-800">
+                        <strong>Today's Schedule Locked:</strong> You cannot modify today's availability to prevent disruption of confirmed bookings. You can view your current schedule and all future dates remain editable.
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-4">
                   <h4 className="font-medium">
                     Time Slots for {selectedDate?.toDateString()}
+                    {isSelectedDateToday && (
+                      <span className="text-sm text-orange-600 ml-2">(View Only)</span>
+                    )}
                   </h4>
-                  {loading ? (
+                  {loading || dateLoading ? (
                     <p className="text-sm text-muted-foreground">Loading availability...</p>
                   ) : (
                     <>
                       <div className="space-y-2">
                         <p className="text-sm text-muted-foreground">
-                          Click to toggle availability. Hover over available slots to remove them.
+                          {isSelectedDateToday 
+                            ? 'Viewing today\'s schedule (no modifications allowed)'
+                            : 'Click to toggle availability. Hover over available slots to remove them.'
+                          }
                         </p>
                         <div className="grid grid-cols-2 gap-2">
                           {timeSlots.map(renderTimeSlotButton)}
@@ -372,11 +428,15 @@ const TeacherDashboard: React.FC = () => {
                         <div className="space-y-1 text-xs">
                           <div className="flex items-center gap-2">
                             <div className="w-4 h-4 bg-primary rounded"></div>
-                            <span>Available (hover to remove)</span>
+                            <span>
+                              {isSelectedDateToday ? 'Available (view only)' : 'Available (hover to remove)'}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="w-4 h-4 border border-gray-300 rounded"></div>
-                            <span>Not available (click to add)</span>
+                            <span>
+                              {isSelectedDateToday ? 'Not available (view only)' : 'Not available (click to add)'}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="w-4 h-4 bg-black rounded relative">
@@ -384,6 +444,14 @@ const TeacherDashboard: React.FC = () => {
                             </div>
                             <span>Booked (locked)</span>
                           </div>
+                          {isSelectedDateToday && (
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4 bg-primary opacity-60 rounded relative">
+                                <Eye className="w-2 h-2 absolute top-0.5 right-0.5" />
+                              </div>
+                              <span>Today's slots (read-only)</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </>
