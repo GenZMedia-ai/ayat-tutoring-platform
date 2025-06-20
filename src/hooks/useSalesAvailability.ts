@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -14,6 +15,14 @@ export interface BookingData {
   notes?: string;
   parentName?: string;
   students?: { name: string; age: number }[];
+}
+
+interface BookingResult {
+  success: boolean;
+  teacher_name: string;
+  teacher_id: string;
+  session_id: string;
+  student_names: string[];
 }
 
 export const useSalesAvailability = () => {
@@ -153,218 +162,135 @@ export const useSalesAvailability = () => {
     }
   };
 
+  // Map error codes to user-friendly messages
+  const getErrorMessage = (error: any): string => {
+    if (!error?.message) return 'Unknown error occurred';
+    
+    const message = error.message;
+    
+    // Check for specific error codes
+    if (message.includes('P0001')) {
+      return 'Authentication required. Please log in and try again.';
+    }
+    if (message.includes('P0002')) {
+      return 'Access denied. Only approved sales agents can book sessions.';
+    }
+    if (message.includes('P0003')) {
+      return 'No teachers available for this time slot. Please try a different time.';
+    }
+    if (message.includes('P0004')) {
+      return 'Invalid booking information provided. Please check your data and try again.';
+    }
+    if (message.includes('P0005')) {
+      return 'Selected teacher is no longer available. Please refresh and try again.';
+    }
+    
+    // Generic database errors
+    if (message.includes('permission denied') || message.includes('access denied')) {
+      return 'You do not have permission to perform this action.';
+    }
+    
+    // Return the original message if no specific mapping found
+    return `Booking failed: ${message}`;
+  };
+
   const bookTrialSession = async (
     bookingData: BookingData,
     selectedDate: Date,
-    selectedSlots: GranularTimeSlot[], // Changed to accept slot groups for round-robin
+    selectedSlots: GranularTimeSlot[],
     teacherType: string,
     isMultiStudent: boolean = false
   ) => {
     try {
-      console.log('Booking trial session:', { bookingData, selectedDate, selectedSlots: selectedSlots.length, teacherType });
+      console.log('=== BOOKING WITH SECURE RPC ===');
+      console.log('Booking Parameters:', { 
+        bookingData, 
+        selectedDate: selectedDate.toDateString(), 
+        selectedSlots: selectedSlots.length, 
+        teacherType, 
+        isMultiStudent 
+      });
       
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      
-      // Get current user (sales agent)
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('You must be logged in to book sessions');
-        return false;
-      }
-
-      // Round-robin teacher selection from available slots
       if (!selectedSlots || selectedSlots.length === 0) {
         toast.error("No available teachers for this slot.");
         return false;
       }
 
+      // Prepare data for the secure RPC call
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      const utcStartTime = selectedSlots[0].utcStartTime;
       const availableTeacherIds = selectedSlots.map(slot => slot.teacherId);
 
-      // Find teacher who was booked longest ago (or never booked)
-      const { data: teacherToBook, error: teacherSelectError } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', availableTeacherIds)
-        .order('last_booked_at', { ascending: true, nullsFirst: true })
-        .limit(1)
-        .single();
+      // Prepare booking data as JSONB
+      const rpcBookingData = isMultiStudent ? {
+        phone: bookingData.phone,
+        country: bookingData.country,
+        platform: bookingData.platform,
+        notes: bookingData.notes || null,
+        parentName: bookingData.parentName,
+        students: bookingData.students || []
+      } : {
+        studentName: bookingData.studentName,
+        age: bookingData.age,
+        phone: bookingData.phone,
+        country: bookingData.country,
+        platform: bookingData.platform,
+        notes: bookingData.notes || null
+      };
 
-      if (teacherSelectError || !teacherToBook) {
-        console.error('Error selecting teacher:', teacherSelectError);
-        toast.error('Could not assign a teacher via round-robin.');
+      console.log('Calling secure RPC with:', {
+        p_booking_data: rpcBookingData,
+        p_is_multi_student: isMultiStudent,
+        p_selected_date: dateStr,
+        p_utc_start_time: utcStartTime,
+        p_teacher_type: teacherType,
+        p_available_teacher_ids: availableTeacherIds
+      });
+
+      // Call the secure RPC function
+      const { data: result, error } = await supabase
+        .rpc('book_trial_session', {
+          p_booking_data: rpcBookingData,
+          p_is_multi_student: isMultiStudent,
+          p_selected_date: dateStr,
+          p_utc_start_time: utcStartTime,
+          p_teacher_type: teacherType,
+          p_available_teacher_ids: availableTeacherIds
+        }) as { data: BookingResult | null, error: any };
+
+      if (error) {
+        console.error('RPC Booking Error:', error);
+        const userMessage = getErrorMessage(error);
+        toast.error(userMessage);
         return false;
       }
 
-      const selectedTeacherId = teacherToBook.id;
-      const selectedSlot = selectedSlots.find(s => s.teacherId === selectedTeacherId)!;
-
-      console.log('Round-robin selected teacher:', teacherToBook.full_name, 'for slot:', selectedSlot.utcStartTime);
-
-      if (isMultiStudent && bookingData.students) {
-        // Multi-student booking logic
-        const newStudents = [];
-        
-        for (let i = 0; i < bookingData.students.length; i++) {
-          const student = bookingData.students[i];
-          const { data: studentUniqueId } = await supabase.rpc('generate_student_unique_id');
-          
-          const studentData = {
-            unique_id: studentUniqueId,
-            name: student.name,
-            age: student.age,
-            phone: bookingData.phone,
-            country: bookingData.country,
-            platform: bookingData.platform,
-            notes: bookingData.notes || null,
-            parent_name: bookingData.parentName,
-            assigned_teacher_id: selectedTeacherId,
-            assigned_sales_agent_id: user.id,
-            trial_date: dateStr,
-            trial_time: selectedSlot.utcStartTime,
-            teacher_type: teacherType,
-            status: 'pending'
-          };
-
-          const { data: newStudent, error: studentError } = await supabase
-            .from('students')
-            .insert([studentData])
-            .select()
-            .single();
-
-          if (studentError) {
-            console.error('Error creating student:', studentError);
-            toast.error(`Failed to create student record for ${student.name}`);
-            return false;
-          }
-
-          newStudents.push(newStudent);
-        }
-
-        // Create one session for the family
-        const { data: newSession, error: sessionError } = await supabase
-          .from('sessions')
-          .insert([{
-            scheduled_date: dateStr,
-            scheduled_time: selectedSlot.utcStartTime,
-            status: 'scheduled'
-          }])
-          .select()
-          .single();
-
-        if (sessionError || !newSession) {
-          console.error('Error creating session:', sessionError);
-          toast.error('Failed to create trial session');
-          return false;
-        }
-
-        // Link ALL students to the session using junction table
-        const sessionStudentLinks = newStudents.map(student => ({
-          session_id: newSession.id,
-          student_id: student.id
-        }));
-
-        const { error: linkError } = await supabase
-          .from('session_students')
-          .insert(sessionStudentLinks);
-
-        if (linkError) {
-          console.error('Error linking students to session:', linkError);
-          toast.error('Failed to link students to session');
-          return false;
-        }
-
-        toast.success(`Family trial session booked successfully! Students: ${newStudents.map(s => s.name).join(', ')} with teacher ${teacherToBook.full_name}`);
-      } else {
-        // Single student booking
-        const { data: uniqueIdData, error: uniqueIdError } = await supabase
-          .rpc('generate_student_unique_id');
-        
-        if (uniqueIdError) {
-          console.error('Error generating unique ID:', uniqueIdError);
-          toast.error('Failed to generate student ID');
-          return false;
-        }
-
-        const studentData = {
-          unique_id: uniqueIdData,
-          name: bookingData.studentName,
-          age: bookingData.age,
-          phone: bookingData.phone,
-          country: bookingData.country,
-          platform: bookingData.platform,
-          notes: bookingData.notes || null,
-          assigned_teacher_id: selectedTeacherId,
-          assigned_sales_agent_id: user.id,
-          trial_date: dateStr,
-          trial_time: selectedSlot.utcStartTime,
-          teacher_type: teacherType,
-          status: 'pending'
-        };
-
-        const { data: newStudent, error: studentError } = await supabase
-          .from('students')
-          .insert([studentData])
-          .select()
-          .single();
-
-        if (studentError) {
-          console.error('Error creating student:', studentError);
-          toast.error('Failed to create student record');
-          return false;
-        }
-
-        // Create trial session
-        const { data: newSession, error: sessionError } = await supabase
-          .from('sessions')
-          .insert([{
-            scheduled_date: dateStr,
-            scheduled_time: selectedSlot.utcStartTime,
-            status: 'scheduled'
-          }])
-          .select()
-          .single();
-
-        if (sessionError || !newSession) {
-          console.error('Error creating session:', sessionError);
-          toast.error('Failed to create trial session');
-          return false;
-        }
-
-        // Link student to session using junction table
-        const { error: linkError } = await supabase
-          .from('session_students')
-          .insert([{
-            session_id: newSession.id,
-            student_id: newStudent.id
-          }]);
-
-        if (linkError) {
-          console.error('Error linking student to session:', linkError);
-          toast.error('Failed to link student to session');
-          return false;
-        }
-
-        toast.success(`Trial session booked successfully for ${bookingData.studentName} with teacher ${teacherToBook.full_name}!`);
+      if (!result || !result.success) {
+        console.error('Booking failed - no result or success=false:', result);
+        toast.error('Booking failed. Please try again.');
+        return false;
       }
 
-      // Mark the teacher slot as booked
-      await supabase
-        .from('teacher_availability')
-        .update({ is_booked: true })
-        .eq('teacher_id', selectedTeacherId)
-        .eq('date', dateStr)
-        .eq('time_slot', selectedSlot.utcStartTime);
-
-      // Update teacher's last_booked_at for round-robin tracking
-      await supabase
-        .from('profiles')
-        .update({ last_booked_at: new Date().toISOString() })
-        .eq('id', selectedTeacherId);
+      // Success handling
+      console.log('Booking Success:', result);
+      
+      if (isMultiStudent && result.student_names.length > 1) {
+        toast.success(
+          `Family trial session booked successfully! Students: ${result.student_names.join(', ')} with teacher ${result.teacher_name}`
+        );
+      } else {
+        const studentName = isMultiStudent ? result.student_names[0] : bookingData.studentName;
+        toast.success(
+          `Trial session booked successfully for ${studentName} with teacher ${result.teacher_name}!`
+        );
+      }
 
       return true;
+
     } catch (error) {
-      console.error('Error booking trial session:', error);
-      toast.error('Failed to book trial session');
+      console.error('Unexpected booking error:', error);
+      const userMessage = getErrorMessage(error);
+      toast.error(userMessage);
       return false;
     }
   };
