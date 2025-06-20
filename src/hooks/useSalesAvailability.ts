@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { GranularTimeSlot } from '@/types/availability';
 import { AvailabilityService } from '@/services/availabilityService';
+import { convertClientHourToUTC, getTimezoneConfig } from '@/utils/timezoneUtils';
 
 export interface BookingData {
   studentName: string;
@@ -19,13 +20,32 @@ export const useSalesAvailability = () => {
   const [loading, setLoading] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<GranularTimeSlot[]>([]);
 
-  const runDiagnostics = async (date: Date, teacherType: string) => {
+  const runDiagnostics = async (
+    date: Date, 
+    teacherType: string, 
+    timezone: string, 
+    selectedHour: number
+  ) => {
     const dateStr = date.toISOString().split('T')[0];
+    const timezoneConfig = getTimezoneConfig(timezone);
     
     console.log('=== RUNNING ENHANCED DIAGNOSTICS ===');
-    console.log('Diagnostic Parameters:', { dateStr, teacherType });
+    console.log('Diagnostic Parameters:', { dateStr, teacherType, timezone, selectedHour });
     
-    // Step 1: Check what availability data exists for the date
+    if (!timezoneConfig) {
+      console.error('Invalid timezone:', timezone);
+      return;
+    }
+    
+    // Convert client hour to UTC (same as availability service)
+    const utcHour = convertClientHourToUTC(selectedHour, timezoneConfig.offset);
+    const startTime = `${String(utcHour).padStart(2, '0')}:00:00`;
+    const endHour = (utcHour + 1) % 24;
+    const endTime = `${String(endHour).padStart(2, '0')}:00:00`;
+    
+    console.log('UTC Time Range:', { startTime, endTime, utcHour, timezoneOffset: timezoneConfig.offset });
+    
+    // Step 1: Check all availability for the date
     console.log('Step 1: Checking all availability for date...');
     const { data: allAvailability } = await supabase
       .from('teacher_availability')
@@ -35,54 +55,64 @@ export const useSalesAvailability = () => {
     
     console.log('All availability for date:', allAvailability);
     
-    // Step 2: Check available (not booked) slots
-    console.log('Step 2: Checking available slots...');
+    // Step 2: Check available slots in specific time range (matching availability service)
+    console.log('Step 2: Checking available slots in time range...');
     const { data: availableData } = await supabase
       .from('teacher_availability')
       .select('time_slot, teacher_id')
       .eq('date', dateStr)
+      .gte('time_slot', startTime)
+      .lt('time_slot', endTime)
       .eq('is_available', true)
       .eq('is_booked', false);
     
-    console.log('Available slots:', availableData);
+    console.log('Available slots in time range:', availableData);
     
-    // Step 3: Check all teachers by type and status
-    console.log('Step 3: Checking teacher profiles...');
-    const { data: allTeachers } = await supabase
-      .from('profiles')
-      .select('id, full_name, teacher_type, status, role')
-      .eq('role', 'teacher');
+    // Step 3: Get teacher IDs from available slots
+    const availableTeacherIds = availableData?.map(slot => slot.teacher_id) || [];
+    console.log('Teacher IDs from available slots:', availableTeacherIds);
     
-    console.log('All teachers:', allTeachers);
-    
-    const approvedTeachers = allTeachers?.filter(t => t.status === 'approved');
-    console.log('Approved teachers:', approvedTeachers);
-    
-    // Step 4: Check teachers of requested type
-    let teachersOfType;
+    // Step 4: Build teacher type filter (exact same logic as availability service)
+    let teacherTypeFilter: string[];
     if (teacherType === 'mixed') {
-      teachersOfType = approvedTeachers?.filter(t => 
-        ['arabic', 'english', 'mixed'].includes(t.teacher_type)
-      );
+      teacherTypeFilter = ['arabic', 'english', 'mixed'];
+      console.log('Searching for mixed teachers - including all types');
     } else {
-      teachersOfType = approvedTeachers?.filter(t => 
-        t.teacher_type === teacherType || t.teacher_type === 'mixed'
-      );
+      teacherTypeFilter = [teacherType, 'mixed'];
+      console.log(`Searching for ${teacherType} teachers - including mixed`);
     }
     
-    console.log(`Teachers matching type ${teacherType}:`, teachersOfType);
+    console.log('Teacher Type Filter:', teacherTypeFilter);
     
-    // Step 5: Check if any available slots match teacher IDs
-    const availableTeacherIds = availableData?.map(a => a.teacher_id) || [];
-    const matchingTeacherIds = teachersOfType?.map(t => t.id) || [];
-    const intersection = availableTeacherIds.filter(id => matchingTeacherIds.includes(id));
+    // Step 5: Query teachers with exact same approach as availability service
+    console.log('Step 3: Querying teacher profiles with availability service logic...');
+    let matchingTeachers = null;
+    let teacherError = null;
     
-    console.log('Available teacher IDs:', availableTeacherIds);
-    console.log('Matching teacher IDs:', matchingTeacherIds);
-    console.log('Intersection (should have slots):', intersection);
+    if (availableTeacherIds.length > 0) {
+      const { data: teachers, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, teacher_type, status, role')
+        .in('id', availableTeacherIds)
+        .in('teacher_type', teacherTypeFilter)
+        .eq('status', 'approved')
+        .eq('role', 'teacher');
+      
+      matchingTeachers = teachers;
+      teacherError = error;
+    } else {
+      matchingTeachers = [];
+    }
     
-    // Build diagnostic message
+    console.log('Matching teachers result:', { 
+      teachers: matchingTeachers, 
+      error: teacherError,
+      teacherCount: matchingTeachers?.length || 0 
+    });
+    
+    // Build diagnostic message with enhanced details
     let message = `Diagnostic Results for ${teacherType} teachers on ${dateStr}:\n`;
+    message += `🕒 Searching time range: ${startTime} - ${endTime} UTC (Client: ${selectedHour}:00 ${timezoneConfig.displayName})\n`;
     
     if (!allAvailability || allAvailability.length === 0) {
       message += `❌ No availability data found for date\n`;
@@ -91,35 +121,40 @@ export const useSalesAvailability = () => {
     }
     
     if (!availableData || availableData.length === 0) {
-      message += `❌ No available (unbooked) slots found\n`;
+      message += `❌ No available slots found in time range ${startTime}-${endTime}\n`;
     } else {
-      message += `✅ Found ${availableData.length} available slots\n`;
+      message += `✅ Found ${availableData.length} available slots in time range\n`;
       const availableTimes = availableData.map(a => a.time_slot).join(', ');
-      message += `⏰ Available times: ${availableTimes}\n`;
+      message += `⏰ Available times in range: ${availableTimes}\n`;
     }
     
-    if (!approvedTeachers || approvedTeachers.length === 0) {
-      message += `❌ No approved teachers found in system\n`;
+    if (availableTeacherIds.length === 0) {
+      message += `❌ No teacher IDs from available slots in time range\n`;
     } else {
-      message += `✅ Found ${approvedTeachers.length} approved teachers\n`;
+      message += `👥 Teacher IDs from slots: ${availableTeacherIds.length} (${availableTeacherIds.slice(0, 3).join(', ')}${availableTeacherIds.length > 3 ? '...' : ''})\n`;
     }
     
-    if (!teachersOfType || teachersOfType.length === 0) {
-      message += `❌ No approved ${teacherType} teachers found\n`;
+    message += `🎯 Teacher type filter: [${teacherTypeFilter.join(', ')}]\n`;
+    
+    if (teacherError) {
+      message += `❌ Error querying teachers: ${teacherError.message}\n`;
+    } else if (!matchingTeachers || matchingTeachers.length === 0) {
+      message += `❌ No approved ${teacherType} teachers found matching criteria\n`;
     } else {
-      message += `✅ Found ${teachersOfType.length} matching ${teacherType} teachers\n`;
-      const teacherNames = teachersOfType.map(t => `${t.full_name} (${t.teacher_type})`).join(', ');
+      message += `✅ Found ${matchingTeachers.length} matching teachers\n`;
+      const teacherNames = matchingTeachers.map(t => `${t.full_name} (${t.teacher_type})`).join(', ');
       message += `👥 Teachers: ${teacherNames}\n`;
     }
     
-    if (intersection.length === 0) {
-      message += `❌ No overlap between available slots and matching teachers\n`;
+    const finalSlotCount = matchingTeachers?.length || 0;
+    if (finalSlotCount === 0) {
+      message += `❌ No final matching slots (teachers × time slots)\n`;
     } else {
-      message += `✅ Found ${intersection.length} teachers with available slots\n`;
+      message += `✅ Should generate ${finalSlotCount} potential slots\n`;
     }
     
     console.log('Final diagnostic message:', message);
-    toast.info(message, { duration: 10000 });
+    toast.info(message, { duration: 15000 });
   };
 
   const checkAvailability = async (
@@ -144,7 +179,7 @@ export const useSalesAvailability = () => {
       
       if (slots.length === 0) {
         console.log('No slots found - running detailed diagnostics...');
-        await runDiagnostics(date, teacherType);
+        await runDiagnostics(date, teacherType, timezone, selectedHour);
       } else {
         const teacherCount = new Set(slots.map(s => s.teacherId)).size;
         const timeSlots = new Set(slots.map(s => s.clientTimeDisplay)).size;
