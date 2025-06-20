@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -23,9 +22,11 @@ export const useSalesAvailability = () => {
   const runDiagnostics = async (date: Date, teacherType: string) => {
     const dateStr = date.toISOString().split('T')[0];
     
-    console.log('=== RUNNING DIAGNOSTICS ===');
+    console.log('=== RUNNING ENHANCED DIAGNOSTICS ===');
+    console.log('Diagnostic Parameters:', { dateStr, teacherType });
     
-    // Check what availability data exists
+    // Step 1: Check what availability data exists for the date
+    console.log('Step 1: Checking all availability for date...');
     const { data: allAvailability } = await supabase
       .from('teacher_availability')
       .select('time_slot, teacher_id, date, is_available, is_booked')
@@ -34,7 +35,8 @@ export const useSalesAvailability = () => {
     
     console.log('All availability for date:', allAvailability);
     
-    // Check available (not booked) slots
+    // Step 2: Check available (not booked) slots
+    console.log('Step 2: Checking available slots...');
     const { data: availableData } = await supabase
       .from('teacher_availability')
       .select('time_slot, teacher_id')
@@ -44,37 +46,80 @@ export const useSalesAvailability = () => {
     
     console.log('Available slots:', availableData);
     
-    // Check teachers by type
+    // Step 3: Check all teachers by type and status
+    console.log('Step 3: Checking teacher profiles...');
     const { data: allTeachers } = await supabase
       .from('profiles')
       .select('id, full_name, teacher_type, status, role')
-      .eq('role', 'teacher')
-      .eq('status', 'approved');
+      .eq('role', 'teacher');
     
-    console.log('All approved teachers:', allTeachers);
+    console.log('All teachers:', allTeachers);
     
-    const teachersOfType = allTeachers?.filter(t => 
-      t.teacher_type === teacherType || t.teacher_type === 'mixed'
-    );
+    const approvedTeachers = allTeachers?.filter(t => t.status === 'approved');
+    console.log('Approved teachers:', approvedTeachers);
     
-    console.log(`Teachers of type ${teacherType} (including mixed):`, teachersOfType);
-    
-    // Build diagnostic message
-    let message = `No ${teacherType} teachers available for the selected time.`;
-    
-    if (!allAvailability || allAvailability.length === 0) {
-      message += ` No availability data found for ${dateStr}.`;
-    } else if (!teachersOfType || teachersOfType.length === 0) {
-      message += ` No approved ${teacherType}/mixed teachers in system.`;
-    } else if (!availableData || availableData.length === 0) {
-      message += ` All time slots are booked for ${dateStr}.`;
+    // Step 4: Check teachers of requested type
+    let teachersOfType;
+    if (teacherType === 'mixed') {
+      teachersOfType = approvedTeachers?.filter(t => 
+        ['arabic', 'english', 'mixed'].includes(t.teacher_type)
+      );
     } else {
-      const availableTimes = availableData.map(a => a.time_slot).join(', ');
-      message += ` Available times on ${dateStr}: ${availableTimes}`;
+      teachersOfType = approvedTeachers?.filter(t => 
+        t.teacher_type === teacherType || t.teacher_type === 'mixed'
+      );
     }
     
-    console.log('Diagnostic message:', message);
-    toast.info(message);
+    console.log(`Teachers matching type ${teacherType}:`, teachersOfType);
+    
+    // Step 5: Check if any available slots match teacher IDs
+    const availableTeacherIds = availableData?.map(a => a.teacher_id) || [];
+    const matchingTeacherIds = teachersOfType?.map(t => t.id) || [];
+    const intersection = availableTeacherIds.filter(id => matchingTeacherIds.includes(id));
+    
+    console.log('Available teacher IDs:', availableTeacherIds);
+    console.log('Matching teacher IDs:', matchingTeacherIds);
+    console.log('Intersection (should have slots):', intersection);
+    
+    // Build diagnostic message
+    let message = `Diagnostic Results for ${teacherType} teachers on ${dateStr}:\n`;
+    
+    if (!allAvailability || allAvailability.length === 0) {
+      message += `❌ No availability data found for date\n`;
+    } else {
+      message += `✅ Found ${allAvailability.length} total availability records\n`;
+    }
+    
+    if (!availableData || availableData.length === 0) {
+      message += `❌ No available (unbooked) slots found\n`;
+    } else {
+      message += `✅ Found ${availableData.length} available slots\n`;
+      const availableTimes = availableData.map(a => a.time_slot).join(', ');
+      message += `⏰ Available times: ${availableTimes}\n`;
+    }
+    
+    if (!approvedTeachers || approvedTeachers.length === 0) {
+      message += `❌ No approved teachers found in system\n`;
+    } else {
+      message += `✅ Found ${approvedTeachers.length} approved teachers\n`;
+    }
+    
+    if (!teachersOfType || teachersOfType.length === 0) {
+      message += `❌ No approved ${teacherType} teachers found\n`;
+    } else {
+      message += `✅ Found ${teachersOfType.length} matching ${teacherType} teachers\n`;
+      const teacherNames = teachersOfType.map(t => `${t.full_name} (${t.teacher_type})`).join(', ');
+      message += `👥 Teachers: ${teacherNames}\n`;
+    }
+    
+    if (intersection.length === 0) {
+      message += `❌ No overlap between available slots and matching teachers\n`;
+    } else {
+      message += `✅ Found ${intersection.length} teachers with available slots\n`;
+    }
+    
+    console.log('Final diagnostic message:', message);
+    toast.info(message, { duration: 10000 });
   };
 
   const checkAvailability = async (
@@ -103,7 +148,10 @@ export const useSalesAvailability = () => {
       } else {
         const teacherCount = new Set(slots.map(s => s.teacherId)).size;
         const timeSlots = new Set(slots.map(s => s.clientTimeDisplay)).size;
-        toast.success(`Found ${slots.length} slot(s) from ${teacherCount} teacher(s) across ${timeSlots} time(s)`);
+        const teacherNames = [...new Set(slots.map(s => s.teacherName))].join(', ');
+        const successMessage = `Found ${slots.length} slot(s) from ${teacherCount} teacher(s): ${teacherNames}`;
+        console.log('Success:', successMessage);
+        toast.success(successMessage);
       }
       
     } catch (error) {

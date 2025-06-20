@@ -30,6 +30,7 @@ export class AvailabilityService {
     
     // Convert client hour to UTC
     const utcHour = convertClientHourToUTC(selectedHour, timezoneConfig.offset);
+    console.log('Converted UTC Hour:', utcHour);
     
     // Query for slots within the hour range
     const slots = await this.findSlotsInHourRange(
@@ -54,16 +55,18 @@ export class AvailabilityService {
     timezoneConfig: any
   ): Promise<GranularTimeSlot[]> {
     console.log('--- HOUR RANGE SLOT SEARCH ---');
+    console.log('Input Parameters:', { dateStr, utcHour, teacherType, clientHour });
     
-    // Define the hour range in UTC
+    // Define the hour range in UTC - search the entire hour for 30-minute slots
     const startTime = `${String(utcHour).padStart(2, '0')}:00:00`;
     const endHour = (utcHour + 1) % 24;
     const endTime = `${String(endHour).padStart(2, '0')}:00:00`;
     
     console.log('UTC Time Range:', { startTime, endTime });
     
-    // First, get available teacher slots
-    const { data: availability, error } = await supabase
+    // Step 1: Get all available slots in the time range
+    console.log('Step 1: Querying available slots...');
+    const { data: availability, error: availabilityError } = await supabase
       .from('teacher_availability')
       .select('id, time_slot, teacher_id')
       .eq('date', dateStr)
@@ -72,49 +75,89 @@ export class AvailabilityService {
       .eq('is_available', true)
       .eq('is_booked', false);
 
-    console.log('Available slots query result:', { availability, error });
+    console.log('Available slots result:', { availability, error: availabilityError });
 
-    if (error || !availability || availability.length === 0) {
-      console.log('No availability found');
+    if (availabilityError) {
+      console.error('Error fetching availability:', availabilityError);
       return [];
     }
 
-    // Get unique teacher IDs
+    if (!availability || availability.length === 0) {
+      console.log('No available slots found in time range');
+      return [];
+    }
+
+    // Step 2: Get unique teacher IDs from available slots
     const teacherIds = [...new Set(availability.map(slot => slot.teacher_id))];
+    console.log('Teacher IDs from slots:', teacherIds);
     
-    // Get teacher profiles separately
-    const teacherTypeFilter = teacherType === 'mixed'
-      ? ['mixed']
-      : [teacherType, 'mixed'];
+    // Step 3: Build teacher type filter - FIXED LOGIC
+    let teacherTypeFilter: string[];
+    if (teacherType === 'mixed') {
+      // When searching for 'mixed', include both 'mixed' teachers and all other types
+      teacherTypeFilter = ['arabic', 'english', 'mixed'];
+      console.log('Searching for mixed teachers - including all types');
+    } else {
+      // When searching for specific type, include that type + mixed teachers
+      teacherTypeFilter = [teacherType, 'mixed'];
+      console.log(`Searching for ${teacherType} teachers - including mixed`);
+    }
     
+    console.log('Teacher Type Filter:', teacherTypeFilter);
+    
+    // Step 4: Get teacher profiles with proper filtering
+    console.log('Step 2: Querying teacher profiles...');
     const { data: teachers, error: teacherError } = await supabase
       .from('profiles')
-      .select('id, full_name, teacher_type')
+      .select('id, full_name, teacher_type, status, role')
       .in('id', teacherIds)
       .in('teacher_type', teacherTypeFilter)
       .eq('status', 'approved')
       .eq('role', 'teacher');
 
-    console.log('Teachers query result:', { teachers, teacherError });
+    console.log('Teachers query result:', { 
+      teachers, 
+      error: teacherError,
+      teacherCount: teachers?.length || 0 
+    });
 
-    if (teacherError || !teachers || teachers.length === 0) {
-      console.log('No matching teachers found');
+    if (teacherError) {
+      console.error('Error fetching teachers:', teacherError);
       return [];
     }
 
-    // Create a map of teacher data for quick lookup
-    const teacherMap = new Map(teachers.map(teacher => [teacher.id, teacher]));
+    if (!teachers || teachers.length === 0) {
+      console.log('No matching teachers found with criteria:', {
+        teacherIds,
+        teacherTypeFilter,
+        status: 'approved',
+        role: 'teacher'
+      });
+      return [];
+    }
 
-    // Process slots and filter by available teachers
+    // Step 5: Create teacher lookup map
+    const teacherMap = new Map(teachers.map(teacher => [teacher.id, teacher]));
+    console.log('Teacher Map created:', Array.from(teacherMap.keys()));
+
+    // Step 6: Process slots and filter by available teachers
+    console.log('Step 3: Processing and matching slots...');
     const slots: GranularTimeSlot[] = availability
-      .filter(slot => teacherMap.has(slot.teacher_id))
+      .filter(slot => {
+        const hasTeacher = teacherMap.has(slot.teacher_id);
+        if (!hasTeacher) {
+          console.log(`Slot ${slot.time_slot} excluded - teacher ${slot.teacher_id} not in map`);
+        }
+        return hasTeacher;
+      })
       .map(slot => {
         const [slotHour, slotMinutes] = slot.time_slot.split(':').map(Number);
         const teacher = teacherMap.get(slot.teacher_id)!;
 
         console.log('Processing slot:', { 
           slotTime: slot.time_slot, 
-          teacher: teacher.full_name,
+          teacherId: slot.teacher_id,
+          teacherName: teacher.full_name,
           teacherType: teacher.teacher_type 
         });
 
@@ -126,7 +169,7 @@ export class AvailabilityService {
           timezoneConfig.offset
         );
 
-        return {
+        const finalSlot = {
           id: slot.id,
           startTime: displayInfo.startTime,
           endTime: displayInfo.endTime,
@@ -139,9 +182,12 @@ export class AvailabilityService {
           teacherType: teacher.teacher_type,
           isBooked: false
         };
+
+        console.log('Generated slot:', finalSlot);
+        return finalSlot;
       });
 
-    console.log('Generated slots:', slots);
+    console.log(`Final result: ${slots.length} slots generated`);
     return slots;
   }
 
