@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { GranularTimeSlot } from '@/types/availability';
 import { convertClientHourToUTC, getTimezoneConfig } from '@/utils/timezoneUtils';
@@ -127,7 +126,7 @@ export class AvailabilityService {
         endTime: displayInfo.endTime,
         clientTimeDisplay: displayInfo.clientDisplay,
         egyptTimeDisplay: displayInfo.egyptDisplay,
-        utcStartTime: `${timeSlotStr}:00`,
+        utcStartTime: timeSlotStr,
         utcEndTime: displayInfo.utcEndTime,
         teacherId: result.teacher_id,
         teacherName: result.teacher_name || 'Unnamed Teacher',
