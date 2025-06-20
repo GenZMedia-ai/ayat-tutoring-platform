@@ -7,30 +7,28 @@ import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { useTeacherAvailability } from '@/hooks/useTeacherAvailability';
 import { useServerDate } from '@/hooks/useServerDate';
+import { useTeacherTrialSessions } from '@/hooks/useTeacherTrialSessions';
 import { Trash2, Lock, Eye } from 'lucide-react';
 
 const TeacherDashboard: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const { timeSlots, loading, toggleAvailability } = useTeacherAvailability(selectedDate);
   const { isDateToday, loading: dateLoading } = useServerDate();
+  const { trialStudents, loading: trialsLoading, confirmTrial } = useTeacherTrialSessions();
   
   // Check if selected date is today according to server
   const isSelectedDateToday = isDateToday(selectedDate);
   
-  // Mock data for other sections
+  // Calculate real stats from trial students data
   const teacherStats = {
-    capacity: 8,
-    maxCapacity: 10,
-    pendingTrials: 2,
-    todaySessions: 3,
-    monthlyEarnings: 1250
+    capacity: 8, // This could be made dynamic later
+    maxCapacity: 10, // This could be made dynamic later
+    pendingTrials: trialStudents.filter(s => s.status === 'pending').length,
+    todaySessions: 3, // Mock data for now - could be calculated from sessions
+    monthlyEarnings: 1250 // Mock data for now
   };
 
-  const pendingStudents = [
-    { id: '1', name: 'Ahmed Hassan', age: 12, trialDate: '2025-01-16', trialTime: '18:00', phone: '+201234567890' },
-    { id: '2', name: 'Sara Mohamed', age: 15, trialDate: '2025-01-17', trialTime: '19:30', phone: '+201234567891' }
-  ];
-
+  // Mock data for today's sessions (Phase 4 will replace this)
   const todaySessions = [
     { id: '1', studentName: 'Omar Ali', time: '16:00', sessionNumber: 3, totalSessions: 8 },
     { id: '2', studentName: 'Layla Hassan', time: '18:30', sessionNumber: 5, totalSessions: 16 },
@@ -45,13 +43,18 @@ const TeacherDashboard: React.FC = () => {
     toast.success('WhatsApp opened. Please contact the student.');
   };
 
-  const handleConfirmTrial = (studentId: string) => {
-    toast.success('Trial confirmed successfully!');
+  const handleConfirmTrial = async (studentId: string) => {
+    const success = await confirmTrial(studentId);
+    if (!success) {
+      console.log('Failed to confirm trial for student:', studentId);
+    }
   };
 
   const handleCompleteSession = (sessionId: string) => {
     toast.success('Session marked as completed!');
   };
+
+  // ... keep existing code (renderTimeSlotButton function)
 
   const renderTimeSlotButton = (slot: { time: string; isAvailable: boolean; isBooked: boolean }) => {
     const isDisabled = loading || dateLoading || (isSelectedDateToday && !slot.isBooked);
@@ -204,38 +207,45 @@ const TeacherDashboard: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {pendingStudents.map((student) => (
-                    <div key={student.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                      <div>
-                        <h4 className="font-medium">{student.name}</h4>
-                        <p className="text-sm text-muted-foreground">Age: {student.age}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Trial: {student.trialDate} at {student.trialTime}
-                        </p>
+                {trialsLoading ? (
+                  <p className="text-center text-muted-foreground py-8">Loading trial sessions...</p>
+                ) : (
+                  <div className="space-y-4">
+                    {trialStudents.filter(s => s.status === 'pending').map((student) => (
+                      <div key={student.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                        <div>
+                          <h4 className="font-medium">{student.name}</h4>
+                          <p className="text-sm text-muted-foreground">Age: {student.age}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Trial: {student.trialDate} at {student.trialTime}
+                          </p>
+                          {student.parentName && (
+                            <p className="text-sm text-muted-foreground">Parent: {student.parentName}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleContactStudent(student.id, student.phone)}
+                          >
+                            Contact
+                          </Button>
+                          <Button 
+                            size="sm"
+                            className="ayat-button-primary"
+                            onClick={() => handleConfirmTrial(student.id)}
+                          >
+                            Confirm
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleContactStudent(student.id, student.phone)}
-                        >
-                          Contact
-                        </Button>
-                        <Button 
-                          size="sm"
-                          className="ayat-button-primary"
-                          onClick={() => handleConfirmTrial(student.id)}
-                        >
-                          Confirm
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                  {pendingStudents.length === 0 && (
-                    <p className="text-center text-muted-foreground py-8">No pending contacts</p>
-                  )}
-                </div>
+                    ))}
+                    {trialStudents.filter(s => s.status === 'pending').length === 0 && (
+                      <p className="text-center text-muted-foreground py-8">No pending contacts</p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -284,48 +294,75 @@ const TeacherDashboard: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {pendingStudents.map((student) => (
-                  <div key={student.id} className="p-4 border border-border rounded-lg">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <h4 className="font-medium">{student.name}</h4>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Age:</span> {student.age}
+              {trialsLoading ? (
+                <p className="text-center text-muted-foreground py-8">Loading trial sessions...</p>
+              ) : (
+                <div className="space-y-4">
+                  {trialStudents.map((student) => (
+                    <div key={student.id} className="p-4 border border-border rounded-lg">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium">{student.name}</h4>
+                            <span className="text-xs text-muted-foreground">({student.uniqueId})</span>
                           </div>
-                          <div>
-                            <span className="text-muted-foreground">Phone:</span> {student.phone}
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Age:</span> {student.age}
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Phone:</span> {student.phone}
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Country:</span> {student.country}
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Trial Date:</span> {student.trialDate || 'Not set'}
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Trial Time:</span> {student.trialTime || 'Not set'}
+                            </div>
+                            {student.parentName && (
+                              <div>
+                                <span className="text-muted-foreground">Parent:</span> {student.parentName}
+                              </div>
+                            )}
                           </div>
-                          <div>
-                            <span className="text-muted-foreground">Trial Date:</span> {student.trialDate}
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Trial Time:</span> {student.trialTime}
-                          </div>
+                          {student.notes && (
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Notes:</span> {student.notes}
+                            </div>
+                          )}
+                          <Badge className={student.status === 'pending' ? 'status-pending' : 'status-active'}>
+                            {student.status === 'pending' ? 'Pending Confirmation' : 'Confirmed'}
+                          </Badge>
                         </div>
-                        <Badge className="status-pending">Pending Confirmation</Badge>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleContactStudent(student.id, student.phone)}
-                        >
-                          WhatsApp Contact
-                        </Button>
-                        <Button 
-                          size="sm"
-                          className="ayat-button-primary"
-                          onClick={() => handleConfirmTrial(student.id)}
-                        >
-                          Confirm Appointment
-                        </Button>
+                        <div className="flex flex-col gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleContactStudent(student.id, student.phone)}
+                          >
+                            WhatsApp Contact
+                          </Button>
+                          {student.status === 'pending' && (
+                            <Button 
+                              size="sm"
+                              className="ayat-button-primary"
+                              onClick={() => handleConfirmTrial(student.id)}
+                            >
+                              Confirm Appointment
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                  {trialStudents.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">No trial sessions found</p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
