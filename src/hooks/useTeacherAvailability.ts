@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 
 const EGYPT_TIMEZONE = 'Africa/Cairo';
 
@@ -44,7 +45,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     egyptDate.setHours(hours, minutes, 0, 0);
 
     // Convert to UTC using proper timezone handling (handles DST automatically)
-    const utcDate = zonedTimeToUtc(egyptDate, EGYPT_TIMEZONE);
+    const utcDate = fromZonedTime(egyptDate, EGYPT_TIMEZONE);
 
     // Format as HH:mm:ss for database storage
     return format(utcDate, 'HH:mm:ss');
@@ -58,7 +59,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     today.setUTCHours(hours, minutes, 0, 0);
 
     // Convert to Egypt timezone (handles DST automatically)
-    const egyptDate = utcToZonedTime(today, EGYPT_TIMEZONE);
+    const egyptDate = toZonedTime(today, EGYPT_TIMEZONE);
 
     // Return formatted time as HH:mm
     return format(egyptDate, 'HH:mm');
