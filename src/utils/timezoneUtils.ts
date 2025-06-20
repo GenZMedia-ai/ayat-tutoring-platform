@@ -1,6 +1,6 @@
 
 import { TIMEZONES } from '@/constants/timeSlots';
-import { zonedTimeToUtc, utcToZonedTime, format } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime, format } from 'date-fns-tz';
 
 export const getTimezoneConfig = (timezoneValue: string) => {
   return TIMEZONES.find(tz => tz.value === timezoneValue);
@@ -23,7 +23,7 @@ export const convertClientTimeToServer = (clientDate: Date, clientHour: number, 
   );
 
   // Convert to UTC using proper timezone handling
-  const utcDate = zonedTimeToUtc(dateWithHour, tzConfig.iana);
+  const utcDate = fromZonedTime(dateWithHour, tzConfig.iana);
 
   return {
     utcDate,
@@ -53,7 +53,7 @@ export const convertServerTimeToClient = (utcTimeString: string, date: Date, tim
   utcDate.setUTCHours(hours, minutes, 0, 0);
 
   // Convert to client timezone
-  const clientDate = utcToZonedTime(utcDate, tzConfig.iana);
+  const clientDate = toZonedTime(utcDate, tzConfig.iana);
   
   return {
     clientDate,
