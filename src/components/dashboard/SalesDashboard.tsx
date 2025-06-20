@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,8 +15,8 @@ import { BookingModal } from '@/components/booking/BookingModal';
 import { supabase } from '@/integrations/supabase/client';
 
 const SalesDashboard: React.FC = () => {
-  // Set default date to 2025-06-20 where test data exists
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date('2025-06-20'));
+  // Set default date to 2025-06-21 where test data exists
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date('2025-06-21'));
   const [timezone, setTimezone] = useState('uae'); // Default to UAE for testing
   const [teacherType, setTeacherType] = useState('mixed');
   const [selectedHour, setSelectedHour] = useState(18); // Default to 6 PM (UAE 6PM = UTC 14:00)
@@ -207,7 +208,7 @@ const SalesDashboard: React.FC = () => {
                 <div className="space-y-4">
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-sm text-blue-800">
-                      <strong>Test with:</strong> Date: 2025-06-20, Type: Mixed, Time: 6 PM, Timezone: UAE
+                      <strong>Test with:</strong> Date: 2025-06-21, Type: Mixed, Time: 6 PM, Timezone: UAE
                     </p>
                     <p className="text-xs text-blue-600 mt-1">
                       This should find teacher availability at UTC 14:00:00
@@ -268,7 +269,7 @@ const SalesDashboard: React.FC = () => {
                     selected={selectedDate}
                     onSelect={setSelectedDate}
                     className="rounded-md border"
-                    disabled={(date) => date < new Date('2025-06-19')}
+                    disabled={(date) => date < new Date('2025-06-21')}
                   />
 
                   <Button 
@@ -296,7 +297,7 @@ const SalesDashboard: React.FC = () => {
                       <p>No available slots found for the selected criteria.</p>
                       <p className="text-sm">Check browser console for detailed debugging info.</p>
                       <p className="text-xs text-blue-600">
-                        Try: Date 2025-06-20, UAE timezone, Mixed teacher, 6 PM
+                        Try: Date 2025-06-21, UAE timezone, Mixed teacher, 6 PM
                       </p>
                     </div>
                   )}
