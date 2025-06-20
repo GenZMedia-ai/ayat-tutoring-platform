@@ -42,7 +42,7 @@ export const useSalesAvailability = () => {
     const dateStr = date.toISOString().split('T')[0];
     const timezoneConfig = getTimezoneConfig(timezone);
     
-    console.log('=== RUNNING ENHANCED DIAGNOSTICS ===');
+    console.log('=== RUNNING ENHANCED DIAGNOSTICS (Using Secure RPC) ===');
     console.log('Diagnostic Parameters:', { dateStr, teacherType, timezone, selectedHour });
     
     if (!timezoneConfig) {
@@ -58,116 +58,54 @@ export const useSalesAvailability = () => {
     
     console.log('UTC Time Range:', { startTime, endTime, utcHour, timezoneOffset: timezoneConfig.offset });
     
-    // Step 1: Check all availability for the date
-    console.log('Step 1: Checking all availability for date...');
-    const { data: allAvailability } = await supabase
-      .from('teacher_availability')
-      .select('time_slot, teacher_id, date, is_available, is_booked')
-      .eq('date', dateStr)
-      .order('time_slot');
-    
-    console.log('All availability for date:', allAvailability);
-    
-    // Step 2: Check available slots in specific time range (matching availability service)
-    console.log('Step 2: Checking available slots in time range...');
-    const { data: availableData, error: availableError } = await supabase
-      .from('teacher_availability')
-      .select('time_slot, teacher_id')
-      .eq('date', dateStr)
-      .gte('time_slot', startTime)
-      .lt('time_slot', endTime)
-      .eq('is_available', true)
-      .eq('is_booked', false);
-    
-    console.log('Available slots in time range:', { data: availableData, error: availableError });
-    
-    // Step 3: Get teacher IDs from available slots
-    const availableTeacherIds = availableData?.map(slot => slot.teacher_id) || [];
-    console.log('Teacher IDs from available slots:', availableTeacherIds);
-    
-    // Step 4: Build teacher type filter - FIXED TO USE CORRECT TEACHER TYPES
+    // Build teacher type filter - FIXED TO USE CORRECT TEACHER TYPES
     let teacherTypeFilter: string[];
     if (teacherType === 'mixed') {
-      // When searching for 'mixed', include all teacher types since mixed teachers can handle any type
       teacherTypeFilter = ['kids', 'adult', 'mixed', 'expert'];
       console.log('Searching for mixed teachers - including all types');
     } else {
-      // When searching for specific type, include that type + mixed teachers
       teacherTypeFilter = [teacherType, 'mixed'];
       console.log(`Searching for ${teacherType} teachers - including mixed`);
     }
     
     console.log('Teacher Type Filter:', teacherTypeFilter);
     
-    // Step 5: Query teachers with exact same approach as availability service
-    console.log('Step 5: Querying teacher profiles with availability service logic...');
-    let matchingTeachers = null;
-    let teacherError = null;
+    // Step 1: Test the secure RPC function directly
+    console.log('Step 1: Testing secure RPC function...');
+    const { data: rpcResults, error: rpcError } = await supabase
+      .rpc('search_available_teachers', {
+        p_date: dateStr,
+        p_start_time: startTime,
+        p_end_time: endTime,
+        p_teacher_types: teacherTypeFilter
+      });
     
-    if (availableTeacherIds.length > 0) {
-      const { data: teachers, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, teacher_type, status, role')
-        .in('id', availableTeacherIds)
-        .in('teacher_type', teacherTypeFilter)
-        .eq('status', 'approved')
-        .eq('role', 'teacher');
-      
-      matchingTeachers = teachers;
-      teacherError = error;
-    } else {
-      matchingTeachers = [];
-    }
-    
-    console.log('Matching teachers result:', { 
-      teachers: matchingTeachers, 
-      error: teacherError,
-      teacherCount: matchingTeachers?.length || 0 
-    });
+    console.log('Secure RPC result:', { data: rpcResults, error: rpcError });
     
     // Build diagnostic message with enhanced details
     let message = `Diagnostic Results for ${teacherType} teachers on ${dateStr}:\n`;
     message += `🕒 Searching time range: ${startTime} - ${endTime} UTC (Client: ${selectedHour}:00 ${timezoneConfig.label})\n`;
-    
-    if (!allAvailability || allAvailability.length === 0) {
-      message += `❌ No availability data found for date\n`;
-    } else {
-      message += `✅ Found ${allAvailability.length} total availability records\n`;
-    }
-    
-    if (availableError) {
-      message += `❌ Error querying availability: ${availableError.message}\n`;
-    } else if (!availableData || availableData.length === 0) {
-      message += `❌ No available slots found in time range ${startTime}-${endTime}\n`;
-    } else {
-      message += `✅ Found ${availableData.length} available slots in time range\n`;
-      const availableTimes = availableData.map(a => a.time_slot).join(', ');
-      message += `⏰ Available times in range: ${availableTimes}\n`;
-    }
-    
-    if (availableTeacherIds.length === 0) {
-      message += `❌ No teacher IDs from available slots in time range\n`;
-    } else {
-      message += `👥 Teacher IDs from slots: ${availableTeacherIds.length} (${availableTeacherIds.slice(0, 3).join(', ')}${availableTeacherIds.length > 3 ? '...' : ''})\n`;
-    }
-    
     message += `🎯 Teacher type filter: [${teacherTypeFilter.join(', ')}] (FIXED - using correct system teacher types)\n`;
+    message += `🔐 Using secure RPC function to bypass RLS issues\n`;
     
-    if (teacherError) {
-      message += `❌ Error querying teachers: ${teacherError.message}\n`;
-    } else if (!matchingTeachers || matchingTeachers.length === 0) {
-      message += `❌ No approved ${teacherType} teachers found matching criteria\n`;
+    if (rpcError) {
+      message += `❌ Error calling secure RPC: ${rpcError.message}\n`;
+    } else if (!rpcResults || rpcResults.length === 0) {
+      message += `❌ No available teachers found via secure RPC\n`;
+      message += `💡 This means either no availability exists or no teachers match the criteria\n`;
     } else {
-      message += `✅ Found ${matchingTeachers.length} matching teachers\n`;
-      const teacherNames = matchingTeachers.map(t => `${t.full_name} (${t.teacher_type})`).join(', ');
-      message += `👥 Teachers: ${teacherNames}\n`;
+      message += `✅ Found ${rpcResults.length} teacher-slot combinations via secure RPC\n`;
+      const teacherNames = [...new Set(rpcResults.map((r: any) => r.teacher_name))];
+      message += `👥 Teachers: ${teacherNames.slice(0, 3).join(', ')}${teacherNames.length > 3 ? ` +${teacherNames.length - 3} more` : ''}\n`;
+      const timeSlots = [...new Set(rpcResults.map((r: any) => r.time_slot))];
+      message += `⏰ Time slots: ${timeSlots.join(', ')}\n`;
     }
     
-    const finalSlotCount = matchingTeachers?.length || 0;
+    const finalSlotCount = rpcResults?.length || 0;
     if (finalSlotCount === 0) {
-      message += `❌ No final matching slots (teachers × time slots)\n`;
+      message += `❌ No final matching slots\n`;
     } else {
-      message += `✅ Should generate ${finalSlotCount} potential slots\n`;
+      message += `✅ RLS issue resolved - ${finalSlotCount} slots found via secure function\n`;
     }
     
     console.log('Final diagnostic message:', message);
@@ -182,7 +120,7 @@ export const useSalesAvailability = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('=== CHECKING AVAILABILITY ===');
+      console.log('=== CHECKING AVAILABILITY (Using Secure RPC) ===');
       console.log('Parameters:', { date: date.toDateString(), timezone, teacherType, selectedHour });
       
       const slots = await AvailabilityService.searchAvailableSlots(
@@ -201,7 +139,7 @@ export const useSalesAvailability = () => {
         const teacherCount = new Set(slots.map(s => s.teacherId)).size;
         const groupedSlots = groupSlotsByTime(slots);
         const timeSlotCount = Object.keys(groupedSlots).length;
-        const successMessage = `Found ${timeSlotCount} time slot(s) with ${teacherCount} teacher(s) available`;
+        const successMessage = `Found ${timeSlotCount} time slot(s) with ${teacherCount} teacher(s) available (RLS fix working!)`;
         console.log('Success:', successMessage);
         toast.success(successMessage);
       }

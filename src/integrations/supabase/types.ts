@@ -366,6 +366,21 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      search_available_teachers: {
+        Args: {
+          p_date: string
+          p_start_time: string
+          p_end_time: string
+          p_teacher_types: string[]
+        }
+        Returns: {
+          teacher_id: string
+          teacher_name: string
+          teacher_type: string
+          time_slot: string
+          availability_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

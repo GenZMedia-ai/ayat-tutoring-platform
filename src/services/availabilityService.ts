@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { GranularTimeSlot } from '@/types/availability';
 import { convertClientHourToUTC, getTimezoneConfig } from '@/utils/timezoneUtils';
@@ -9,7 +10,7 @@ export class AvailabilityService {
     teacherType: string,
     selectedHour: number
   ): Promise<GranularTimeSlot[]> {
-    console.log('=== AVAILABILITY SERVICE START ===');
+    console.log('=== AVAILABILITY SERVICE START (Using Secure RPC) ===');
     console.log('Search Parameters:', { 
       date: date.toDateString(), 
       dateStr: date.toISOString().split('T')[0],
@@ -31,66 +32,7 @@ export class AvailabilityService {
     const utcHour = convertClientHourToUTC(selectedHour, timezoneConfig.offset);
     console.log('Converted UTC Hour:', utcHour);
     
-    // Query for slots within the hour range
-    const slots = await this.findSlotsInHourRange(
-      dateStr,
-      utcHour,
-      teacherType,
-      selectedHour,
-      timezoneConfig
-    );
-    
-    console.log('Final available slots:', slots.length);
-    console.log('=== AVAILABILITY SERVICE END ===');
-    
-    return slots;
-  }
-
-  private static async findSlotsInHourRange(
-    dateStr: string,
-    utcHour: number,
-    teacherType: string,
-    clientHour: number,
-    timezoneConfig: any
-  ): Promise<GranularTimeSlot[]> {
-    console.log('--- HOUR RANGE SLOT SEARCH ---');
-    console.log('Input Parameters:', { dateStr, utcHour, teacherType, clientHour });
-    
-    // Define the hour range in UTC - search the entire hour for 30-minute slots
-    const startTime = `${String(utcHour).padStart(2, '0')}:00:00`;
-    const endHour = (utcHour + 1) % 24;
-    const endTime = `${String(endHour).padStart(2, '0')}:00:00`;
-    
-    console.log('UTC Time Range:', { startTime, endTime });
-    
-    // Step 1: Get all available slots in the time range
-    console.log('Step 1: Querying available slots...');
-    const { data: availability, error: availabilityError } = await supabase
-      .from('teacher_availability')
-      .select('id, time_slot, teacher_id')
-      .eq('date', dateStr)
-      .gte('time_slot', startTime)
-      .lt('time_slot', endTime)
-      .eq('is_available', true)
-      .eq('is_booked', false);
-
-    console.log('Available slots result:', { availability, error: availabilityError });
-
-    if (availabilityError) {
-      console.error('Error fetching availability:', availabilityError);
-      return [];
-    }
-
-    if (!availability || availability.length === 0) {
-      console.log('No available slots found in time range');
-      return [];
-    }
-
-    // Step 2: Get unique teacher IDs from available slots
-    const teacherIds = [...new Set(availability.map(slot => slot.teacher_id))];
-    console.log('Teacher IDs from slots:', teacherIds);
-    
-    // Step 3: Build teacher type filter - FIXED TO USE CORRECT TEACHER TYPES
+    // Build teacher type filter - FIXED TO USE CORRECT TEACHER TYPES
     let teacherTypeFilter: string[];
     if (teacherType === 'mixed') {
       // When searching for 'mixed', include all teacher types since mixed teachers can handle any type
@@ -104,89 +46,100 @@ export class AvailabilityService {
     
     console.log('Teacher Type Filter:', teacherTypeFilter);
     
-    // Step 4: Get teacher profiles with proper filtering
-    console.log('Step 2: Querying teacher profiles...');
-    const { data: teachers, error: teacherError } = await supabase
-      .from('profiles')
-      .select('id, full_name, teacher_type, status, role')
-      .in('id', teacherIds)
-      .in('teacher_type', teacherTypeFilter)
-      .eq('status', 'approved')
-      .eq('role', 'teacher');
+    // Use the secure RPC function to get available teachers
+    const slots = await this.searchUsingSecureRPC(
+      dateStr,
+      utcHour,
+      teacherTypeFilter,
+      selectedHour,
+      timezoneConfig
+    );
+    
+    console.log('Final available slots:', slots.length);
+    console.log('=== AVAILABILITY SERVICE END ===');
+    
+    return slots;
+  }
 
-    console.log('Teachers query result:', { 
-      teachers, 
-      error: teacherError,
-      teacherCount: teachers?.length || 0 
+  private static async searchUsingSecureRPC(
+    dateStr: string,
+    utcHour: number,
+    teacherTypeFilter: string[],
+    clientHour: number,
+    timezoneConfig: any
+  ): Promise<GranularTimeSlot[]> {
+    console.log('--- SECURE RPC SEARCH ---');
+    console.log('RPC Parameters:', { dateStr, utcHour, teacherTypeFilter, clientHour });
+    
+    // Define the hour range in UTC - search the entire hour for 30-minute slots
+    const startTime = `${String(utcHour).padStart(2, '0')}:00:00`;
+    const endHour = (utcHour + 1) % 24;
+    const endTime = `${String(endHour).padStart(2, '0')}:00:00`;
+    
+    console.log('UTC Time Range for RPC:', { startTime, endTime });
+    
+    // Call the secure RPC function
+    const { data: rpcResults, error: rpcError } = await supabase
+      .rpc('search_available_teachers', {
+        p_date: dateStr,
+        p_start_time: startTime,
+        p_end_time: endTime,
+        p_teacher_types: teacherTypeFilter
+      });
+
+    console.log('RPC Results:', { rpcResults, error: rpcError });
+
+    if (rpcError) {
+      console.error('Error calling secure RPC function:', rpcError);
+      return [];
+    }
+
+    if (!rpcResults || rpcResults.length === 0) {
+      console.log('No teachers found via secure RPC');
+      return [];
+    }
+
+    console.log(`RPC returned ${rpcResults.length} teacher-slot combinations`);
+
+    // Process RPC results into GranularTimeSlot format
+    const slots: GranularTimeSlot[] = rpcResults.map((result: any) => {
+      const timeSlotStr = result.time_slot;
+      const [slotHour, slotMinutes] = timeSlotStr.split(':').map(Number);
+
+      console.log('Processing RPC result:', { 
+        timeSlot: timeSlotStr, 
+        teacherId: result.teacher_id,
+        teacherName: result.teacher_name,
+        teacherType: result.teacher_type 
+      });
+
+      // Generate display times for this specific slot
+      const displayInfo = this.generateSlotDisplay(
+        slotHour,
+        slotMinutes,
+        clientHour,
+        timezoneConfig.offset
+      );
+
+      const finalSlot = {
+        id: result.availability_id,
+        startTime: displayInfo.startTime,
+        endTime: displayInfo.endTime,
+        clientTimeDisplay: displayInfo.clientDisplay,
+        egyptTimeDisplay: displayInfo.egyptDisplay,
+        utcStartTime: `${timeSlotStr}:00`,
+        utcEndTime: displayInfo.utcEndTime,
+        teacherId: result.teacher_id,
+        teacherName: result.teacher_name || 'Unnamed Teacher',
+        teacherType: result.teacher_type,
+        isBooked: false
+      };
+
+      console.log('Generated slot from RPC:', finalSlot);
+      return finalSlot;
     });
 
-    if (teacherError) {
-      console.error('Error fetching teachers:', teacherError);
-      return [];
-    }
-
-    if (!teachers || teachers.length === 0) {
-      console.log('No matching teachers found with criteria:', {
-        teacherIds,
-        teacherTypeFilter,
-        status: 'approved',
-        role: 'teacher'
-      });
-      return [];
-    }
-
-    // Step 5: Create teacher lookup map
-    const teacherMap = new Map(teachers.map(teacher => [teacher.id, teacher]));
-    console.log('Teacher Map created:', Array.from(teacherMap.keys()));
-
-    // Step 6: Process slots and filter by available teachers
-    console.log('Step 3: Processing and matching slots...');
-    const slots: GranularTimeSlot[] = availability
-      .filter(slot => {
-        const hasTeacher = teacherMap.has(slot.teacher_id);
-        if (!hasTeacher) {
-          console.log(`Slot ${slot.time_slot} excluded - teacher ${slot.teacher_id} not in map`);
-        }
-        return hasTeacher;
-      })
-      .map(slot => {
-        const [slotHour, slotMinutes] = slot.time_slot.split(':').map(Number);
-        const teacher = teacherMap.get(slot.teacher_id)!;
-
-        console.log('Processing slot:', { 
-          slotTime: slot.time_slot, 
-          teacherId: slot.teacher_id,
-          teacherName: teacher.full_name,
-          teacherType: teacher.teacher_type 
-        });
-
-        // Generate display times for this specific slot
-        const displayInfo = this.generateSlotDisplay(
-          slotHour,
-          slotMinutes,
-          clientHour,
-          timezoneConfig.offset
-        );
-
-        const finalSlot = {
-          id: slot.id,
-          startTime: displayInfo.startTime,
-          endTime: displayInfo.endTime,
-          clientTimeDisplay: displayInfo.clientDisplay,
-          egyptTimeDisplay: displayInfo.egyptDisplay,
-          utcStartTime: slot.time_slot,
-          utcEndTime: displayInfo.utcEndTime,
-          teacherId: teacher.id,
-          teacherName: teacher.full_name || 'Unnamed Teacher',
-          teacherType: teacher.teacher_type,
-          isBooked: false
-        };
-
-        console.log('Generated slot:', finalSlot);
-        return finalSlot;
-      });
-
-    console.log(`Final result: ${slots.length} slots generated`);
+    console.log(`Final result: ${slots.length} slots generated from secure RPC`);
     return slots;
   }
 
