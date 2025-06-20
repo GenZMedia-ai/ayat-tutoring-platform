@@ -168,7 +168,7 @@ export const useSalesAvailability = () => {
     
     const message = error.message;
     
-    // Check for specific error codes
+    // Check for specific error codes from our secure RPC function
     if (message.includes('P0001')) {
       return 'Authentication required. Please log in and try again.';
     }
@@ -247,8 +247,8 @@ export const useSalesAvailability = () => {
         p_available_teacher_ids: availableTeacherIds
       });
 
-      // Call the secure RPC function
-      const { data: result, error } = await supabase
+      // Call the secure RPC function with type assertion
+      const { data: result, error } = await (supabase as any)
         .rpc('book_trial_session', {
           p_booking_data: rpcBookingData,
           p_is_multi_student: isMultiStudent,
