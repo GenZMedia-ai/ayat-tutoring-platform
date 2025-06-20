@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AvailabilityService } from '@/services/availabilityService';
@@ -13,6 +14,16 @@ export type BookingData = {
   notes?: string;
   parentName?: string;
   students?: { name: string; age: number }[];
+};
+
+// Add type for the RPC response
+type BookingResponse = {
+  success: boolean;
+  teacher_name: string;
+  teacher_id: string;
+  session_id: string;
+  student_names: string[];
+  booked_time_slot: string;
 };
 
 export const useSalesAvailability = () => {
@@ -125,14 +136,17 @@ export const useSalesAvailability = () => {
         return false;
       }
 
-      if (data?.success) {
-        const studentNames = data.student_names || [];
-        const teacherName = data.teacher_name || 'Unknown Teacher';
+      // Type cast the response data to our expected type
+      const bookingResult = data as BookingResponse;
+      
+      if (bookingResult?.success) {
+        const studentNames = bookingResult.student_names || [];
+        const teacherName = bookingResult.teacher_name || 'Unknown Teacher';
         
         console.log('Enhanced booking success:', {
           teacherName,
           studentCount: studentNames.length,
-          sessionId: data.session_id
+          sessionId: bookingResult.session_id
         });
         
         toast.success(
