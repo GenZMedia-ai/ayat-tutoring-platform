@@ -56,8 +56,8 @@ export const useSalesAvailability = () => {
     console.log('All availability for date:', allAvailability);
     
     // Step 2: Check available slots in specific time range (matching availability service)
-    console.log('Step 2: Checking available slots in time range...');
-    const { data: availableData } = await supabase
+    console.log('Step 1: Checking available slots in time range...');
+    const { data: availableData, error: availableError } = await supabase
       .from('teacher_availability')
       .select('time_slot, teacher_id')
       .eq('date', dateStr)
@@ -66,13 +66,13 @@ export const useSalesAvailability = () => {
       .eq('is_available', true)
       .eq('is_booked', false);
     
-    console.log('Available slots in time range:', availableData);
+    console.log('Available slots in time range:', { data: availableData, error: availableError });
     
-    // Step 3: Get teacher IDs from available slots
+    // Step 2: Get teacher IDs from available slots
     const availableTeacherIds = availableData?.map(slot => slot.teacher_id) || [];
     console.log('Teacher IDs from available slots:', availableTeacherIds);
     
-    // Step 4: Build teacher type filter (exact same logic as availability service)
+    // Step 3: Build teacher type filter (exact same logic as availability service)
     let teacherTypeFilter: string[];
     if (teacherType === 'mixed') {
       teacherTypeFilter = ['arabic', 'english', 'mixed'];
@@ -84,7 +84,7 @@ export const useSalesAvailability = () => {
     
     console.log('Teacher Type Filter:', teacherTypeFilter);
     
-    // Step 5: Query teachers with exact same approach as availability service
+    // Step 4: Query teachers with exact same approach as availability service
     console.log('Step 3: Querying teacher profiles with availability service logic...');
     let matchingTeachers = null;
     let teacherError = null;
@@ -112,7 +112,7 @@ export const useSalesAvailability = () => {
     
     // Build diagnostic message with enhanced details
     let message = `Diagnostic Results for ${teacherType} teachers on ${dateStr}:\n`;
-    message += `🕒 Searching time range: ${startTime} - ${endTime} UTC (Client: ${selectedHour}:00 ${timezoneConfig.displayName})\n`;
+    message += `🕒 Searching time range: ${startTime} - ${endTime} UTC (Client: ${selectedHour}:00 ${timezoneConfig.label})\n`;
     
     if (!allAvailability || allAvailability.length === 0) {
       message += `❌ No availability data found for date\n`;
@@ -120,7 +120,9 @@ export const useSalesAvailability = () => {
       message += `✅ Found ${allAvailability.length} total availability records\n`;
     }
     
-    if (!availableData || availableData.length === 0) {
+    if (availableError) {
+      message += `❌ Error querying availability: ${availableError.message}\n`;
+    } else if (!availableData || availableData.length === 0) {
       message += `❌ No available slots found in time range ${startTime}-${endTime}\n`;
     } else {
       message += `✅ Found ${availableData.length} available slots in time range\n`;
