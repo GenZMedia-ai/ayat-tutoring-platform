@@ -247,8 +247,8 @@ export const useSalesAvailability = () => {
         p_available_teacher_ids: availableTeacherIds
       });
 
-      // Call the secure RPC function - FIXED: Removed unnecessary type casting
-      const { data: result, error } = await supabase
+      // Call the secure RPC function with proper typing
+      const { data, error } = await supabase
         .rpc('book_trial_session', {
           p_booking_data: rpcBookingData,
           p_is_multi_student: isMultiStudent,
@@ -265,21 +265,24 @@ export const useSalesAvailability = () => {
         return false;
       }
 
+      // Type guard and casting for the result
+      const result = data as BookingResult;
+      
       if (!result || !result.success) {
         console.error('Booking failed - no result or success=false:', result);
         toast.error('Booking failed. Please try again.');
         return false;
       }
 
-      // Success handling
+      // Success handling with proper typing
       console.log('Booking Success:', result);
       
-      if (isMultiStudent && result.student_names.length > 1) {
+      if (isMultiStudent && result.student_names?.length > 1) {
         toast.success(
           `Family trial session booked successfully! Students: ${result.student_names.join(', ')} with teacher ${result.teacher_name}`
         );
       } else {
-        const studentName = isMultiStudent ? result.student_names[0] : bookingData.studentName;
+        const studentName = isMultiStudent ? result.student_names?.[0] : bookingData.studentName;
         toast.success(
           `Trial session booked successfully for ${studentName} with teacher ${result.teacher_name}!`
         );
