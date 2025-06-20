@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toZonedTime, format } from 'date-fns-tz';
-import { getTimezoneConfig } from '@/utils/timezoneUtils';
+import { getTimezoneConfig, convertClientTimeToServer } from '@/utils/timezoneUtils';
 
 export interface SimpleTimeSlot {
   id: string;
@@ -36,32 +36,29 @@ export class SimpleAvailabilityService {
       throw new Error(`Invalid timezone: ${timezone}`);
     }
     
-    // Create client date-time for the selected hour
-    const clientDateTime = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      selectedHour,
-      0,
-      0
-    );
-    
-    // Convert to UTC for database query
-    const utcDateTime = new Date(clientDateTime.getTime() - (timezoneConfig.offset * 60 * 60 * 1000));
-    const baseUtcHour = utcDateTime.getUTCHours();
-    
-    console.log('Timezone conversion:', {
-      clientDateTime: clientDateTime.toISOString(),
-      utcDateTime: utcDateTime.toISOString(),
-      baseUtcHour
+    // PHASE 1: Fix Timezone Conversion - Use the proper utility function
+    console.log('=== PHASE 1: TIMEZONE CONVERSION ===');
+    const serverTime = convertClientTimeToServer(date, selectedHour, timezone);
+    console.log('Server time conversion result:', {
+      utcDate: serverTime.utcDate.toISOString(),
+      utcHour: serverTime.utcHour,
+      utcTime: serverTime.utcTime
     });
     
-    // Create time range for filtering (search for slots within ±30 minutes)
-    const startTime = `${String(baseUtcHour).padStart(2, '0')}:00:00`;
-    const endHour = baseUtcHour + 1;
-    const endTime = `${String(endHour).padStart(2, '0')}:00:00`;
+    // PHASE 2: Expand Time Range Search - Include 30-minute slots
+    console.log('=== PHASE 2: TIME RANGE EXPANSION ===');
+    const baseUtcHour = serverTime.utcHour;
     
-    console.log('Time range filter:', { startTime, endTime });
+    // Search for the selected hour and the next 30 minutes
+    const startTime = `${String(baseUtcHour).padStart(2, '0')}:00:00`;
+    const endTime = `${String(baseUtcHour + 1).padStart(2, '0')}:00:00`;
+    
+    console.log('Expanded time range filter:', { 
+      baseUtcHour,
+      startTime, 
+      endTime,
+      searchWindow: '60 minutes (includes :00 and :30 slots)'
+    });
     
     // Build teacher type filter
     let teacherTypeFilter: string[];
@@ -73,6 +70,15 @@ export class SimpleAvailabilityService {
     
     console.log('Teacher type filter:', teacherTypeFilter);
     
+    // PHASE 3: Enhanced Debugging - Comprehensive logging
+    console.log('=== PHASE 3: DATABASE QUERY ===');
+    console.log('Query parameters:', {
+      date: dateStr,
+      startTime,
+      endTime,
+      teacherTypes: teacherTypeFilter
+    });
+    
     // First, get available slots filtered by time range
     const { data: availability, error: availabilityError } = await supabase
       .from('teacher_availability')
@@ -83,6 +89,16 @@ export class SimpleAvailabilityService {
       .gte('time_slot', startTime)
       .lt('time_slot', endTime)
       .order('time_slot');
+    
+    console.log('Raw database query result:', {
+      error: availabilityError,
+      resultCount: availability?.length || 0,
+      results: availability?.map(slot => ({
+        id: slot.id,
+        teacherId: slot.teacher_id,
+        timeSlot: slot.time_slot
+      }))
+    });
     
     if (availabilityError) {
       console.error('Availability query error:', availabilityError);
@@ -98,6 +114,7 @@ export class SimpleAvailabilityService {
     
     // Get unique teacher IDs
     const teacherIds = [...new Set(availability.map(slot => slot.teacher_id))];
+    console.log('Unique teacher IDs found:', teacherIds);
     
     // Get teacher profiles separately
     const { data: profiles, error: profilesError } = await supabase
@@ -107,6 +124,16 @@ export class SimpleAvailabilityService {
       .eq('status', 'approved')
       .eq('role', 'teacher')
       .in('teacher_type', teacherTypeFilter);
+    
+    console.log('Teacher profiles query result:', {
+      error: profilesError,
+      profileCount: profiles?.length || 0,
+      profiles: profiles?.map(p => ({
+        id: p.id,
+        name: p.full_name,
+        type: p.teacher_type
+      }))
+    });
     
     if (profilesError) {
       console.error('Profiles query error:', profilesError);
@@ -123,9 +150,18 @@ export class SimpleAvailabilityService {
     // Create a map of teacher profiles for quick lookup
     const profileMap = new Map(profiles.map(profile => [profile.id, profile]));
     
+    // PHASE 4: Test with Known Data - Process and format results
+    console.log('=== PHASE 4: RESULT PROCESSING ===');
+    
     // Filter availability by valid teachers and convert to SimpleTimeSlot format
     const slots: SimpleTimeSlot[] = availability
-      .filter(slot => profileMap.has(slot.teacher_id))
+      .filter(slot => {
+        const hasProfile = profileMap.has(slot.teacher_id);
+        if (!hasProfile) {
+          console.log(`Filtering out slot ${slot.id} - no valid teacher profile`);
+        }
+        return hasProfile;
+      })
       .map(slot => {
         const profile = profileMap.get(slot.teacher_id)!;
         const timeSlotStr = slot.time_slot;
@@ -142,7 +178,7 @@ export class SimpleAvailabilityService {
         const egyptStartTime = this.formatTimeInTimezone(utcSlotDate, 'Africa/Cairo');
         const egyptEndTime = this.formatTimeInTimezone(utcEndDate, 'Africa/Cairo');
         
-        return {
+        const formattedSlot = {
           id: slot.id,
           teacherId: slot.teacher_id,
           teacherName: profile.full_name,
@@ -152,9 +188,25 @@ export class SimpleAvailabilityService {
           clientTimeDisplay: `${clientStartTime}-${clientEndTime}`,
           egyptTimeDisplay: `${egyptStartTime}-${egyptEndTime} (Egypt)`
         };
+        
+        console.log('Processed slot:', {
+          id: formattedSlot.id,
+          teacher: formattedSlot.teacherName,
+          utcTime: formattedSlot.utcStartTime,
+          clientTime: formattedSlot.clientTimeDisplay,
+          egyptTime: formattedSlot.egyptTimeDisplay
+        });
+        
+        return formattedSlot;
       });
     
-    console.log('Generated slots:', slots);
+    console.log('=== FINAL RESULTS ===');
+    console.log(`Successfully processed ${slots.length} available slots`);
+    console.log('Slot summary:', slots.map(s => ({
+      teacher: s.teacherName,
+      time: s.clientTimeDisplay,
+      utc: s.utcStartTime
+    })));
     console.log('=== SIMPLE AVAILABILITY SEARCH END ===');
     
     return slots;
