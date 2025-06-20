@@ -19,44 +19,6 @@ export const useSalesAvailability = () => {
   const [loading, setLoading] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<GranularTimeSlot[]>([]);
 
-  const checkAvailability = async (
-    date: Date,
-    timezone: string,
-    teacherType: string,
-    selectedHour: number
-  ) => {
-    setLoading(true);
-    try {
-      console.log('=== CHECKING AVAILABILITY ===');
-      console.log('Parameters:', { date: date.toDateString(), timezone, teacherType, selectedHour });
-      
-      const slots = await AvailabilityService.searchAvailableSlots(
-        date,
-        timezone,
-        teacherType,
-        selectedHour
-      );
-      
-      setAvailableSlots(slots);
-      
-      if (slots.length === 0) {
-        console.log('No slots found - running detailed diagnostics...');
-        await this.runDiagnostics(date, teacherType);
-      } else {
-        const teacherCount = new Set(slots.map(s => s.teacherId)).size;
-        const timeSlots = new Set(slots.map(s => s.clientTimeDisplay)).size;
-        toast.success(`Found ${slots.length} slot(s) from ${teacherCount} teacher(s) across ${timeSlots} time(s)`);
-      }
-      
-    } catch (error) {
-      console.error('Error checking availability:', error);
-      toast.error(`Failed to check availability: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      setAvailableSlots([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const runDiagnostics = async (date: Date, teacherType: string) => {
     const dateStr = date.toISOString().split('T')[0];
     
@@ -114,6 +76,44 @@ export const useSalesAvailability = () => {
     toast.info(message);
   };
 
+  const checkAvailability = async (
+    date: Date,
+    timezone: string,
+    teacherType: string,
+    selectedHour: number
+  ) => {
+    setLoading(true);
+    try {
+      console.log('=== CHECKING AVAILABILITY ===');
+      console.log('Parameters:', { date: date.toDateString(), timezone, teacherType, selectedHour });
+      
+      const slots = await AvailabilityService.searchAvailableSlots(
+        date,
+        timezone,
+        teacherType,
+        selectedHour
+      );
+      
+      setAvailableSlots(slots);
+      
+      if (slots.length === 0) {
+        console.log('No slots found - running detailed diagnostics...');
+        await runDiagnostics(date, teacherType);
+      } else {
+        const teacherCount = new Set(slots.map(s => s.teacherId)).size;
+        const timeSlots = new Set(slots.map(s => s.clientTimeDisplay)).size;
+        toast.success(`Found ${slots.length} slot(s) from ${teacherCount} teacher(s) across ${timeSlots} time(s)`);
+      }
+      
+    } catch (error) {
+      console.error('Error checking availability:', error);
+      toast.error(`Failed to check availability: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setAvailableSlots([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const bookTrialSession = async (
     bookingData: BookingData,
     selectedDate: Date,
@@ -149,7 +149,7 @@ export const useSalesAvailability = () => {
         
         for (let i = 0; i < bookingData.students.length; i++) {
           const student = bookingData.students[i];
-          const { data: studentUniqueId } = await supabase.rpc('generate_student_unique_id');
+          const { data: studentUniqueId } = await supabase.rpc('generate_student_unique_id);
           
           const studentData = {
             unique_id: studentUniqueId,
