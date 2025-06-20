@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,7 +18,7 @@ const SalesDashboard: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date('2025-06-21'));
   const [timezone, setTimezone] = useState('uae'); // Default to UAE for testing
   const [teacherType, setTeacherType] = useState('mixed');
-  const [selectedHour, setSelectedHour] = useState(18); // Default to 6 PM (UAE 6PM = UTC 14:00)
+  const [selectedHour, setSelectedHour] = useState(18.5); // Default to 6:30 PM (UAE 6:30PM = UTC 14:30)
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [salesStats, setSalesStats] = useState({
@@ -208,10 +207,10 @@ const SalesDashboard: React.FC = () => {
                 <div className="space-y-4">
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-sm text-blue-800">
-                      <strong>Test with:</strong> Date: 2025-06-21, Type: Mixed, Time: 6 PM, Timezone: UAE
+                      <strong>Test with:</strong> Date: 2025-06-21, Type: Mixed, Time: 6:30 PM, Timezone: UAE
                     </p>
                     <p className="text-xs text-blue-600 mt-1">
-                      This should find teacher availability at UTC 14:00:00
+                      This should find teacher availability at UTC 14:30:00
                     </p>
                   </div>
                   
@@ -250,7 +249,7 @@ const SalesDashboard: React.FC = () => {
                   
                   <div className="space-y-2">
                     <Label>Preferred Time</Label>
-                    <Select value={selectedHour.toString()} onValueChange={(value) => setSelectedHour(parseInt(value))}>
+                    <Select value={selectedHour.toString()} onValueChange={(value) => setSelectedHour(parseFloat(value))}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -297,7 +296,7 @@ const SalesDashboard: React.FC = () => {
                       <p>No available slots found for the selected criteria.</p>
                       <p className="text-sm">Check browser console for detailed debugging info.</p>
                       <p className="text-xs text-blue-600">
-                        Try: Date 2025-06-21, UAE timezone, Mixed teacher, 6 PM
+                        Try: Date 2025-06-21, UAE timezone, Mixed teacher, 6:30 PM
                       </p>
                     </div>
                   )}
