@@ -348,13 +348,7 @@ const TeacherDashboard: React.FC = () => {
                     selected={selectedDate}
                     onSelect={setSelectedDate}
                     className="rounded-md border"
-                    disabled={(date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const compareDate = new Date(date);
-    compareDate.setHours(0, 0, 0, 0);
-    return compareDate <= today;
-  }}
+                    disabled={(date) => date < new Date()}
                   />
                 </div>
                 <div className="space-y-4">
