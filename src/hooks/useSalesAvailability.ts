@@ -250,13 +250,13 @@ export const useSalesAvailability = () => {
         toast.success(`Trial session booked successfully for ${bookingData.studentName}!`);
       }
 
-      // Mark the teacher slot as booked
+      // Mark the teacher slot as booked using the exact time_slot from database
       await supabase
         .from('teacher_availability')
         .update({ is_booked: true })
         .eq('teacher_id', selectedSlot.teacherId)
         .eq('date', dateStr)
-        .eq('time_slot', selectedSlot.utcStartTime);
+        .eq('time_slot', selectedSlot.utcStartTime); // Use exact database time value
 
       return true;
     } catch (error) {
