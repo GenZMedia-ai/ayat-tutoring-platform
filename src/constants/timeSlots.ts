@@ -14,14 +14,14 @@ export const HOURLY_TIME_SLOTS = [
   { value: 23, label: '11:00 PM', utcHour: 23 }
 ] as const;
 
-// Timezone configurations with UTC offsets
+// Timezone configurations with UTC offsets and IANA identifiers
 export const TIMEZONES = [
-  { value: 'saudi', label: 'Saudi Arabia (GMT+3)', offset: 3 },
-  { value: 'uae', label: 'UAE (GMT+4)', offset: 4 },
-  { value: 'qatar', label: 'Qatar (GMT+3)', offset: 3 },
-  { value: 'kuwait', label: 'Kuwait (GMT+3)', offset: 3 },
-  { value: 'bahrain', label: 'Bahrain (GMT+3)', offset: 3 },
-  { value: 'oman', label: 'Oman (GMT+4)', offset: 4 }
+  { value: 'saudi', label: 'Saudi Arabia (GMT+3)', offset: 3, iana: 'Asia/Riyadh' },
+  { value: 'uae', label: 'UAE (GMT+4)', offset: 4, iana: 'Asia/Dubai' },
+  { value: 'qatar', label: 'Qatar (GMT+3)', offset: 3, iana: 'Asia/Qatar' },
+  { value: 'kuwait', label: 'Kuwait (GMT+3)', offset: 3, iana: 'Asia/Kuwait' },
+  { value: 'bahrain', label: 'Bahrain (GMT+3)', offset: 3, iana: 'Asia/Bahrain' },
+  { value: 'oman', label: 'Oman (GMT+4)', offset: 4, iana: 'Asia/Muscat' }
 ] as const;
 
 // Convert client timezone hour to UTC hour range with comprehensive debugging

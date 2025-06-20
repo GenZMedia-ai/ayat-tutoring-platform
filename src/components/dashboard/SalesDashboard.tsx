@@ -28,7 +28,7 @@ const SalesDashboard: React.FC = () => {
     thisWeekBookings: 0
   });
 
-  const { loading, availableSlots, checkAvailability, bookTrialSession } = useSalesAvailability();
+  const { loading, availableSlots, groupSlotsByTime, checkAvailability, bookTrialSession } = useSalesAvailability();
 
   // Load sales statistics
   useEffect(() => {
@@ -100,8 +100,10 @@ const SalesDashboard: React.FC = () => {
     checkAvailability(selectedDate, timezone, teacherType, selectedHour);
   };
 
-  const handleBookNow = (slot: any) => {
-    setSelectedSlot(slot);
+  const handleBookNow = (slotsGroup: any) => {
+    // Handle both single slot (backward compatibility) and slot groups (new round-robin)
+    const slots = Array.isArray(slotsGroup) ? slotsGroup : [slotsGroup];
+    setSelectedSlot(slots);
     setIsBookingModalOpen(true);
   };
 
@@ -111,7 +113,7 @@ const SalesDashboard: React.FC = () => {
     const success = await bookTrialSession(
       data,
       selectedDate,
-      selectedSlot,
+      selectedSlot, // Now expects slot group for round-robin
       teacherType,
       isMultiStudent
     );
@@ -195,9 +197,9 @@ const SalesDashboard: React.FC = () => {
         <TabsContent value="quick-checker" className="space-y-4">
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>Real-Time Availability Checker</CardTitle>
+              <CardTitle>Real-Time Availability Checker with Round-Robin Assignment</CardTitle>
               <CardDescription>
-                Find exact 30-minute slots with real database data and timezone-accurate times
+                Find available time slots and automatically assign teachers using round-robin algorithm
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -280,7 +282,7 @@ const SalesDashboard: React.FC = () => {
 
                 <div className="space-y-4">
                   <h4 className="font-medium">
-                    Available Slots for {selectedDate?.toDateString()}
+                    Available Time Slots for {selectedDate?.toDateString()}
                   </h4>
                   
                   {loading && (
@@ -300,40 +302,49 @@ const SalesDashboard: React.FC = () => {
                   )}
                   
                   <div className="space-y-2">
-                    {availableSlots.map((slot) => (
-                      <div key={slot.id} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
-                        <div className="space-y-1">
-                          <div className="font-medium text-primary">
-                            {slot.clientTimeDisplay}
+                    {Object.entries(groupSlotsByTime(availableSlots)).map(([time, slotsInGroup]) => {
+                      const firstSlot = slotsInGroup[0];
+                      const teacherCount = slotsInGroup.length;
+                      const teacherNames = [...new Set(slotsInGroup.map(s => s.teacherName))];
+
+                      return (
+                        <div key={time} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
+                          <div className="space-y-1">
+                            <div className="font-medium text-primary">
+                              {firstSlot.clientTimeDisplay}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {teacherCount} teacher{teacherCount > 1 ? 's' : ''} available
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {firstSlot.egyptTimeDisplay}
+                            </div>
+                            <div className="text-xs text-blue-600">
+                              Teachers: {teacherNames.slice(0, 2).join(', ')}{teacherNames.length > 2 ? ` +${teacherNames.length - 2} more` : ''}
+                            </div>
+                            <div className="text-xs text-green-600">
+                              UTC: {firstSlot.utcStartTime} - {firstSlot.utcEndTime}
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {slot.egyptTimeDisplay}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Teacher: {slot.teacherName} ({slot.teacherType})
-                          </div>
-                          <div className="text-xs text-green-600">
-                            UTC: {slot.utcStartTime} - {slot.utcEndTime}
-                          </div>
+                          <Button 
+                            size="sm"
+                            className="ayat-button-primary"
+                            onClick={() => handleBookNow(slotsInGroup)}
+                          >
+                            Book Slot
+                          </Button>
                         </div>
-                        <Button 
-                          size="sm"
-                          className="ayat-button-primary"
-                          onClick={() => handleBookNow(slot)}
-                        >
-                          Book Slot
-                        </Button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   
                   {availableSlots.length > 0 && (
                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                       <p className="text-sm text-green-800">
-                        <strong>Found {availableSlots.length} available slot(s)</strong> from {new Set(availableSlots.map(s => s.teacherId)).size} qualified teacher(s)
+                        <strong>Found {Object.keys(groupSlotsByTime(availableSlots)).length} time slot(s)</strong> with {new Set(availableSlots.map(s => s.teacherId)).size} qualified teacher(s)
                       </p>
                       <p className="text-xs text-green-600 mt-1">
-                        All times shown with accurate timezone conversion
+                        Teacher assignment uses round-robin algorithm for fair distribution
                       </p>
                     </div>
                   )}
@@ -384,7 +395,12 @@ const SalesDashboard: React.FC = () => {
         isOpen={isBookingModalOpen}
         onClose={() => setIsBookingModalOpen(false)}
         onSubmit={handleBookingSubmit}
-        selectedSlot={selectedSlot ? `${selectedSlot.clientTimeDisplay} (${selectedSlot.egyptTimeDisplay})` : ''}
+        selectedSlot={selectedSlot ? 
+          (Array.isArray(selectedSlot) ? 
+            `${selectedSlot[0].clientTimeDisplay} (${selectedSlot[0].egyptTimeDisplay}) - ${selectedSlot.length} teacher(s) available` :
+            `${selectedSlot.clientTimeDisplay} (${selectedSlot.egyptTimeDisplay})`
+          ) : ''
+        }
         selectedDate={selectedDate || new Date()}
       />
     </div>
