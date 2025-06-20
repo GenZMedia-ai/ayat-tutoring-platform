@@ -156,30 +156,38 @@ export const useSalesAvailability = () => {
 
   const selectTeacherRoundRobin = async (availableTeacherIds: string[]): Promise<string | null> => {
     try {
-      // Find teacher who was booked longest ago (or never booked)
-      const { data: teacherToBook, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, last_booked_at')
-        .in('id', availableTeacherIds)
-        .order('last_booked_at', { ascending: true, nullsFirst: true })
-        .limit(1)
-        .single();
+      // Simple round-robin: find teacher with fewest recent bookings
+      const { data: teacherBookings, error } = await supabase
+        .from('students')
+        .select('assigned_teacher_id')
+        .in('assigned_teacher_id', availableTeacherIds)
+        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
 
-      if (error || !teacherToBook) {
-        console.error('Error selecting teacher via round-robin:', error);
-        return null;
+      if (error) {
+        console.error('Error fetching teacher bookings:', error);
+        return availableTeacherIds[0]; // Fallback to first available
       }
 
-      console.log('Round-robin selected teacher:', {
-        id: teacherToBook.id,
-        name: teacherToBook.full_name,
-        lastBookedAt: teacherToBook.last_booked_at
+      // Count bookings per teacher
+      const bookingCounts = availableTeacherIds.reduce((acc, teacherId) => {
+        acc[teacherId] = teacherBookings?.filter(b => b.assigned_teacher_id === teacherId).length || 0;
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Select teacher with fewest bookings
+      const selectedTeacherId = availableTeacherIds.reduce((best, current) => 
+        bookingCounts[current] < bookingCounts[best] ? current : best
+      );
+
+      console.log('Round-robin selected teacher:', { 
+        selectedTeacherId, 
+        bookingCounts 
       });
 
-      return teacherToBook.id;
+      return selectedTeacherId;
     } catch (error) {
       console.error('Round-robin selection failed:', error);
-      return null;
+      return availableTeacherIds[0]; // Fallback
     }
   };
 
@@ -230,10 +238,7 @@ export const useSalesAvailability = () => {
       }
 
       if (isMultiStudent && bookingData.students) {
-        // Multi-student booking logic
-        const newStudents = [];
-        
-        // Create all student records
+        // Multi-student booking logic - create separate sessions for each student
         for (let i = 0; i < bookingData.students.length; i++) {
           const student = bookingData.students[i];
           const { data: studentUniqueId } = await supabase.rpc('generate_student_unique_id');
@@ -243,7 +248,7 @@ export const useSalesAvailability = () => {
             name: student.name,
             age: student.age,
             phone: bookingData.phone,
-            country: 'Multi', // Will be derived from phone number
+            country: 'Multi',
             platform: bookingData.platform,
             notes: bookingData.notes || null,
             parent_name: bookingData.parentName,
@@ -267,43 +272,24 @@ export const useSalesAvailability = () => {
             return false;
           }
 
-          newStudents.push(newStudent);
+          // Create trial session for each student
+          const { error: sessionError } = await supabase
+            .from('sessions')
+            .insert([{
+              student_id: newStudent.id,
+              scheduled_date: dateStr,
+              scheduled_time: selectedSlot.utcStartTime,
+              status: 'scheduled'
+            }]);
+
+          if (sessionError) {
+            console.error('Error creating session:', sessionError);
+            toast.error(`Failed to create trial session for ${student.name}`);
+            return false;
+          }
         }
 
-        // Create one session for the family
-        const { data: newSession, error: sessionError } = await supabase
-          .from('sessions')
-          .insert([{
-            scheduled_date: dateStr,
-            scheduled_time: selectedSlot.utcStartTime,
-            status: 'scheduled'
-          }])
-          .select()
-          .single();
-
-        if (sessionError || !newSession) {
-          console.error('Error creating session:', sessionError);
-          toast.error('Failed to create trial session');
-          return false;
-        }
-
-        // Link all students to the session
-        const sessionStudentLinks = newStudents.map(student => ({
-          session_id: newSession.id,
-          student_id: student.id
-        }));
-
-        const { error: linkError } = await supabase
-          .from('session_students')
-          .insert(sessionStudentLinks);
-
-        if (linkError) {
-          console.error('Error linking students to session:', linkError);
-          toast.error('Failed to link students to session');
-          return false;
-        }
-
-        toast.success(`Family trial session booked successfully! Students: ${newStudents.map(s => s.name).join(', ')}`);
+        toast.success(`Family trial sessions booked successfully! Students: ${bookingData.students.map(s => s.name).join(', ')}`);
       } else {
         // Single student booking
         const studentData = {
@@ -311,7 +297,7 @@ export const useSalesAvailability = () => {
           name: bookingData.studentName,
           age: bookingData.age,
           phone: bookingData.phone,
-          country: 'Single', // Will be derived from phone number
+          country: 'Single',
           platform: bookingData.platform,
           notes: bookingData.notes || null,
           assigned_teacher_id: selectedTeacherId,
@@ -335,33 +321,18 @@ export const useSalesAvailability = () => {
         }
 
         // Create trial session
-        const { data: newSession, error: sessionError } = await supabase
+        const { error: sessionError } = await supabase
           .from('sessions')
           .insert([{
+            student_id: newStudent.id,
             scheduled_date: dateStr,
             scheduled_time: selectedSlot.utcStartTime,
             status: 'scheduled'
-          }])
-          .select()
-          .single();
-
-        if (sessionError || !newSession) {
-          console.error('Error creating session:', sessionError);
-          toast.error('Failed to create trial session');
-          return false;
-        }
-
-        // Link student to session
-        const { error: linkError } = await supabase
-          .from('session_students')
-          .insert([{
-            session_id: newSession.id,
-            student_id: newStudent.id
           }]);
 
-        if (linkError) {
-          console.error('Error linking student to session:', linkError);
-          toast.error('Failed to link student to session');
+        if (sessionError) {
+          console.error('Error creating session:', sessionError);
+          toast.error('Failed to create trial session');
           return false;
         }
 
@@ -375,12 +346,6 @@ export const useSalesAvailability = () => {
         .eq('teacher_id', selectedTeacherId)
         .eq('date', dateStr)
         .eq('time_slot', selectedSlot.utcStartTime);
-
-      // Update teacher's last_booked_at for round-robin
-      await supabase
-        .from('profiles')
-        .update({ last_booked_at: new Date().toISOString() })
-        .eq('id', selectedTeacherId);
 
       return true;
     } catch (error) {

@@ -117,7 +117,6 @@ export type Database = {
           full_name: string
           id: string
           language: string
-          last_booked_at: string | null
           phone: string
           role: string
           status: string
@@ -132,7 +131,6 @@ export type Database = {
           full_name: string
           id: string
           language?: string
-          last_booked_at?: string | null
           phone: string
           role: string
           status?: string
@@ -147,7 +145,6 @@ export type Database = {
           full_name?: string
           id?: string
           language?: string
-          last_booked_at?: string | null
           phone?: string
           role?: string
           status?: string
@@ -155,42 +152,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      session_students: {
-        Row: {
-          created_at: string
-          id: string
-          session_id: string
-          student_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          session_id: string
-          student_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          session_id?: string
-          student_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "session_students_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "session_students_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "students"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       sessions: {
         Row: {
@@ -204,6 +165,7 @@ export type Database = {
           scheduled_time: string
           session_number: number
           status: string
+          student_id: string
           updated_at: string
         }
         Insert: {
@@ -217,6 +179,7 @@ export type Database = {
           scheduled_time: string
           session_number?: number
           status?: string
+          student_id: string
           updated_at?: string
         }
         Update: {
@@ -230,9 +193,18 @@ export type Database = {
           scheduled_time?: string
           session_number?: number
           status?: string
+          student_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sessions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       students: {
         Row: {
