@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { format, parse } from 'date-fns';
-import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { format } from 'date-fns';
+import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
 
 const EGYPT_TIMEZONE = 'Africa/Cairo';
 
@@ -43,17 +43,19 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     
     // Create a date string in YYYY-MM-DD format
     const dateString = format(date, 'yyyy-MM-dd');
+    console.log('📅 Date String:', dateString);
     
-    // Create a full datetime string
-    const dateTimeString = `${dateString} ${time}`;
-    console.log('📅 Egypt DateTime String:', dateTimeString);
+    // Parse date and time components manually to avoid browser timezone contamination
+    const [year, month, day] = dateString.split('-').map(Number);
+    const [hours, minutes] = time.split(':').map(Number);
+    console.log('🔢 Date components:', { year, month, day, hours, minutes });
     
-    // Parse this string as if it's in Egypt timezone (browser-timezone agnostic)
-    const egyptDateTime = parse(dateTimeString, 'yyyy-MM-dd HH:mm', new Date());
-    console.log('🕰️ Parsed Egypt DateTime:', egyptDateTime);
+    // Create date in Egypt timezone directly (month is 0-indexed in JS Date)
+    const egyptDateTime = new Date(year, month - 1, day, hours, minutes, 0);
+    console.log('🕰️ Egypt DateTime (neutral):', egyptDateTime);
     
-    // Convert from Egypt timezone to UTC
-    const utcDateTime = fromZonedTime(egyptDateTime, EGYPT_TIMEZONE);
+    // Convert from Egypt timezone to UTC using zonedTimeToUtc
+    const utcDateTime = zonedTimeToUtc(egyptDateTime, EGYPT_TIMEZONE);
     console.log('🌐 UTC DateTime:', utcDateTime);
     
     // Format as HH:mm:ss for database storage
@@ -79,8 +81,8 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     const utcDateTime = new Date(utcDateTimeString + 'Z');
     console.log('🌐 Parsed UTC DateTime:', utcDateTime);
     
-    // Convert from UTC to Egypt timezone
-    const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
+    // Convert from UTC to Egypt timezone using utcToZonedTime
+    const egyptDateTime = utcToZonedTime(utcDateTime, EGYPT_TIMEZONE);
     console.log('🇪🇬 Egypt DateTime:', egyptDateTime);
     
     // Return formatted time as HH:mm
