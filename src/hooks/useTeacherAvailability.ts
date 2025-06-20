@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format, parse } from 'date-fns';
-import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 
 const EGYPT_TIMEZONE = 'Africa/Cairo';
 
@@ -53,7 +53,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     console.log('🕰️ Parsed Egypt DateTime:', egyptDateTime);
     
     // Convert from Egypt timezone to UTC
-    const utcDateTime = zonedTimeToUtc(egyptDateTime, EGYPT_TIMEZONE);
+    const utcDateTime = fromZonedTime(egyptDateTime, EGYPT_TIMEZONE);
     console.log('🌐 UTC DateTime:', utcDateTime);
     
     // Format as HH:mm:ss for database storage
@@ -80,7 +80,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     console.log('🌐 Parsed UTC DateTime:', utcDateTime);
     
     // Convert from UTC to Egypt timezone
-    const egyptDateTime = utcToZonedTime(utcDateTime, EGYPT_TIMEZONE);
+    const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
     console.log('🇪🇬 Egypt DateTime:', egyptDateTime);
     
     // Return formatted time as HH:mm
