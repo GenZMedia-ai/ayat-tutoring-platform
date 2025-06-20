@@ -1,8 +1,11 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
+
+const EGYPT_TIMEZONE = 'Africa/Cairo';
 
 export interface TimeSlot {
   id?: string;
@@ -33,26 +36,32 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     return slots;
   };
 
-  // Convert Egypt time to UTC for database storage
+  // Convert Egypt time to UTC for database storage using proper timezone handling
   const egyptTimeToUTC = (date: Date, time: string): string => {
+    // Parse the time in Egypt timezone
     const [hours, minutes] = time.split(':').map(Number);
     const egyptDate = new Date(date);
     egyptDate.setHours(hours, minutes, 0, 0);
-    
-    // Egypt is UTC+2, so subtract 2 hours to get UTC
-    const utcDate = new Date(egyptDate.getTime() - (2 * 60 * 60 * 1000));
-    return utcDate.toTimeString().slice(0, 8);
+
+    // Convert to UTC using proper timezone handling (handles DST automatically)
+    const utcDate = zonedTimeToUtc(egyptDate, EGYPT_TIMEZONE);
+
+    // Format as HH:mm:ss for database storage
+    return format(utcDate, 'HH:mm:ss');
   };
 
   // Convert UTC time from database to Egypt time for display
   const utcToEgyptTime = (utcTime: string): string => {
+    // Create a date object for today with the UTC time
+    const today = new Date();
     const [hours, minutes] = utcTime.split(':').map(Number);
-    const utcDate = new Date();
-    utcDate.setHours(hours, minutes, 0, 0);
-    
-    // Add 2 hours to convert from UTC to Egypt time
-    const egyptDate = new Date(utcDate.getTime() + (2 * 60 * 60 * 1000));
-    return `${egyptDate.getHours().toString().padStart(2, '0')}:${egyptDate.getMinutes().toString().padStart(2, '0')}`;
+    today.setUTCHours(hours, minutes, 0, 0);
+
+    // Convert to Egypt timezone (handles DST automatically)
+    const egyptDate = utcToZonedTime(today, EGYPT_TIMEZONE);
+
+    // Return formatted time as HH:mm
+    return format(egyptDate, 'HH:mm');
   };
 
   // Fetch availability data from database
