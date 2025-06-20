@@ -24,17 +24,36 @@ export const TIMEZONES = [
   { value: 'oman', label: 'Oman (GMT+4)', offset: 4 }
 ] as const;
 
-// Convert client timezone hour to UTC hour range
+// Convert client timezone hour to UTC hour range with comprehensive debugging
 export const convertToUTCRange = (clientHour: number, timezoneOffset: number) => {
+  console.log('=== TIMEZONE CONVERSION DEBUG ===');
+  console.log('Input - Client Hour:', clientHour, 'Timezone Offset:', timezoneOffset);
+  
+  // Convert client time to UTC
   const utcHour = clientHour - timezoneOffset;
+  console.log('Raw UTC Hour (before boundary handling):', utcHour);
   
   // Handle day boundary crossings
-  const startHour = utcHour < 0 ? utcHour + 24 : utcHour >= 24 ? utcHour - 24 : utcHour;
-  const endHour = startHour === 23 ? 0 : startHour + 1;
+  let startHour = utcHour;
+  if (utcHour < 0) {
+    startHour = utcHour + 24;
+    console.log('Negative UTC hour, adjusting:', startHour);
+  } else if (utcHour >= 24) {
+    startHour = utcHour - 24;
+    console.log('UTC hour >= 24, adjusting:', startHour);
+  }
   
-  return {
+  const endHour = startHour === 23 ? 0 : startHour + 1;
+  const crossesMidnight = utcHour < 0 || utcHour >= 24;
+  
+  const result = {
     startTime: `${String(startHour).padStart(2, '0')}:00:00`,
     endTime: `${String(endHour).padStart(2, '0')}:00:00`,
-    crossesMidnight: utcHour < 0 || utcHour >= 24
+    crossesMidnight
   };
+  
+  console.log('Final conversion result:', result);
+  console.log('=== END TIMEZONE CONVERSION ===');
+  
+  return result;
 };
