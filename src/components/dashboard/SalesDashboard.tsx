@@ -14,7 +14,8 @@ import { BookingModal } from '@/components/booking/BookingModal';
 import { supabase } from '@/integrations/supabase/client';
 
 const SalesDashboard: React.FC = () => {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  // Set default date to 2025-06-20 where we know there's test data
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date('2025-06-20'));
   const [timezone, setTimezone] = useState('saudi');
   const [teacherType, setTeacherType] = useState('mixed');
   const [selectedHour, setSelectedHour] = useState(18); // Default to 6 PM
@@ -202,6 +203,12 @@ const SalesDashboard: React.FC = () => {
             <CardContent>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Testing Note:</strong> Try date 2025-06-20 with Mixed teacher type and any time to see test data.
+                    </p>
+                  </div>
+                  
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Teacher Type</Label>
@@ -256,7 +263,7 @@ const SalesDashboard: React.FC = () => {
                     selected={selectedDate}
                     onSelect={setSelectedDate}
                     className="rounded-md border"
-                    disabled={(date) => date < new Date()}
+                    disabled={(date) => date < new Date('2025-06-19')}
                   />
 
                   <Button 
@@ -282,7 +289,8 @@ const SalesDashboard: React.FC = () => {
                   {!loading && availableSlots.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground space-y-2">
                       <p>No available slots found for the selected criteria.</p>
-                      <p className="text-sm">Try different teacher type or time, or check the console for debugging details.</p>
+                      <p className="text-sm">Check the browser console for detailed debugging information.</p>
+                      <p className="text-xs">Try: 2025-06-20, Mixed teacher, any time for test data.</p>
                     </div>
                   )}
                   

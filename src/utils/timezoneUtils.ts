@@ -20,78 +20,60 @@ export const convertClientHourToUTCRanges = (
   
   // Create two 30-minute slots within the hour
   for (let minutes = 0; minutes < 60; minutes += 30) {
-    const clientMinutes = clientHour * 60 + minutes;
-    const utcMinutes = clientMinutes - (timezoneOffset * 60);
+    // Calculate UTC time correctly
+    const utcHour = clientHour - timezoneOffset;
+    let adjustedUtcHour = utcHour;
     
     // Handle day boundary crossings
-    let utcHours = Math.floor(utcMinutes / 60);
-    let utcMins = utcMinutes % 60;
-    
-    if (utcHours < 0) {
-      utcHours += 24;
-    } else if (utcHours >= 24) {
-      utcHours -= 24;
+    if (utcHour < 0) {
+      adjustedUtcHour = utcHour + 24;
+    } else if (utcHour >= 24) {
+      adjustedUtcHour = utcHour - 24;
     }
     
-    if (utcMins < 0) {
-      utcMins += 60;
-      utcHours -= 1;
-      if (utcHours < 0) utcHours += 24;
-    }
-    
-    const startUtcTime = `${String(utcHours).padStart(2, '0')}:${String(utcMins).padStart(2, '0')}:00`;
+    const startUtcTime = `${String(adjustedUtcHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
     
     // Calculate end time (30 minutes later)
-    let endUtcMinutes = utcMinutes + 30;
-    let endUtcHours = Math.floor(endUtcMinutes / 60);
-    let endUtcMins = endUtcMinutes % 60;
+    const endMinutes = minutes + 30;
+    let endHour = adjustedUtcHour;
+    let finalEndMinutes = endMinutes;
     
-    if (endUtcHours >= 24) {
-      endUtcHours -= 24;
+    if (endMinutes >= 60) {
+      endHour += 1;
+      finalEndMinutes = 0;
+      if (endHour >= 24) {
+        endHour = 0;
+      }
     }
     
-    const endUtcTime = `${String(endUtcHours).padStart(2, '0')}:${String(endUtcMins).padStart(2, '0')}:00`;
+    const endUtcTime = `${String(endHour).padStart(2, '0')}:${String(finalEndMinutes).padStart(2, '0')}:00`;
     
     // Calculate Egypt time (UTC+2)
-    const egyptMinutes = utcMinutes + (2 * 60);
-    let egyptHours = Math.floor(egyptMinutes / 60);
-    let egyptMins = egyptMinutes % 60;
+    const egyptHour = adjustedUtcHour + 2;
+    let adjustedEgyptHour = egyptHour;
     
-    if (egyptHours >= 24) {
-      egyptHours -= 24;
-    } else if (egyptHours < 0) {
-      egyptHours += 24;
+    if (egyptHour >= 24) {
+      adjustedEgyptHour = egyptHour - 24;
+    } else if (egyptHour < 0) {
+      adjustedEgyptHour = egyptHour + 24;
     }
     
-    if (egyptMins < 0) {
-      egyptMins += 60;
-      egyptHours -= 1;
-      if (egyptHours < 0) egyptHours += 24;
-    }
-    
-    const egyptEndMinutes = egyptMinutes + 30;
-    let egyptEndHours = Math.floor(egyptEndMinutes / 60);
-    let egyptEndMins = egyptEndMinutes % 60;
-    
-    if (egyptEndHours >= 24) {
-      egyptEndHours -= 24;
-    }
+    const egyptEndHour = adjustedEgyptHour + (endMinutes >= 60 ? 1 : 0);
+    let adjustedEgyptEndHour = egyptEndHour >= 24 ? egyptEndHour - 24 : egyptEndHour;
     
     // Format display times
-    const clientStartHour = clientHour;
-    const clientStartMin = minutes;
-    const clientEndMin = minutes + 30;
-    const clientEndHour = clientEndMin >= 60 ? clientStartHour + 1 : clientStartHour;
-    const adjustedClientEndMin = clientEndMin >= 60 ? 0 : clientEndMin;
-    
     const formatTime = (hour: number, min: number) => {
       const period = hour >= 12 ? 'PM' : 'AM';
       const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
       return `${displayHour}:${String(min).padStart(2, '0')} ${period}`;
     };
     
-    const clientDisplay = `${formatTime(clientStartHour, clientStartMin)}-${formatTime(clientEndHour, adjustedClientEndMin)}`;
-    const egyptDisplay = `${formatTime(egyptHours, egyptMins)}-${formatTime(egyptEndHours, egyptEndMins)} (Egypt)`;
+    const clientStartMin = minutes;
+    const clientEndMin = endMinutes >= 60 ? 0 : endMinutes;
+    const clientEndHour = endMinutes >= 60 ? clientHour + 1 : clientHour;
+    
+    const clientDisplay = `${formatTime(clientHour, clientStartMin)}-${formatTime(clientEndHour, clientEndMin)}`;
+    const egyptDisplay = `${formatTime(adjustedEgyptHour, minutes)}-${formatTime(adjustedEgyptEndHour, finalEndMinutes)} (Egypt)`;
     
     ranges.push({
       utcStartTime: startUtcTime,
@@ -103,12 +85,27 @@ export const convertClientHourToUTCRanges = (
     console.log(`Slot ${minutes/30 + 1}:`, {
       clientTime: clientDisplay,
       egyptTime: egyptDisplay,
-      utcRange: `${startUtcTime} - ${endUtcTime}`
+      utcRange: `${startUtcTime} - ${endUtcTime}`,
+      calculations: {
+        originalClientHour: clientHour,
+        timezoneOffset: timezoneOffset,
+        rawUtcHour: utcHour,
+        adjustedUtcHour: adjustedUtcHour,
+        egyptHour: adjustedEgyptHour
+      }
     });
   }
   
   console.log('=== END TIMEZONE CONVERSION ===');
   return ranges;
+};
+
+// Simple UTC conversion for direct hour matching (fallback approach)
+export const convertClientHourToUTC = (clientHour: number, timezoneOffset: number): number => {
+  const utcHour = clientHour - timezoneOffset;
+  if (utcHour < 0) return utcHour + 24;
+  if (utcHour >= 24) return utcHour - 24;
+  return utcHour;
 };
 
 export const getTimezoneConfig = (timezoneValue: string) => {

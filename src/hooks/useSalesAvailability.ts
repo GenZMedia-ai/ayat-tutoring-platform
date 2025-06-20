@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -41,7 +40,42 @@ export const useSalesAvailability = () => {
       setAvailableSlots(slots);
       
       if (slots.length === 0) {
-        toast.info(`No available ${teacherType} teachers found for the selected hour`);
+        // Provide detailed diagnostic information
+        const dateStr = date.toISOString().split('T')[0];
+        console.log('No slots found. Running diagnostic...');
+        
+        // Check if there's any availability at all for this date
+        const { data: anyAvailability } = await supabase
+          .from('teacher_availability')
+          .select('time_slot, teacher_id')
+          .eq('date', dateStr)
+          .eq('is_available', true)
+          .eq('is_booked', false);
+        
+        // Check if there are any approved teachers of the requested type
+        const { data: teachersOfType } = await supabase
+          .from('profiles')
+          .select('id, full_name, teacher_type')
+          .eq('role', 'teacher')
+          .eq('status', 'approved')
+          .or(`teacher_type.eq.${teacherType},teacher_type.eq.mixed`);
+        
+        console.log('Diagnostic Results:', {
+          anyAvailabilityForDate: anyAvailability,
+          teachersOfRequestedType: teachersOfType
+        });
+        
+        let message = `No available ${teacherType} teachers found for the selected hour.`;
+        
+        if (!anyAvailability || anyAvailability.length === 0) {
+          message += ` No availability data exists for ${dateStr}.`;
+        } else if (!teachersOfType || teachersOfType.length === 0) {
+          message += ` No approved ${teacherType} teachers found in the system.`;
+        } else {
+          message += ` Try a different time or date. Available times: ${anyAvailability.map(a => a.time_slot).join(', ')}`;
+        }
+        
+        toast.info(message);
       } else {
         const teacherCount = new Set(slots.map(s => s.teacherId)).size;
         toast.success(`Found ${slots.length} available slot(s) from ${teacherCount} teacher(s)`);
@@ -49,7 +83,7 @@ export const useSalesAvailability = () => {
       
     } catch (error) {
       console.error('Error checking availability:', error);
-      toast.error('Failed to check availability');
+      toast.error(`Failed to check availability: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setAvailableSlots([]);
     } finally {
       setLoading(false);
