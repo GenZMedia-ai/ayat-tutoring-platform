@@ -45,8 +45,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            Book Trial Session - {selectedSlot} on {selectedDate.toDateString()}
+            Book Trial Session
           </DialogTitle>
+          <div className="text-sm text-muted-foreground space-y-1">
+            <div><strong>Time:</strong> {selectedSlot}</div>
+            <div><strong>Date:</strong> {selectedDate.toDateString()}</div>
+          </div>
         </DialogHeader>
 
         {bookingType === 'select' && (

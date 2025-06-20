@@ -19,7 +19,7 @@ const SalesDashboard: React.FC = () => {
   const [teacherType, setTeacherType] = useState('mixed');
   const [selectedHour, setSelectedHour] = useState(18); // Default to 6 PM
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [salesStats, setSalesStats] = useState({
     todayTrials: 0,
     pendingFollowup: 0,
@@ -90,7 +90,7 @@ const SalesDashboard: React.FC = () => {
       toast.error('Please select a date');
       return;
     }
-    console.log('Searching availability with simplified params:', {
+    console.log('Searching availability with parameters:', {
       date: selectedDate,
       timezone,
       teacherType,
@@ -99,13 +99,13 @@ const SalesDashboard: React.FC = () => {
     checkAvailability(selectedDate, timezone, teacherType, selectedHour);
   };
 
-  const handleBookNow = (timeSlot: string) => {
-    setSelectedSlot(timeSlot);
+  const handleBookNow = (slot: any) => {
+    setSelectedSlot(slot);
     setIsBookingModalOpen(true);
   };
 
   const handleBookingSubmit = async (data: BookingData, isMultiStudent: boolean) => {
-    if (!selectedDate) return false;
+    if (!selectedDate || !selectedSlot) return false;
     
     const success = await bookTrialSession(
       data,
@@ -194,9 +194,9 @@ const SalesDashboard: React.FC = () => {
         <TabsContent value="quick-checker" className="space-y-4">
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>Quick Availability Checker</CardTitle>
+              <CardTitle>Real-Time Availability Checker</CardTitle>
               <CardDescription>
-                Find available hourly slots instantly for new trial bookings
+                Find exact 30-minute slots with real database data and timezone-accurate times
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -275,36 +275,55 @@ const SalesDashboard: React.FC = () => {
                   
                   {loading && (
                     <div className="text-center py-8 text-muted-foreground">
-                      Searching for available slots...
+                      Searching for real-time availability...
                     </div>
                   )}
                   
                   {!loading && availableSlots.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground space-y-2">
-                      <p>No available slots found.</p>
-                      <p className="text-sm">Try different criteria or check the console for debugging info.</p>
+                      <p>No available slots found for the selected criteria.</p>
+                      <p className="text-sm">Try different teacher type or time, or check the console for debugging details.</p>
                     </div>
                   )}
                   
                   <div className="space-y-2">
                     {availableSlots.map((slot) => (
-                      <div key={slot.timeSlot} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                        <div>
-                          <span className="font-medium">{slot.timeSlot}</span>
-                          <p className="text-sm text-muted-foreground">
-                            {slot.availableTeachers} teacher{slot.availableTeachers !== 1 ? 's' : ''} available
-                          </p>
+                      <div key={slot.id} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
+                        <div className="space-y-1">
+                          <div className="font-medium text-primary">
+                            {slot.clientTimeDisplay}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {slot.egyptTimeDisplay}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Teacher: {slot.teacherName} ({slot.teacherType})
+                          </div>
+                          <div className="text-xs text-green-600">
+                            UTC: {slot.utcStartTime} - {slot.utcEndTime}
+                          </div>
                         </div>
                         <Button 
                           size="sm"
                           className="ayat-button-primary"
-                          onClick={() => handleBookNow(slot.timeSlot)}
+                          onClick={() => handleBookNow(slot)}
                         >
-                          Book Now
+                          Book Slot
                         </Button>
                       </div>
                     ))}
                   </div>
+                  
+                  {availableSlots.length > 0 && (
+                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-800">
+                        <strong>Found {availableSlots.length} available slot(s)</strong> from {new Set(availableSlots.map(s => s.teacherId)).size} qualified teacher(s)
+                      </p>
+                      <p className="text-xs text-green-600 mt-1">
+                        All times shown are real data from the database with accurate timezone conversion
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -352,7 +371,7 @@ const SalesDashboard: React.FC = () => {
         isOpen={isBookingModalOpen}
         onClose={() => setIsBookingModalOpen(false)}
         onSubmit={handleBookingSubmit}
-        selectedSlot={selectedSlot}
+        selectedSlot={selectedSlot ? `${selectedSlot.clientTimeDisplay} (${selectedSlot.egyptTimeDisplay})` : ''}
         selectedDate={selectedDate || new Date()}
       />
     </div>
