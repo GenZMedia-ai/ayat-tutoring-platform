@@ -56,7 +56,7 @@ export const useSalesAvailability = () => {
     console.log('All availability for date:', allAvailability);
     
     // Step 2: Check available slots in specific time range (matching availability service)
-    console.log('Step 1: Checking available slots in time range...');
+    console.log('Step 2: Checking available slots in time range...');
     const { data: availableData, error: availableError } = await supabase
       .from('teacher_availability')
       .select('time_slot, teacher_id')
@@ -68,24 +68,26 @@ export const useSalesAvailability = () => {
     
     console.log('Available slots in time range:', { data: availableData, error: availableError });
     
-    // Step 2: Get teacher IDs from available slots
+    // Step 3: Get teacher IDs from available slots
     const availableTeacherIds = availableData?.map(slot => slot.teacher_id) || [];
     console.log('Teacher IDs from available slots:', availableTeacherIds);
     
-    // Step 3: Build teacher type filter (exact same logic as availability service)
+    // Step 4: Build teacher type filter - FIXED TO USE CORRECT TEACHER TYPES
     let teacherTypeFilter: string[];
     if (teacherType === 'mixed') {
-      teacherTypeFilter = ['arabic', 'english', 'mixed'];
+      // When searching for 'mixed', include all teacher types since mixed teachers can handle any type
+      teacherTypeFilter = ['kids', 'adult', 'mixed', 'expert'];
       console.log('Searching for mixed teachers - including all types');
     } else {
+      // When searching for specific type, include that type + mixed teachers
       teacherTypeFilter = [teacherType, 'mixed'];
       console.log(`Searching for ${teacherType} teachers - including mixed`);
     }
     
     console.log('Teacher Type Filter:', teacherTypeFilter);
     
-    // Step 4: Query teachers with exact same approach as availability service
-    console.log('Step 3: Querying teacher profiles with availability service logic...');
+    // Step 5: Query teachers with exact same approach as availability service
+    console.log('Step 5: Querying teacher profiles with availability service logic...');
     let matchingTeachers = null;
     let teacherError = null;
     
@@ -136,7 +138,7 @@ export const useSalesAvailability = () => {
       message += `👥 Teacher IDs from slots: ${availableTeacherIds.length} (${availableTeacherIds.slice(0, 3).join(', ')}${availableTeacherIds.length > 3 ? '...' : ''})\n`;
     }
     
-    message += `🎯 Teacher type filter: [${teacherTypeFilter.join(', ')}]\n`;
+    message += `🎯 Teacher type filter: [${teacherTypeFilter.join(', ')}] (FIXED - using correct system teacher types)\n`;
     
     if (teacherError) {
       message += `❌ Error querying teachers: ${teacherError.message}\n`;

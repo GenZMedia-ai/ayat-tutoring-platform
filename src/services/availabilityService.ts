@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { GranularTimeSlot } from '@/types/availability';
 import { convertClientHourToUTC, getTimezoneConfig } from '@/utils/timezoneUtils';
@@ -91,11 +90,11 @@ export class AvailabilityService {
     const teacherIds = [...new Set(availability.map(slot => slot.teacher_id))];
     console.log('Teacher IDs from slots:', teacherIds);
     
-    // Step 3: Build teacher type filter - FIXED LOGIC
+    // Step 3: Build teacher type filter - FIXED TO USE CORRECT TEACHER TYPES
     let teacherTypeFilter: string[];
     if (teacherType === 'mixed') {
-      // When searching for 'mixed', include both 'mixed' teachers and all other types
-      teacherTypeFilter = ['arabic', 'english', 'mixed'];
+      // When searching for 'mixed', include all teacher types since mixed teachers can handle any type
+      teacherTypeFilter = ['kids', 'adult', 'mixed', 'expert'];
       console.log('Searching for mixed teachers - including all types');
     } else {
       // When searching for specific type, include that type + mixed teachers
