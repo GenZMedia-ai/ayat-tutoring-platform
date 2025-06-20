@@ -56,7 +56,8 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     console.log('🌐 UTC DateTime:', utcDateTime);
     
     // Format as HH:mm:ss for database storage
-    const utcTime = format(utcDateTime, 'HH:mm:ss');
+    // CRITICAL: Use toISOString() to preserve UTC time, not format() which uses local timezone
+    const utcTime = utcDateTime.toISOString().substring(11, 19);
     console.log('✅ UTC time for storage:', utcTime);
     
     // Also log the full UTC datetime to verify date hasn't shifted
