@@ -346,6 +346,17 @@ export type Database = {
         }
         Returns: string
       }
+      book_trial_session: {
+        Args: {
+          p_booking_data: Json
+          p_is_multi_student: boolean
+          p_selected_date: string
+          p_utc_start_time: string
+          p_teacher_type: string
+          p_available_teacher_ids: string[]
+        }
+        Returns: Json
+      }
       generate_student_unique_id: {
         Args: Record<PropertyKey, never>
         Returns: string
