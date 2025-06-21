@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,13 +8,19 @@ import { toast } from 'sonner';
 import { useTeacherAvailability } from '@/hooks/useTeacherAvailability';
 import { useServerDate } from '@/hooks/useServerDate';
 import { useTeacherTrialSessions } from '@/hooks/useTeacherTrialSessions';
+import { useStudentStatusManagement } from '@/hooks/useStudentStatusManagement';
+import { TeacherStudentCard } from '@/components/teacher/TeacherStudentCard';
+import { RescheduleModal } from '@/components/teacher/RescheduleModal';
 import { Trash2, Lock, Eye } from 'lucide-react';
+import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
 
 const TeacherDashboard: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [rescheduleStudent, setRescheduleStudent] = useState<TrialStudent | null>(null);
   const { timeSlots, loading, toggleAvailability } = useTeacherAvailability(selectedDate);
   const { isDateToday, loading: dateLoading } = useServerDate();
-  const { trialStudents, loading: trialsLoading, confirmTrial } = useTeacherTrialSessions();
+  const { trialStudents, loading: trialsLoading, confirmTrial, refreshTrialSessions } = useTeacherTrialSessions();
+  const { updateStudentStatus, rescheduleStudent: performReschedule } = useStudentStatusManagement();
   
   // Check if selected date is today according to server
   const isSelectedDateToday = isDateToday(selectedDate);
@@ -51,10 +56,27 @@ const TeacherDashboard: React.FC = () => {
     }
   };
 
+  const handleStatusChange = async (studentId: string, newStatus: string) => {
+    const success = await updateStudentStatus(studentId, newStatus);
+    if (success) {
+      refreshTrialSessions();
+    }
+  };
+
+  const handleReschedule = (student: TrialStudent) => {
+    setRescheduleStudent(student);
+  };
+
+  const handleRescheduleSuccess = () => {
+    setRescheduleStudent(null);
+    refreshTrialSessions();
+  };
+
   const handleCompleteSession = (sessionId: string) => {
     toast.success('Session marked as completed!');
   };
 
+  // Render time slot button based on availability status
   const renderTimeSlotButton = (slot: { time: string; isAvailable: boolean; isBooked: boolean }) => {
     const isDisabled = loading || dateLoading || (isSelectedDateToday && !slot.isBooked);
 
@@ -393,78 +415,31 @@ const TeacherDashboard: React.FC = () => {
             <CardHeader>
               <CardTitle>Trial Session Management</CardTitle>
               <CardDescription>
-                Manage trial sessions and confirmations
+                Manage trial sessions and confirmations. Right-click on cards for more options.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {trialsLoading ? (
                 <p className="text-center text-muted-foreground py-8">Loading trial sessions...</p>
               ) : (
-                <div className="space-y-4">
-                  {trialStudents.map((student) => (
-                    <div key={student.id} className="p-4 border border-border rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium">{student.name}</h4>
-                            <span className="text-xs text-muted-foreground">({student.uniqueId})</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-muted-foreground">Age:</span> {student.age}
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Phone:</span> {student.phone}
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Country:</span> {student.country}
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Trial Date:</span> {student.trialDate || 'Not set'}
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Trial Time:</span> {student.trialTime || 'Not set'}
-                            </div>
-                            {student.parentName && (
-                              <div>
-                                <span className="text-muted-foreground">Parent:</span> {student.parentName}
-                              </div>
-                            )}
-                          </div>
-                          {student.notes && (
-                            <div className="text-sm">
-                              <span className="text-muted-foreground">Notes:</span> {student.notes}
-                            </div>
-                          )}
-                          <Badge className={student.status === 'pending' ? 'status-pending' : 'status-active'}>
-                            {student.status === 'pending' ? 'Pending Confirmation' : 'Confirmed'}
-                          </Badge>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleContactStudent(student.id, student.phone)}
-                          >
-                            WhatsApp Contact
-                          </Button>
-                          {student.status === 'pending' && (
-                            <Button 
-                              size="sm"
-                              className="ayat-button-primary"
-                              onClick={() => handleConfirmTrial(student.id)}
-                            >
-                              Confirm Appointment
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {trialStudents.length === 0 && (
+                <>
+                  {trialStudents.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">No trial sessions found</p>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {trialStudents.map((student) => (
+                        <TeacherStudentCard
+                          key={student.id}
+                          student={student}
+                          onContact={handleContactStudent}
+                          onConfirm={handleConfirmTrial}
+                          onStatusChange={handleStatusChange}
+                          onReschedule={handleReschedule}
+                        />
+                      ))}
+                    </div>
                   )}
-                </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -524,6 +499,14 @@ const TeacherDashboard: React.FC = () => {
           />
         </TabsContent>
       </Tabs>
+
+      {/* Reschedule Modal */}
+      <RescheduleModal
+        student={rescheduleStudent}
+        open={!!rescheduleStudent}
+        onClose={() => setRescheduleStudent(null)}
+        onSuccess={handleRescheduleSuccess}
+      />
     </div>
   );
 };
