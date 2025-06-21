@@ -3,11 +3,17 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Student } from '@/types';
 
-export interface TrialStudent extends Student {
+export interface TrialStudent {
+  id: string;
+  name: string;
+  age: number;
+  phone: string;
+  country: string;
   trialDate: string;
   trialTime: string;
+  status: string;
+  uniqueId: string;
   parentName?: string;
   notes?: string;
 }
@@ -41,23 +47,16 @@ export const useTeacherTrialSessions = () => {
 
       const mappedStudents: TrialStudent[] = data?.map(student => ({
         id: student.id,
-        uniqueId: student.unique_id,
         name: student.name,
         age: student.age,
         phone: student.phone,
         country: student.country,
-        platform: student.platform as 'zoom' | 'google-meet',
-        notes: student.notes || undefined,
-        status: student.status as any,
-        parentName: student.parent_name,
-        assignedTeacher: student.assigned_teacher_id,
-        assignedSalesAgent: student.assigned_sales_agent_id,
-        assignedSupervisor: student.assigned_supervisor_id || undefined,
         trialDate: student.trial_date || '',
         trialTime: student.trial_time || '',
-        teacherType: student.teacher_type as any,
-        createdAt: student.created_at,
-        updatedAt: student.updated_at,
+        status: student.status,
+        uniqueId: student.unique_id,
+        parentName: student.parent_name,
+        notes: student.notes,
       })) || [];
 
       setTrialStudents(mappedStudents);
