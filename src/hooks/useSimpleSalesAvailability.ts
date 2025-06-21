@@ -66,7 +66,7 @@ export const useSimpleSalesAvailability = () => {
     isMultiStudent: boolean
   ): Promise<boolean> => {
     try {
-      console.log('=== SIMPLE BOOKING START ===');
+      console.log('=== ENHANCED BOOKING START ===');
       console.log('Booking parameters:', { 
         selectedDate, 
         slotId: selectedSlot.id,
@@ -75,7 +75,7 @@ export const useSimpleSalesAvailability = () => {
         isMultiStudent 
       });
       
-      // Use the simplified booking function
+      // Enhanced booking with better error handling
       const { data, error } = await supabase.rpc('simple_book_trial_session', {
         p_booking_data: bookingData,
         p_is_multi_student: isMultiStudent,
@@ -85,11 +85,29 @@ export const useSimpleSalesAvailability = () => {
         p_teacher_id: selectedSlot.teacherId
       });
 
-      console.log('Simple booking response:', { data, error });
+      console.log('Enhanced booking response:', { data, error });
 
       if (error) {
-        console.error('Simple booking error:', error);
-        toast.error(`Booking failed: ${error.message}`);
+        console.error('Enhanced booking error:', error);
+        
+        // Enhanced error handling with specific messages
+        let errorMessage = 'Booking failed - please try again';
+        
+        if (error.message?.includes('Cannot modify availability for today')) {
+          errorMessage = 'Unable to book for today due to schedule protection. Please try a future date or contact support.';
+        } else if (error.message?.includes('Time slot no longer available')) {
+          errorMessage = 'This time slot was just booked by someone else. Please select another time.';
+        } else if (error.message?.includes('Teacher not found')) {
+          errorMessage = 'Teacher information is unavailable. Please refresh and try again.';
+        } else if (error.message?.includes('Authentication required')) {
+          errorMessage = 'Please log in again to complete the booking.';
+        } else if (error.message?.includes('Access denied')) {
+          errorMessage = 'You do not have permission to book sessions. Please contact your administrator.';
+        } else if (error.message) {
+          errorMessage = `Booking failed: ${error.message}`;
+        }
+        
+        toast.error(errorMessage);
         return false;
       }
 
@@ -100,24 +118,42 @@ export const useSimpleSalesAvailability = () => {
         const teacherName = bookingResult.teacher_name || 'Unknown Teacher';
         const studentNames = bookingResult.student_names || '';
         
-        console.log('Simple booking success:', {
+        console.log('Enhanced booking success:', {
           teacherName,
           studentNames,
           sessionId: bookingResult.session_id
         });
         
         toast.success(
-          `Trial session booked successfully with ${teacherName} for ${studentNames}`
+          `✅ Trial session booked successfully with ${teacherName} for ${studentNames}`,
+          {
+            duration: 5000,
+            description: `Time: ${selectedSlot.clientTimeDisplay}`
+          }
         );
         return true;
       } else {
-        console.error('Simple booking failed - no success flag');
+        console.error('Enhanced booking failed - no success flag');
         toast.error('Booking failed - please try again');
         return false;
       }
     } catch (error) {
-      console.error('Simple booking exception:', error);
-      toast.error('Booking failed due to system error');
+      console.error('Enhanced booking exception:', error);
+      
+      // Enhanced exception handling
+      let errorMessage = 'Booking failed due to system error';
+      
+      if (error instanceof Error) {
+        if (error.message?.includes('network') || error.message?.includes('fetch')) {
+          errorMessage = 'Network error - please check your connection and try again';
+        } else if (error.message?.includes('timeout')) {
+          errorMessage = 'Request timed out - please try again';
+        } else {
+          errorMessage = `System error: ${error.message}`;
+        }
+      }
+      
+      toast.error(errorMessage);
       return false;
     }
   };

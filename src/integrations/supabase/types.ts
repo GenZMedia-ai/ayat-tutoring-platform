@@ -555,6 +555,18 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      log_booking_operation: {
+        Args: {
+          p_operation_type: string
+          p_availability_id: string
+          p_teacher_id: string
+          p_date: string
+          p_time_slot: string
+          p_success: boolean
+          p_error_message?: string
+        }
+        Returns: undefined
+      }
       log_whatsapp_contact: {
         Args: {
           p_student_id: string
