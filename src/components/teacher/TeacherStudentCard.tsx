@@ -17,11 +17,11 @@ import {
   RotateCcw
 } from 'lucide-react';
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
 import { format } from 'date-fns';
 
@@ -66,7 +66,7 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
     }
   };
 
-  const getContextMenuOptions = () => {
+  const getMenuOptions = () => {
     const options = [];
 
     if (student.status === 'pending') {
@@ -92,87 +92,86 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
   };
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <CardHeader className="pb-3">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="font-semibold text-lg">{student.name}</h3>
-                  {getStatusBadge(student.status)}
-                </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span className="font-mono">{student.uniqueId}</span>
-                  <span>Age: {student.age}</span>
-                  {student.parentName && (
-                    <span>Parent: {student.parentName}</span>
-                  )}
-                </div>
-              </div>
+    <Card className="hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="font-semibold text-lg">{student.name}</h3>
+              {getStatusBadge(student.status)}
+            </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span className="font-mono">{student.uniqueId}</span>
+              <span>Age: {student.age}</span>
+              {student.parentName && (
+                <span>Parent: {student.parentName}</span>
+              )}
+            </div>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
-            </div>
-          </CardHeader>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {getMenuOptions().map((option, index) => (
+                <DropdownMenuItem key={index} onClick={option.action}>
+                  <option.icon className="mr-2 h-4 w-4" />
+                  {option.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardHeader>
 
-          <CardContent className="space-y-4">
-            {/* Contact Information */}
-            <div className="grid grid-cols-1 gap-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{student.phone}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{student.country}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>{formatDateTime(student.trialDate, student.trialTime)}</span>
-              </div>
-            </div>
+      <CardContent className="space-y-4">
+        {/* Contact Information */}
+        <div className="grid grid-cols-1 gap-3">
+          <div className="flex items-center gap-2 text-sm">
+            <Phone className="h-4 w-4 text-muted-foreground" />
+            <span>{student.phone}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <span>{student.country}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span>{formatDateTime(student.trialDate, student.trialTime)}</span>
+          </div>
+        </div>
 
-            {/* Notes */}
-            {student.notes && (
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm">
-                  <strong>Notes:</strong> {student.notes}
-                </p>
-              </div>
-            )}
+        {/* Notes */}
+        {student.notes && (
+          <div className="p-3 bg-muted rounded-lg">
+            <p className="text-sm">
+              <strong>Notes:</strong> {student.notes}
+            </p>
+          </div>
+        )}
 
-            {/* Quick Actions */}
-            {student.status === 'pending' && (
-              <div className="flex gap-2 pt-2 border-t">
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => onContact(student.id, student.phone)}
-                >
-                  Contact
-                </Button>
-                <Button 
-                  size="sm"
-                  className="ayat-button-primary"
-                  onClick={() => onConfirm(student.id)}
-                >
-                  Confirm
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </ContextMenuTrigger>
-      
-      <ContextMenuContent>
-        {getContextMenuOptions().map((option, index) => (
-          <ContextMenuItem key={index} onClick={option.action}>
-            <option.icon className="mr-2 h-4 w-4" />
-            {option.label}
-          </ContextMenuItem>
-        ))}
-      </ContextMenuContent>
-    </ContextMenu>
+        {/* Quick Actions */}
+        {student.status === 'pending' && (
+          <div className="flex gap-2 pt-2 border-t">
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => onContact(student.id, student.phone)}
+            >
+              Contact
+            </Button>
+            <Button 
+              size="sm"
+              className="ayat-button-primary"
+              onClick={() => onConfirm(student.id)}
+            >
+              Confirm
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };

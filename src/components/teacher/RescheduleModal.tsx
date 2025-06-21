@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
+import { useStudentStatusManagement } from '@/hooks/useStudentStatusManagement';
 
 interface RescheduleModalProps {
   student: TrialStudent | null;
@@ -31,7 +32,7 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
   const [rescheduleReason, setRescheduleReason] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
-  const [loading, setLoading] = useState(false);
+  const { rescheduleStudent, loading } = useStudentStatusManagement();
 
   // Mock available time slots - in real implementation, this would come from teacher availability
   const availableTimeSlots = [
@@ -40,28 +41,23 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
   ];
 
   const handleReschedule = async () => {
-    if (!rescheduleReason || !selectedDate || !selectedTimeSlot) {
+    if (!rescheduleReason || !selectedDate || !selectedTimeSlot || !student) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    setLoading(true);
-    try {
-      // In real implementation, this would call a reschedule API
-      console.log('Rescheduling:', {
-        studentId: student?.id,
-        reason: rescheduleReason,
-        newDate: selectedDate,
-        newTime: selectedTimeSlot
-      });
+    console.log('🔄 Rescheduling student:', {
+      studentId: student.id,
+      reason: rescheduleReason,
+      newDate: selectedDate,
+      newTime: selectedTimeSlot
+    });
 
-      toast.success('Trial session rescheduled successfully');
+    const success = await rescheduleStudent(student.id, selectedDate, selectedTimeSlot, rescheduleReason);
+    
+    if (success) {
       onSuccess();
-    } catch (error) {
-      console.error('Error rescheduling:', error);
-      toast.error('Failed to reschedule trial session');
-    } finally {
-      setLoading(false);
+      resetForm();
     }
   };
 

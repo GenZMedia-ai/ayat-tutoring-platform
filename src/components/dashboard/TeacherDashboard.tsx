@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,8 +10,10 @@ import { useTeacherAvailability } from '@/hooks/useTeacherAvailability';
 import { useServerDate } from '@/hooks/useServerDate';
 import { useTeacherTrialSessions } from '@/hooks/useTeacherTrialSessions';
 import { useStudentStatusManagement } from '@/hooks/useStudentStatusManagement';
+import { useWhatsAppContact } from '@/hooks/useWhatsAppContact';
 import { TeacherStudentCard } from '@/components/teacher/TeacherStudentCard';
 import { RescheduleModal } from '@/components/teacher/RescheduleModal';
+import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
 import { Trash2, Lock, Eye } from 'lucide-react';
 import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
 
@@ -21,6 +24,7 @@ const TeacherDashboard: React.FC = () => {
   const { isDateToday, loading: dateLoading } = useServerDate();
   const { trialStudents, loading: trialsLoading, confirmTrial, refreshTrialSessions } = useTeacherTrialSessions();
   const { updateStudentStatus, rescheduleStudent: performReschedule } = useStudentStatusManagement();
+  const { logContact, openWhatsApp } = useWhatsAppContact();
   
   // Check if selected date is today according to server
   const isSelectedDateToday = isDateToday(selectedDate);
@@ -30,6 +34,8 @@ const TeacherDashboard: React.FC = () => {
     capacity: 8, // This could be made dynamic later
     maxCapacity: 10, // This could be made dynamic later
     pendingTrials: trialStudents.filter(s => s.status === 'pending').length,
+    confirmedTrials: trialStudents.filter(s => s.status === 'confirmed').length,
+    completedTrials: trialStudents.filter(s => s.status === 'trial-completed').length,
     todaySessions: 3, // Mock data for now - could be calculated from sessions
     monthlyEarnings: 1250 // Mock data for now
   };
@@ -41,33 +47,47 @@ const TeacherDashboard: React.FC = () => {
     { id: '3', studentName: 'Youssef Ahmed', time: '20:00', sessionNumber: 1, totalSessions: 8 }
   ];
 
-  const handleContactStudent = (studentId: string, phone: string) => {
-    const message = encodeURIComponent(
-      "Hello! I'm your assigned teacher from Ayat w Bian. I'd like to confirm your trial session details and introduce myself."
-    );
-    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
-    toast.success('WhatsApp opened. Please contact the student.');
+  const handleContactStudent = async (studentId: string, phone: string) => {
+    try {
+      // Open WhatsApp
+      openWhatsApp(phone);
+      
+      // Log the contact attempt
+      await logContact(studentId, 'trial_confirmation', true, 'WhatsApp contact initiated by teacher');
+      
+      // Refresh data to reflect any status changes
+      await refreshTrialSessions();
+    } catch (error) {
+      console.error('Error handling contact:', error);
+      toast.error('Failed to log contact attempt');
+    }
   };
 
   const handleConfirmTrial = async (studentId: string) => {
     const success = await confirmTrial(studentId);
-    if (!success) {
-      console.log('Failed to confirm trial for student:', studentId);
+    if (success) {
+      console.log('✅ Trial confirmed successfully for student:', studentId);
     }
   };
 
   const handleStatusChange = async (studentId: string, newStatus: string) => {
-    const success = await updateStudentStatus(studentId, newStatus);
+    // Get current student to pass current status for validation
+    const student = trialStudents.find(s => s.id === studentId);
+    const currentStatus = student?.status;
+    
+    const success = await updateStudentStatus(studentId, newStatus, currentStatus);
     if (success) {
       refreshTrialSessions();
     }
   };
 
   const handleReschedule = (student: TrialStudent) => {
+    console.log('🔄 Opening reschedule modal for student:', student.name);
     setRescheduleStudent(student);
   };
 
   const handleRescheduleSuccess = () => {
+    console.log('✅ Reschedule completed successfully');
     setRescheduleStudent(null);
     refreshTrialSessions();
   };
@@ -176,7 +196,7 @@ const TeacherDashboard: React.FC = () => {
         </Badge>
       </div>
 
-      {/* Stats Cards */}
+      {/* Enhanced Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="dashboard-card">
           <CardHeader className="pb-2">
@@ -200,20 +220,20 @@ const TeacherDashboard: React.FC = () => {
 
         <Card className="dashboard-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Today's Sessions</CardTitle>
+            <CardTitle className="text-sm font-medium">Confirmed Trials</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{teacherStats.todaySessions}</div>
-            <p className="text-xs text-muted-foreground">Scheduled sessions</p>
+            <div className="text-2xl font-bold text-blue-600">{teacherStats.confirmedTrials}</div>
+            <p className="text-xs text-muted-foreground">Ready for trial</p>
           </CardContent>
         </Card>
 
         <Card className="dashboard-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Earnings</CardTitle>
+            <CardTitle className="text-sm font-medium">Completed Trials</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">${teacherStats.monthlyEarnings}</div>
+            <div className="text-2xl font-bold text-green-600">{teacherStats.completedTrials}</div>
             <p className="text-xs text-muted-foreground">This month</p>
           </CardContent>
         </Card>
@@ -241,7 +261,10 @@ const TeacherDashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                 {trialsLoading ? (
-                  <p className="text-center text-muted-foreground py-8">Loading trial sessions...</p>
+                  <div className="flex items-center justify-center py-8">
+                    <LoadingSpinner />
+                    <span className="ml-2 text-muted-foreground">Loading trial sessions...</span>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {trialStudents.filter(s => s.status === 'pending').map((student) => (
@@ -415,12 +438,15 @@ const TeacherDashboard: React.FC = () => {
             <CardHeader>
               <CardTitle>Trial Session Management</CardTitle>
               <CardDescription>
-                Manage trial sessions and confirmations. Right-click on cards for more options.
+                Manage trial sessions and confirmations. Click the three-dot menu for more options.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {trialsLoading ? (
-                <p className="text-center text-muted-foreground py-8">Loading trial sessions...</p>
+                <div className="flex items-center justify-center py-8">
+                  <LoadingSpinner />
+                  <span className="ml-2 text-muted-foreground">Loading trial sessions...</span>
+                </div>
               ) : (
                 <>
                   {trialStudents.length === 0 ? (
@@ -500,7 +526,7 @@ const TeacherDashboard: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Reschedule Modal */}
+      {/* Enhanced Reschedule Modal */}
       <RescheduleModal
         student={rescheduleStudent}
         open={!!rescheduleStudent}
