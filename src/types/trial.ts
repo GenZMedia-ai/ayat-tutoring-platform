@@ -1,4 +1,6 @@
 
+import { Student } from '@/types';
+
 export interface TrialOutcome {
   id: string;
   studentId: string;

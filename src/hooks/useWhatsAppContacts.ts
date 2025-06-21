@@ -37,14 +37,17 @@ export const useWhatsAppContacts = () => {
 
       console.log('WhatsApp contact logged successfully:', data);
 
+      // Type assertion for the returned data
+      const result = data as { success: boolean; contact_id: string; attempt_number: number };
+
       toast({
         title: success ? "Contact Logged" : "Contact Attempt Logged",
         description: success 
-          ? `Student contacted successfully via WhatsApp (Attempt #${data.attempt_number})`
-          : `Contact attempt #${data.attempt_number} logged`,
+          ? `Student contacted successfully via WhatsApp (Attempt #${result.attempt_number})`
+          : `Contact attempt #${result.attempt_number} logged`,
       });
 
-      return data;
+      return result;
     } catch (error: any) {
       console.error('Failed to log WhatsApp contact:', error);
       toast({
