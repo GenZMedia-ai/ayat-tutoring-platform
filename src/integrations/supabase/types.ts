@@ -36,6 +36,66 @@ export type Database = {
         }
         Relationships: []
       }
+      family_groups: {
+        Row: {
+          assigned_sales_agent_id: string
+          assigned_supervisor_id: string | null
+          assigned_teacher_id: string | null
+          country: string
+          created_at: string
+          id: string
+          notes: string | null
+          parent_name: string
+          phone: string
+          platform: string
+          status: string
+          student_count: number
+          teacher_type: string
+          trial_date: string | null
+          trial_time: string | null
+          unique_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_sales_agent_id: string
+          assigned_supervisor_id?: string | null
+          assigned_teacher_id?: string | null
+          country: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          parent_name: string
+          phone: string
+          platform: string
+          status?: string
+          student_count?: number
+          teacher_type: string
+          trial_date?: string | null
+          trial_time?: string | null
+          unique_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_sales_agent_id?: string
+          assigned_supervisor_id?: string | null
+          assigned_teacher_id?: string | null
+          country?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          parent_name?: string
+          phone?: string
+          platform?: string
+          status?: string
+          student_count?: number
+          teacher_type?: string
+          trial_date?: string | null
+          trial_time?: string | null
+          unique_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invitation_codes: {
         Row: {
           code: string
@@ -356,6 +416,7 @@ export type Database = {
           assigned_teacher_id: string | null
           country: string
           created_at: string
+          family_group_id: string | null
           id: string
           name: string
           notes: string | null
@@ -376,6 +437,7 @@ export type Database = {
           assigned_teacher_id?: string | null
           country: string
           created_at?: string
+          family_group_id?: string | null
           id?: string
           name: string
           notes?: string | null
@@ -396,6 +458,7 @@ export type Database = {
           assigned_teacher_id?: string | null
           country?: string
           created_at?: string
+          family_group_id?: string | null
           id?: string
           name?: string
           notes?: string | null
@@ -409,7 +472,15 @@ export type Database = {
           unique_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "students_family_group_id_fkey"
+            columns: ["family_group_id"]
+            isOneToOne: false
+            referencedRelation: "family_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       teacher_availability: {
         Row: {
@@ -533,6 +604,20 @@ export type Database = {
           trial_date_param: string
           trial_time_param: string
         }
+        Returns: string
+      }
+      book_family_trial_session: {
+        Args: {
+          p_booking_data: Json
+          p_selected_date: string
+          p_utc_start_time: string
+          p_teacher_type: string
+          p_teacher_id: string
+        }
+        Returns: Json
+      }
+      generate_family_unique_id: {
+        Args: Record<PropertyKey, never>
         Returns: string
       }
       generate_student_unique_id: {

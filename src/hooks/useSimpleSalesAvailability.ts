@@ -1,8 +1,8 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { SimpleAvailabilityService, SimpleTimeSlot } from '@/services/simpleAvailabilityService';
 import { supabase } from '@/integrations/supabase/client';
+import { useFamilyBooking } from '@/hooks/useFamilyBooking';
 
 export type SimpleBookingData = {
   studentName?: string;
@@ -28,6 +28,7 @@ type SimpleBookingResponse = {
 export const useSimpleSalesAvailability = () => {
   const [loading, setLoading] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<SimpleTimeSlot[]>([]);
+  const { bookFamilyTrialSession } = useFamilyBooking();
 
   const checkAvailability = async (
     date: Date,
@@ -65,8 +66,15 @@ export const useSimpleSalesAvailability = () => {
     teacherType: string,
     isMultiStudent: boolean
   ): Promise<boolean> => {
+    // Use family booking for multi-student sessions
+    if (isMultiStudent) {
+      console.log('=== ROUTING TO FAMILY BOOKING SYSTEM ===');
+      return await bookFamilyTrialSession(bookingData, selectedDate, selectedSlot, teacherType);
+    }
+
+    // Keep existing single student booking logic
     try {
-      console.log('=== ENHANCED BOOKING START ===');
+      console.log('=== SINGLE STUDENT BOOKING START ===');
       console.log('Booking parameters:', { 
         selectedDate, 
         slotId: selectedSlot.id,
@@ -75,7 +83,6 @@ export const useSimpleSalesAvailability = () => {
         isMultiStudent 
       });
       
-      // Enhanced booking with better error handling
       const { data, error } = await supabase.rpc('simple_book_trial_session', {
         p_booking_data: bookingData,
         p_is_multi_student: isMultiStudent,
@@ -85,12 +92,11 @@ export const useSimpleSalesAvailability = () => {
         p_teacher_id: selectedSlot.teacherId
       });
 
-      console.log('Enhanced booking response:', { data, error });
+      console.log('Single student booking response:', { data, error });
 
       if (error) {
-        console.error('Enhanced booking error:', error);
+        console.error('Single student booking error:', error);
         
-        // Enhanced error handling with specific messages
         let errorMessage = 'Booking failed - please try again';
         
         if (error.message?.includes('Cannot modify availability for today')) {
@@ -111,14 +117,13 @@ export const useSimpleSalesAvailability = () => {
         return false;
       }
 
-      // Properly type cast the response
       const bookingResult = data as SimpleBookingResponse;
 
       if (bookingResult?.success) {
         const teacherName = bookingResult.teacher_name || 'Unknown Teacher';
         const studentNames = bookingResult.student_names || '';
         
-        console.log('Enhanced booking success:', {
+        console.log('Single student booking success:', {
           teacherName,
           studentNames,
           sessionId: bookingResult.session_id
@@ -133,14 +138,13 @@ export const useSimpleSalesAvailability = () => {
         );
         return true;
       } else {
-        console.error('Enhanced booking failed - no success flag');
+        console.error('Single student booking failed - no success flag');
         toast.error('Booking failed - please try again');
         return false;
       }
     } catch (error) {
-      console.error('Enhanced booking exception:', error);
+      console.error('Single student booking exception:', error);
       
-      // Enhanced exception handling
       let errorMessage = 'Booking failed due to system error';
       
       if (error instanceof Error) {

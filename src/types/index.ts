@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   email: string;
@@ -67,6 +68,29 @@ export interface Student {
   updatedAt: string;
   paymentData?: PaymentData;
   sessions?: Session[];
+  familyGroupId?: string; // New field for family grouping
+}
+
+// New interface for Family Groups
+export interface FamilyGroup {
+  id: string;
+  uniqueId: string; // AYB_2025_FAM_001234 format
+  parentName: string;
+  phone: string; // WhatsApp number with country code
+  country: string;
+  platform: 'zoom' | 'google-meet';
+  notes?: string;
+  status: StudentStatus;
+  assignedTeacher?: string;
+  assignedSalesAgent: string;
+  assignedSupervisor?: string;
+  trialDate?: string;
+  trialTime?: string;
+  teacherType: TeacherType;
+  studentCount: number;
+  createdAt: string;
+  updatedAt: string;
+  students?: Student[]; // Associated students
 }
 
 export type StudentStatus = 
