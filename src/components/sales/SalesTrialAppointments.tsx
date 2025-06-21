@@ -5,37 +5,38 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, Calendar, Phone, MapPin, Clock, User, Edit2, MoreHorizontal } from 'lucide-react';
-import { useTrialSessionFlow } from '@/hooks/useTrialSessionFlow';
-import { StudentTrialCard } from './StudentTrialCard';
+import { useMixedStudentData, MixedStudentItem } from '@/hooks/useMixedStudentData';
+import { UnifiedTrialCard } from '@/components/shared/UnifiedTrialCard';
 import { StudentEditModal } from './StudentEditModal';
 import { StatusChangeModal } from './StatusChangeModal';
+import { FamilyGroup } from '@/types/family';
 import { TrialSessionFlowStudent } from '@/types/trial';
 
 const SalesTrialAppointments: React.FC = () => {
-  const { students, loading, refetchData } = useTrialSessionFlow();
+  const { items, loading, refetchData, getStatsCount, getTotalCount } = useMixedStudentData();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [editingStudent, setEditingStudent] = useState<TrialSessionFlowStudent | null>(null);
-  const [changingStatusStudent, setChangingStatusStudent] = useState<TrialSessionFlowStudent | null>(null);
+  const [editingItem, setEditingItem] = useState<MixedStudentItem | null>(null);
+  const [changingStatusItem, setChangingStatusItem] = useState<MixedStudentItem | null>(null);
 
-  // Filter students based on search and status
-  const filteredStudents = students.filter(student => {
-    const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.uniqueId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.phone.includes(searchTerm);
+  // Filter items based on search and status
+  const filteredItems = items.filter(item => {
+    const data = item.data;
+    const name = item.type === 'family' 
+      ? (data as FamilyGroup).parent_name 
+      : (data as TrialSessionFlowStudent).name;
+    const uniqueId = item.type === 'family'
+      ? (data as FamilyGroup).unique_id
+      : (data as TrialSessionFlowStudent).uniqueId;
     
-    const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         uniqueId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         data.phone.includes(searchTerm);
+    
+    const matchesStatus = statusFilter === 'all' || data.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
-
-  // Group students by status for better organization
-  const groupedStudents = filteredStudents.reduce((acc, student) => {
-    const status = student.status;
-    if (!acc[status]) acc[status] = [];
-    acc[status].push(student);
-    return acc;
-  }, {} as Record<string, TrialSessionFlowStudent[]>);
 
   const statusOptions = [
     { value: 'all', label: 'All Statuses' },
@@ -51,9 +52,14 @@ const SalesTrialAppointments: React.FC = () => {
     { value: 'dropped', label: 'Dropped' }
   ];
 
-  const getStatusCount = (status: string) => {
-    if (status === 'all') return students.length;
-    return students.filter(s => s.status === status).length;
+  const handleContact = (item: MixedStudentItem) => {
+    const phone = item.data.phone;
+    const name = item.type === 'family' 
+      ? (item.data as FamilyGroup).parent_name 
+      : (item.data as TrialSessionFlowStudent).name;
+    
+    const whatsappUrl = `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=Hello ${name}! This is regarding your trial session booking.`;
+    window.open(whatsappUrl, '_blank');
   };
 
   if (loading) {
@@ -74,7 +80,7 @@ const SalesTrialAppointments: React.FC = () => {
         <div>
           <h3 className="text-lg font-semibold">Trial Appointments</h3>
           <p className="text-sm text-muted-foreground">
-            Manage your trial sessions and student appointments
+            Manage your trial sessions and appointments (families count as single trials)
           </p>
         </div>
         <Button onClick={refetchData} variant="outline" size="sm">
@@ -107,7 +113,7 @@ const SalesTrialAppointments: React.FC = () => {
                 <SelectContent>
                   {statusOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
-                      {option.label} ({getStatusCount(option.value)})
+                      {option.label} ({statusFilter === option.value ? filteredItems.length : getStatsCount(option.value)})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -123,7 +129,7 @@ const SalesTrialAppointments: React.FC = () => {
           <CardContent className="pt-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">
-                {getStatusCount('pending')}
+                {getStatsCount('pending')}
               </div>
               <div className="text-sm text-muted-foreground">Pending</div>
             </div>
@@ -133,7 +139,7 @@ const SalesTrialAppointments: React.FC = () => {
           <CardContent className="pt-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {getStatusCount('confirmed')}
+                {getStatsCount('confirmed')}
               </div>
               <div className="text-sm text-muted-foreground">Confirmed</div>
             </div>
@@ -143,7 +149,7 @@ const SalesTrialAppointments: React.FC = () => {
           <CardContent className="pt-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {getStatusCount('trial-completed')}
+                {getStatsCount('trial-completed')}
               </div>
               <div className="text-sm text-muted-foreground">Completed</div>
             </div>
@@ -153,7 +159,7 @@ const SalesTrialAppointments: React.FC = () => {
           <CardContent className="pt-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
-                {getStatusCount('awaiting-payment')}
+                {getStatsCount('awaiting-payment')}
               </div>
               <div className="text-sm text-muted-foreground">Awaiting Payment</div>
             </div>
@@ -161,8 +167,8 @@ const SalesTrialAppointments: React.FC = () => {
         </Card>
       </div>
 
-      {/* Students List */}
-      {filteredStudents.length === 0 ? (
+      {/* Trials List */}
+      {filteredItems.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">
@@ -181,38 +187,39 @@ const SalesTrialAppointments: React.FC = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredStudents.map((student) => (
-            <StudentTrialCard
-              key={student.id}
-              student={student}
-              onEdit={setEditingStudent}
-              onStatusChange={setChangingStatusStudent}
+          {filteredItems.map((item) => (
+            <UnifiedTrialCard
+              key={`${item.type}-${item.id}`}
+              item={item}
+              onEdit={setEditingItem}
+              onStatusChange={setChangingStatusItem}
+              onContact={handleContact}
               onRefresh={refetchData}
             />
           ))}
         </div>
       )}
 
-      {/* Modals */}
-      {editingStudent && (
+      {/* Modals - For now, we'll keep the existing modals but will need to adapt them */}
+      {editingItem && editingItem.type === 'individual' && (
         <StudentEditModal
-          student={editingStudent}
-          open={!!editingStudent}
-          onClose={() => setEditingStudent(null)}
+          student={editingItem.data as TrialSessionFlowStudent}
+          open={!!editingItem}
+          onClose={() => setEditingItem(null)}
           onSuccess={() => {
-            setEditingStudent(null);
+            setEditingItem(null);
             refetchData();
           }}
         />
       )}
 
-      {changingStatusStudent && (
+      {changingStatusItem && changingStatusItem.type === 'individual' && (
         <StatusChangeModal
-          student={changingStatusStudent}
-          open={!!changingStatusStudent}
-          onClose={() => setChangingStatusStudent(null)}
+          student={changingStatusItem.data as TrialSessionFlowStudent}
+          open={!!changingStatusItem}
+          onClose={() => setChangingStatusItem(null)}
           onSuccess={() => {
-            setChangingStatusStudent(null);
+            setChangingStatusItem(null);
             refetchData();
           }}
         />
