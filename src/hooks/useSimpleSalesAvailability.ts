@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { SimpleAvailabilityService, SimpleTimeSlot } from '@/services/simpleAvailabilityService';
@@ -38,8 +39,13 @@ export const useSimpleSalesAvailability = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('=== SIMPLE AVAILABILITY CHECK START ===');
-      console.log('Request Parameters:', { date, timezone, teacherType, selectedHour });
+      console.log('=== PHASE 4: SIMPLIFIED AVAILABILITY CHECK START ===');
+      console.log('Request Parameters:', { 
+        date: date.toDateString(), 
+        timezone, 
+        teacherType, 
+        selectedHour 
+      });
       
       const slots = await SimpleAvailabilityService.searchAvailableSlots(
         date,
@@ -48,10 +54,11 @@ export const useSimpleSalesAvailability = () => {
         selectedHour
       );
       
-      console.log('Simple slots received:', slots.length);
+      console.log('Simplified slots received:', slots.length);
+      console.log('Date preservation check: All slots should be for date:', date.toDateString());
       setAvailableSlots(slots);
     } catch (error) {
-      console.error('Simple availability check error:', error);
+      console.error('Simplified availability check error:', error);
       toast.error('Failed to check availability');
       setAvailableSlots([]);
     } finally {
@@ -68,25 +75,31 @@ export const useSimpleSalesAvailability = () => {
   ): Promise<boolean> => {
     // Use family booking for multi-student sessions
     if (isMultiStudent) {
-      console.log('=== ROUTING TO FAMILY BOOKING SYSTEM ===');
+      console.log('=== PHASE 4: ROUTING TO FAMILY BOOKING SYSTEM ===');
+      console.log('Selected date preservation:', selectedDate.toDateString());
       return await bookFamilyTrialSession(bookingData, selectedDate, selectedSlot, teacherType);
     }
 
-    // Keep existing single student booking logic
+    // Single student booking with date preservation
     try {
-      console.log('=== SINGLE STUDENT BOOKING START ===');
-      console.log('Booking parameters:', { 
-        selectedDate, 
+      console.log('=== PHASE 4: SINGLE STUDENT BOOKING START ===');
+      console.log('Booking parameters with date preservation:', { 
+        selectedDate: selectedDate.toDateString(),
+        selectedDateISO: selectedDate.toISOString().split('T')[0],
         slotId: selectedSlot.id,
         teacherId: selectedSlot.teacherId,
         teacherType, 
         isMultiStudent 
       });
       
+      // PHASE 4: Use the selected date directly (no conversion)
+      const bookingDateString = selectedDate.toISOString().split('T')[0];
+      console.log('Date being sent to booking function:', bookingDateString);
+      
       const { data, error } = await supabase.rpc('simple_book_trial_session', {
         p_booking_data: bookingData,
         p_is_multi_student: isMultiStudent,
-        p_selected_date: selectedDate.toISOString().split('T')[0],
+        p_selected_date: bookingDateString, // Preserve original selected date
         p_utc_start_time: selectedSlot.utcStartTime,
         p_teacher_type: teacherType,
         p_teacher_id: selectedSlot.teacherId
@@ -123,17 +136,19 @@ export const useSimpleSalesAvailability = () => {
         const teacherName = bookingResult.teacher_name || 'Unknown Teacher';
         const studentNames = bookingResult.student_names || '';
         
-        console.log('Single student booking success:', {
+        console.log('Single student booking success with date preservation:', {
           teacherName,
           studentNames,
-          sessionId: bookingResult.session_id
+          sessionId: bookingResult.session_id,
+          originalDate: selectedDate.toDateString(),
+          bookedDate: bookingDateString
         });
         
         toast.success(
           `✅ Trial session booked successfully with ${teacherName} for ${studentNames}`,
           {
             duration: 5000,
-            description: `Time: ${selectedSlot.clientTimeDisplay}`
+            description: `Date: ${selectedDate.toDateString()} • Time: ${selectedSlot.clientTimeDisplay}`
           }
         );
         return true;

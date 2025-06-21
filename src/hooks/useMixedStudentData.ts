@@ -198,10 +198,18 @@ export const useMixedStudentData = () => {
         }
       }));
 
-      // Combine and sort by creation date
+      // Combine and sort by creation date - FIX: Use consistent property names
       const allItems = [...transformedIndividuals, ...transformedFamilies].sort((a, b) => {
-        const aDate = new Date(a.data.createdAt || a.data.created_at);
-        const bDate = new Date(b.data.createdAt || b.data.created_at);
+        const aDate = new Date(
+          a.type === 'individual' 
+            ? (a.data as TrialSessionFlowStudent).createdAt 
+            : (a.data as FamilyGroup).created_at
+        );
+        const bDate = new Date(
+          b.type === 'individual' 
+            ? (b.data as TrialSessionFlowStudent).createdAt 
+            : (b.data as FamilyGroup).created_at
+        );
         return bDate.getTime() - aDate.getTime();
       });
 
