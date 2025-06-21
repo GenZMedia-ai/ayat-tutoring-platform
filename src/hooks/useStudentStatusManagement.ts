@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -191,7 +190,7 @@ export const useStudentStatusManagement = () => {
         return false;
       }
 
-      // CRITICAL FIX: Update session with proper original date/time capture
+      // Update session with reschedule info
       const { data: sessionStudents, error: sessionStudentsError } = await supabase
         .from('session_students')
         .select('session_id')
@@ -207,26 +206,13 @@ export const useStudentStatusManagement = () => {
           .from('sessions')
           .select('id, reschedule_count, original_date, original_time, scheduled_date, scheduled_time')
           .in('id', sessionIds)
+          .eq('scheduled_date', oldDate || dateString)
+          .eq('scheduled_time', oldTime || utcTime)
           .order('created_at', { ascending: false })
           .limit(1);
 
         if (sessionData && sessionData.length > 0) {
           const session = sessionData[0];
-          
-          // CRITICAL FIX: Properly capture original date/time before first reschedule
-          const isFirstReschedule = (session.reschedule_count || 0) === 0;
-          const originalDate = isFirstReschedule ? (oldDate || session.scheduled_date) : session.original_date;
-          const originalTime = isFirstReschedule ? (oldTime || session.scheduled_time) : session.original_time;
-          
-          console.log('📅 Reschedule info:', {
-            isFirstReschedule,
-            currentRescheduleCount: session.reschedule_count,
-            originalDate,
-            originalTime,
-            oldDate,
-            oldTime
-          });
-
           const { error: sessionUpdateError } = await supabase
             .from('sessions')
             .update({
@@ -234,8 +220,8 @@ export const useStudentStatusManagement = () => {
               scheduled_time: utcTime,
               reschedule_count: (session.reschedule_count || 0) + 1,
               reschedule_reason: reason,
-              original_date: originalDate,
-              original_time: originalTime,
+              original_date: session.original_date || oldDate,
+              original_time: session.original_time || oldTime,
               updated_at: new Date().toISOString()
             })
             .eq('id', session.id);
