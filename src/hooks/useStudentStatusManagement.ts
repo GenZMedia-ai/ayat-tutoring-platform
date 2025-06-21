@@ -4,6 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useStatusValidation } from './useStatusValidation';
 import { useAuth } from '@/contexts/AuthContext';
+import { format } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
+
+const EGYPT_TIMEZONE = 'Africa/Cairo';
 
 export const useStudentStatusManagement = () => {
   const [loading, setLoading] = useState(false);
@@ -73,33 +77,156 @@ export const useStudentStatusManagement = () => {
     studentId: string, 
     newDate: Date, 
     newTime: string, 
-    reason: string
+    reason: string,
+    currentDate?: string,
+    currentTime?: string
   ) => {
     setLoading(true);
     try {
       console.log('🔄 Rescheduling student:', { studentId, newDate, newTime, reason });
       
-      // Update student trial date and time
-      const { error: studentError } = await supabase
+      // Convert Egypt time to UTC for database storage
+      const dateString = format(newDate, 'yyyy-MM-dd');
+      const egyptDateTimeString = `${dateString}T${newTime}:00`;
+      const utcDateTime = fromZonedTime(egyptDateTimeString, EGYPT_TIMEZONE);
+      const utcTime = utcDateTime.toISOString().substring(11, 19);
+
+      console.log('🕐 Time conversion:', {
+        egyptTime: newTime,
+        utcTime: utcTime,
+        newDate: dateString
+      });
+
+      // Get student's current assignment details
+      const { data: studentData, error: studentError } = await supabase
+        .from('students')
+        .select('assigned_teacher_id, trial_date, trial_time')
+        .eq('id', studentId)
+        .single();
+
+      if (studentError) {
+        console.error('❌ Error fetching student data:', studentError);
+        toast.error('Failed to fetch student details');
+        return false;
+      }
+
+      const teacherId = studentData.assigned_teacher_id;
+      const oldDate = studentData.trial_date;
+      const oldTime = studentData.trial_time;
+
+      if (!teacherId) {
+        toast.error('No teacher assigned to this student');
+        return false;
+      }
+
+      // Check if new slot is available
+      const { data: availabilityCheck, error: availabilityError } = await supabase
+        .from('teacher_availability')
+        .select('*')
+        .eq('teacher_id', teacherId)
+        .eq('date', dateString)
+        .eq('time_slot', utcTime)
+        .eq('is_available', true)
+        .eq('is_booked', false)
+        .single();
+
+      if (availabilityError || !availabilityCheck) {
+        console.error('❌ Slot not available:', availabilityError);
+        toast.error('Selected time slot is no longer available');
+        return false;
+      }
+
+      // Start transaction-like operations
+      
+      // 1. Free up old slot if it exists
+      if (oldDate && oldTime) {
+        console.log('🔓 Freeing old slot:', { oldDate, oldTime });
+        const { error: oldSlotError } = await supabase
+          .from('teacher_availability')
+          .update({ 
+            is_booked: false,
+            student_id: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('teacher_id', teacherId)
+          .eq('date', oldDate)
+          .eq('time_slot', oldTime);
+
+        if (oldSlotError) {
+          console.error('❌ Error freeing old slot:', oldSlotError);
+          // Continue anyway - don't fail the whole operation
+        }
+      }
+
+      // 2. Book new slot
+      console.log('🔒 Booking new slot:', { teacherId, dateString, utcTime });
+      const { error: newSlotError } = await supabase
+        .from('teacher_availability')
+        .update({
+          is_booked: true,
+          student_id: studentId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', availabilityCheck.id);
+
+      if (newSlotError) {
+        console.error('❌ Error booking new slot:', newSlotError);
+        toast.error('Failed to book new time slot');
+        return false;
+      }
+
+      // 3. Update student trial date and time
+      const { error: studentUpdateError } = await supabase
         .from('students')
         .update({ 
-          trial_date: newDate.toISOString().split('T')[0],
-          trial_time: newTime,
+          trial_date: dateString,
+          trial_time: utcTime,
           updated_at: new Date().toISOString()
         })
         .eq('id', studentId);
 
-      if (studentError) {
-        console.error('❌ Error rescheduling student:', studentError);
-        toast.error('Failed to reschedule student');
+      if (studentUpdateError) {
+        console.error('❌ Error updating student:', studentUpdateError);
+        toast.error('Failed to update student details');
         return false;
       }
 
-      // In a real implementation, we would also:
-      // 1. Update teacher availability (free old slot, book new slot)
-      // 2. Log the reschedule reason in a reschedule_log table
-      // 3. Send notifications to student and sales team
-      // 4. Update any related sessions
+      // 4. Update session with reschedule info
+      const { data: sessionData, error: sessionFetchError } = await supabase
+        .from('sessions')
+        .select('id, reschedule_count, original_date, original_time')
+        .eq('scheduled_date', oldDate || dateString)
+        .eq('scheduled_time', oldTime || utcTime)
+        .in('id', [
+          // Get session from session_students join
+          supabase
+            .from('session_students')
+            .select('session_id')
+            .eq('student_id', studentId)
+        ])
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (sessionData && sessionData.length > 0) {
+        const session = sessionData[0];
+        const { error: sessionUpdateError } = await supabase
+          .from('sessions')
+          .update({
+            scheduled_date: dateString,
+            scheduled_time: utcTime,
+            reschedule_count: (session.reschedule_count || 0) + 1,
+            reschedule_reason: reason,
+            original_date: session.original_date || oldDate,
+            original_time: session.original_time || oldTime,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', session.id);
+
+        if (sessionUpdateError) {
+          console.error('❌ Error updating session:', sessionUpdateError);
+          // Don't fail the operation for this
+        }
+      }
 
       console.log('✅ Student rescheduled successfully');
       toast.success('Student trial session rescheduled successfully');

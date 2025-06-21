@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -90,7 +89,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
   };
 
   // Fetch availability data from database
-  const fetchAvailability = async () => {
+  const fetchAvailability = useCallback(async () => {
     if (!selectedDate || !user) return;
 
     setLoading(true);
@@ -145,7 +144,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate, user]);
 
   // Toggle availability for a time slot
   const toggleAvailability = async (time: string) => {
@@ -235,14 +234,21 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     }
   };
 
+  // Force refresh availability - useful after reschedule operations
+  const forceRefresh = useCallback(() => {
+    console.log('🔄 Force refreshing availability data...');
+    fetchAvailability();
+  }, [fetchAvailability]);
+
   useEffect(() => {
     fetchAvailability();
-  }, [selectedDate, user]);
+  }, [fetchAvailability]);
 
   return {
     timeSlots,
     loading,
     toggleAvailability,
     refreshAvailability: fetchAvailability,
+    forceRefresh,
   };
 };

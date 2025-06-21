@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
 import { useStudentStatusManagement } from '@/hooks/useStudentStatusManagement';
+import { useTeacherAvailability } from '@/hooks/useTeacherAvailability';
+import { LoadingSpinner } from './LoadingSpinner';
+import { format } from 'date-fns';
 
 interface RescheduleModalProps {
   student: TrialStudent | null;
@@ -32,13 +35,24 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
   const [rescheduleReason, setRescheduleReason] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
-  const { rescheduleStudent, loading } = useStudentStatusManagement();
+  const { rescheduleStudent, loading: rescheduleLoading } = useStudentStatusManagement();
+  const { timeSlots, loading: availabilityLoading, refreshAvailability } = useTeacherAvailability(selectedDate);
 
-  // Mock available time slots - in real implementation, this would come from teacher availability
-  const availableTimeSlots = [
-    '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', 
-    '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
-  ];
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (open) {
+      setRescheduleReason('');
+      setSelectedDate(undefined);
+      setSelectedTimeSlot('');
+    }
+  }, [open]);
+
+  // Refresh availability when date changes
+  useEffect(() => {
+    if (selectedDate) {
+      refreshAvailability();
+    }
+  }, [selectedDate, refreshAvailability]);
 
   const handleReschedule = async () => {
     if (!rescheduleReason || !selectedDate || !selectedTimeSlot || !student) {
@@ -50,10 +64,19 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
       studentId: student.id,
       reason: rescheduleReason,
       newDate: selectedDate,
-      newTime: selectedTimeSlot
+      newTime: selectedTimeSlot,
+      currentDate: student.trialDate,
+      currentTime: student.trialTime
     });
 
-    const success = await rescheduleStudent(student.id, selectedDate, selectedTimeSlot, rescheduleReason);
+    const success = await rescheduleStudent(
+      student.id, 
+      selectedDate, 
+      selectedTimeSlot, 
+      rescheduleReason,
+      student.trialDate,
+      student.trialTime
+    );
     
     if (success) {
       onSuccess();
@@ -74,6 +97,13 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
 
   if (!student) return null;
 
+  // Filter available time slots (not booked and available)
+  const availableTimeSlots = timeSlots.filter(slot => 
+    slot.isAvailable && !slot.isBooked
+  );
+
+  const isFormValid = rescheduleReason && selectedDate && selectedTimeSlot;
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -81,6 +111,11 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
           <DialogTitle>Reschedule Trial Session</DialogTitle>
           <DialogDescription>
             Reschedule the trial session for {student.name} ({student.uniqueId})
+            {student.trialDate && student.trialTime && (
+              <span className="block mt-1 text-sm text-muted-foreground">
+                Current appointment: {format(new Date(student.trialDate), 'PPP')} at {student.trialTime}
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -125,32 +160,61 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
               <Label className="text-sm font-medium">
                 Available Time Slots for {selectedDate.toDateString()}
               </Label>
-              <div className="grid grid-cols-4 gap-2">
-                {availableTimeSlots.map((time) => (
-                  <Button
-                    key={time}
-                    variant={selectedTimeSlot === time ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedTimeSlot(time)}
-                    className="text-sm"
-                  >
-                    {time}
-                  </Button>
-                ))}
-              </div>
+              
+              {availabilityLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <LoadingSpinner size="md" />
+                  <span className="ml-2 text-sm text-muted-foreground">Loading available slots...</span>
+                </div>
+              ) : availableTimeSlots.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p className="text-sm">No available time slots for this date.</p>
+                  <p className="text-xs mt-1">Please select a different date or contact the teacher to add availability.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-2">
+                  {availableTimeSlots.map((slot) => (
+                    <Button
+                      key={slot.time}
+                      variant={selectedTimeSlot === slot.time ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedTimeSlot(slot.time)}
+                      className="text-sm"
+                    >
+                      {slot.time}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Egypt Time Zone Notice */}
+          {selectedDate && availableTimeSlots.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+              <p className="text-xs text-blue-800">
+                ℹ️ All times are displayed in Egypt timezone (UTC+2). The selected time will be automatically converted for database storage.
+              </p>
             </div>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={loading}>
+          <Button variant="outline" onClick={handleClose} disabled={rescheduleLoading}>
             Cancel
           </Button>
           <Button 
             onClick={handleReschedule} 
-            disabled={loading || !rescheduleReason || !selectedDate || !selectedTimeSlot}
+            disabled={rescheduleLoading || !isFormValid || availabilityLoading}
           >
-            {loading ? 'Rescheduling...' : 'Reschedule Session'}
+            {rescheduleLoading ? (
+              <>
+                <LoadingSpinner size="sm" className="mr-2" />
+                Rescheduling...
+              </>
+            ) : (
+              'Reschedule Session'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
