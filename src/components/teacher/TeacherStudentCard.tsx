@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { supabase } from '@/integrations/supabase/client';
+import TrialOutcomeForm from './TrialOutcomeForm';
 
 const EGYPT_TIMEZONE = 'Africa/Cairo';
 
@@ -44,6 +46,11 @@ interface RescheduleInfo {
   rescheduleReason?: string;
 }
 
+interface SessionInfo {
+  id: string;
+  sessionId: string;
+}
+
 export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
   student,
   onContact,
@@ -52,11 +59,14 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
   onReschedule
 }) => {
   const [rescheduleInfo, setRescheduleInfo] = useState<RescheduleInfo | null>(null);
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
+  const [showTrialOutcomeForm, setShowTrialOutcomeForm] = useState(false);
 
-  // Fetch reschedule information
+  // Fetch reschedule information and session details
   useEffect(() => {
-    const fetchRescheduleInfo = async () => {
+    const fetchStudentInfo = async () => {
       try {
+        // Get session information for this student
         const { data: sessionStudents } = await supabase
           .from('session_students')
           .select('session_id')
@@ -66,14 +76,25 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
           const sessionIds = sessionStudents.map(ss => ss.session_id);
           const { data: sessionData } = await supabase
             .from('sessions')
-            .select('reschedule_count, original_date, original_time, reschedule_reason')
+            .select('id, reschedule_count, original_date, original_time, reschedule_reason')
             .in('id', sessionIds)
             .order('created_at', { ascending: false })
             .limit(1);
 
           if (sessionData && sessionData.length > 0) {
             const session = sessionData[0];
-            if (session.reschedule_count > 0) {
+            
+            // Set session info for trial outcome form
+            setSessionInfo({
+              id: student.id,
+              sessionId: session.id
+            });
+
+            // Only show reschedule info if actually rescheduled and has different original time
+            if (session.reschedule_count > 0 && 
+                session.original_date && 
+                session.original_time &&
+                (session.original_date !== student.trialDate || session.original_time !== student.trialTime)) {
               setRescheduleInfo({
                 rescheduleCount: session.reschedule_count,
                 originalDate: session.original_date,
@@ -84,12 +105,12 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
           }
         }
       } catch (error) {
-        console.error('Error fetching reschedule info:', error);
+        console.error('Error fetching student info:', error);
       }
     };
 
-    fetchRescheduleInfo();
-  }, [student.id]);
+    fetchStudentInfo();
+  }, [student.id, student.trialDate, student.trialTime]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; label: string }> = {
@@ -191,6 +212,30 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
     }
   };
 
+  const handleTrialCompleted = () => {
+    if (sessionInfo) {
+      setShowTrialOutcomeForm(true);
+    } else {
+      // Fallback to direct status change if no session found
+      onStatusChange(student.id, 'trial-completed');
+    }
+  };
+
+  const handleTrialGhosted = () => {
+    if (sessionInfo) {
+      setShowTrialOutcomeForm(true);
+    } else {
+      // Fallback to direct status change if no session found
+      onStatusChange(student.id, 'trial-ghosted');
+    }
+  };
+
+  const handleTrialOutcomeSuccess = () => {
+    setShowTrialOutcomeForm(false);
+    // Refresh the page or trigger a refresh of the trial sessions
+    window.location.reload();
+  };
+
   const getMenuOptions = () => {
     const options = [];
 
@@ -202,8 +247,8 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
       );
     } else if (student.status === 'confirmed') {
       options.push(
-        { label: 'Mark as Completed', action: () => onStatusChange(student.id, 'trial-completed'), icon: CheckCircle },
-        { label: 'Mark as Ghosted', action: () => onStatusChange(student.id, 'trial-ghosted'), icon: XCircle },
+        { label: 'Mark as Completed', action: handleTrialCompleted, icon: CheckCircle },
+        { label: 'Mark as Ghosted', action: handleTrialGhosted, icon: XCircle },
         { label: 'Reschedule', action: () => onReschedule(student), icon: RotateCcw },
         { label: 'Contact Student', action: () => onContact(student.id, student.phone), icon: MessageCircle }
       );
@@ -217,120 +262,153 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2 flex-wrap">
-              <h3 className="font-semibold text-lg">{student.name}</h3>
-              {getStatusBadge(student.status)}
-              {rescheduleInfo && rescheduleInfo.rescheduleCount > 0 && (
-                <Badge className="bg-yellow-100 text-yellow-800 border-0">
-                  <RotateCcw className="h-3 w-3 mr-1" />
-                  Rescheduled ({rescheduleInfo.rescheduleCount}x)
-                </Badge>
-              )}
+    <>
+      <Card className="hover:shadow-md transition-shadow">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                <h3 className="font-semibold text-lg">{student.name}</h3>
+                {getStatusBadge(student.status)}
+                {rescheduleInfo && rescheduleInfo.rescheduleCount > 0 && (
+                  <Badge className="bg-yellow-100 text-yellow-800 border-0">
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Rescheduled ({rescheduleInfo.rescheduleCount}x)
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span className="font-mono">{student.uniqueId}</span>
+                <span>Age: {student.age}</span>
+                {student.parentName && (
+                  <span>Parent: {student.parentName}</span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="font-mono">{student.uniqueId}</span>
-              <span>Age: {student.age}</span>
-              {student.parentName && (
-                <span>Parent: {student.parentName}</span>
-              )}
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {getMenuOptions().map((option, index) => (
+                  <DropdownMenuItem key={index} onClick={option.action}>
+                    <option.icon className="mr-2 h-4 w-4" />
+                    {option.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {getMenuOptions().map((option, index) => (
-                <DropdownMenuItem key={index} onClick={option.action}>
-                  <option.icon className="mr-2 h-4 w-4" />
-                  {option.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardHeader>
+        </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Contact Information */}
-        <div className="grid grid-cols-1 gap-3">
-          <div className="flex items-center gap-2 text-sm">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            <span>{student.phone}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span>{student.country}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <div className="flex flex-col">
-              <span className="font-medium">
-                {formatDateTime(student.trialDate, student.trialTime)}
-              </span>
-              {rescheduleInfo && rescheduleInfo.originalDate && rescheduleInfo.originalTime && (
-                <span className="text-xs text-muted-foreground">
-                  Originally: {formatOriginalDateTime(rescheduleInfo.originalDate, rescheduleInfo.originalTime)}
+        <CardContent className="space-y-4">
+          {/* Contact Information */}
+          <div className="grid grid-cols-1 gap-3">
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <span>{student.phone}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span>{student.country}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <div className="flex flex-col">
+                <span className="font-medium">
+                  {formatDateTime(student.trialDate, student.trialTime)}
                 </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Reschedule Information */}
-        {rescheduleInfo && rescheduleInfo.rescheduleCount > 0 && (
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-yellow-800">
-                  Session Rescheduled {rescheduleInfo.rescheduleCount} time{rescheduleInfo.rescheduleCount > 1 ? 's' : ''}
-                </p>
-                {rescheduleInfo.rescheduleReason && (
-                  <p className="text-yellow-700 mt-1">
-                    Reason: {rescheduleInfo.rescheduleReason.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </p>
+                {rescheduleInfo && rescheduleInfo.originalDate && rescheduleInfo.originalTime && (
+                  <span className="text-xs text-muted-foreground">
+                    Originally: {formatOriginalDateTime(rescheduleInfo.originalDate, rescheduleInfo.originalTime)}
+                  </span>
                 )}
               </div>
             </div>
           </div>
-        )}
 
-        {/* Notes */}
-        {student.notes && (
-          <div className="p-3 bg-muted rounded-lg">
-            <p className="text-sm">
-              <strong>Notes:</strong> {student.notes}
-            </p>
-          </div>
-        )}
+          {/* Reschedule Information */}
+          {rescheduleInfo && rescheduleInfo.rescheduleCount > 0 && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-yellow-800">
+                    Session Rescheduled {rescheduleInfo.rescheduleCount} time{rescheduleInfo.rescheduleCount > 1 ? 's' : ''}
+                  </p>
+                  {rescheduleInfo.rescheduleReason && (
+                    <p className="text-yellow-700 mt-1">
+                      Reason: {rescheduleInfo.rescheduleReason.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
-        {/* Quick Actions */}
-        {student.status === 'pending' && (
-          <div className="flex gap-2 pt-2 border-t">
-            <Button 
-              size="sm" 
-              variant="outline"
-              onClick={() => onContact(student.id, student.phone)}
-            >
-              Contact
-            </Button>
-            <Button 
-              size="sm"
-              className="ayat-button-primary"
-              onClick={() => onConfirm(student.id)}
-            >
-              Confirm
-            </Button>
+          {/* Notes */}
+          {student.notes && (
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-sm">
+                <strong>Notes:</strong> {student.notes}
+              </p>
+            </div>
+          )}
+
+          {/* Quick Actions */}
+          {student.status === 'pending' && (
+            <div className="flex gap-2 pt-2 border-t">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => onContact(student.id, student.phone)}
+              >
+                Contact
+              </Button>
+              <Button 
+                size="sm"
+                className="ayat-button-primary"
+                onClick={() => onConfirm(student.id)}
+              >
+                Confirm
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Trial Outcome Form Modal */}
+      {showTrialOutcomeForm && sessionInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <TrialOutcomeForm
+              student={{
+                id: student.id,
+                name: student.name,
+                uniqueId: student.uniqueId,
+                age: student.age,
+                phone: student.phone,
+                country: student.country,
+                platform: student.platform as 'zoom' | 'google-meet',
+                status: student.status as any,
+                parentName: student.parentName,
+                assignedSalesAgent: '', // Will be populated by the form
+                teacherType: 'mixed' as any, // Will be populated by the form
+                createdAt: '',
+                updatedAt: '',
+                trialDate: student.trialDate,
+                trialTime: student.trialTime,
+                notes: student.notes
+              }}
+              sessionId={sessionInfo.sessionId}
+              onSuccess={handleTrialOutcomeSuccess}
+              onCancel={() => setShowTrialOutcomeForm(false)}
+            />
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </>
   );
 };
