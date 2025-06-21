@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('homepage');
 
   // Mock data for demonstration
   const pendingUsers = [
@@ -38,6 +38,23 @@ const AdminDashboard: React.FC = () => {
     const code = `AYAT${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     toast.success(`Invitation code created: ${code}`);
   };
+
+  const ComingSoonCard = ({ title, description }: { title: string; description: string }) => (
+    <Card className="dashboard-card">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-center h-32">
+          <div className="text-center">
+            <p className="text-muted-foreground text-lg font-medium">Coming Soon</p>
+            <p className="text-sm text-muted-foreground mt-2">This feature is under development</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="space-y-6">
@@ -82,13 +99,14 @@ const AdminDashboard: React.FC = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="users">User Management</TabsTrigger>
-          <TabsTrigger value="packages">Packages</TabsTrigger>
+          <TabsTrigger value="homepage">Homepage</TabsTrigger>
+          <TabsTrigger value="trials">Trial Appointments</TabsTrigger>
+          <TabsTrigger value="students">Students</TabsTrigger>
+          <TabsTrigger value="sessions">Sessions</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
+        <TabsContent value="homepage" className="space-y-4">
           <Card className="dashboard-card">
             <CardHeader>
               <CardTitle>System Overview</CardTitle>
@@ -133,133 +151,201 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="users" className="space-y-4">
-          <Card className="dashboard-card">
-            <CardHeader>
-              <CardTitle>Pending User Approvals</CardTitle>
-              <CardDescription>
-                Review and approve new user registrations
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {pendingUsers.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                    <div className="space-y-1">
-                      <h4 className="font-medium">{user.fullName}</h4>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
-                      <div className="flex gap-2">
-                        <Badge variant="secondary">{user.role}</Badge>
-                        {user.teacherType && <Badge variant="outline">{user.teacherType}</Badge>}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleApproveUser(user.id, 'approve')}
-                        className="ayat-button-primary"
-                      >
-                        Approve
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="destructive"
-                        onClick={() => handleApproveUser(user.id, 'reject')}
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {pendingUsers.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">No pending approvals</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="packages" className="space-y-4">
-          <Card className="dashboard-card">
-            <CardHeader>
-              <CardTitle>Package Management</CardTitle>
-              <CardDescription>
-                Create and manage learning packages
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Package Name</Label>
-                    <Input placeholder="e.g., 8 Session Package" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Session Count</Label>
-                    <Input type="number" placeholder="8" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Base Price</Label>
-                    <Input type="number" placeholder="200" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Input placeholder="Package description" />
-                  </div>
-                </div>
-                <Button className="ayat-button-primary">Create Package</Button>
-
+              <div className="mt-6">
+                <h4 className="font-medium mb-4">Pending User Approvals</h4>
                 <div className="space-y-4">
-                  <h4 className="font-medium">Existing Packages</h4>
-                  {packages.map((pkg) => (
-                    <div key={pkg.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                      <div>
-                        <h5 className="font-medium">{pkg.name}</h5>
-                        <p className="text-sm text-muted-foreground">{pkg.description}</p>
-                        <div className="flex gap-2 mt-1">
-                          <Badge variant="outline">{pkg.sessionCount} sessions</Badge>
-                          <Badge variant="outline">Base: {pkg.price}</Badge>
+                  {pendingUsers.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                      <div className="space-y-1">
+                        <h4 className="font-medium">{user.fullName}</h4>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <div className="flex gap-2">
+                          <Badge variant="secondary">{user.role}</Badge>
+                          {user.teacherType && <Badge variant="outline">{user.teacherType}</Badge>}
                         </div>
                       </div>
-                      <Badge variant={pkg.isActive ? "default" : "secondary"}>
-                        {pkg.isActive ? "Active" : "Inactive"}
-                      </Badge>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleApproveUser(user.id, 'approve')}
+                          className="ayat-button-primary"
+                        >
+                          Approve
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => handleApproveUser(user.id, 'reject')}
+                        >
+                          Reject
+                        </Button>
+                      </div>
                     </div>
                   ))}
+                  {pendingUsers.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">No pending approvals</p>
+                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="trials" className="space-y-4">
+          <ComingSoonCard 
+            title="All Trial Appointments" 
+            description="Monitor and manage all trial sessions across the platform"
+          />
+        </TabsContent>
+
+        <TabsContent value="students" className="space-y-4">
+          <ComingSoonCard 
+            title="Paid Students Management" 
+            description="View and manage all paid students across the platform"
+          />
+        </TabsContent>
+
+        <TabsContent value="sessions" className="space-y-4">
+          <ComingSoonCard 
+            title="Paid Sessions Monitoring" 
+            description="Monitor and manage all paid sessions across the platform"
+          />
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-4">
-          <Card className="dashboard-card">
-            <CardHeader>
-              <CardTitle>Currency Settings</CardTitle>
-              <CardDescription>
-                Manage available currencies for payment processing
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {currencies.map((currency) => (
-                  <div key={currency.code} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                    <div>
-                      <h5 className="font-medium">{currency.name} ({currency.symbol})</h5>
-                      <p className="text-sm text-muted-foreground">{currency.code}</p>
-                    </div>
-                    <Badge variant={currency.isEnabled ? "default" : "secondary"}>
-                      {currency.isEnabled ? "Enabled" : "Disabled"}
-                    </Badge>
+          <Tabs defaultValue="users" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="users">User Management</TabsTrigger>
+              <TabsTrigger value="packages">Packages</TabsTrigger>
+              <TabsTrigger value="currencies">Currencies</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="users" className="space-y-4">
+              <Card className="dashboard-card">
+                <CardHeader>
+                  <CardTitle>Pending User Approvals</CardTitle>
+                  <CardDescription>
+                    Review and approve new user registrations
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {pendingUsers.map((user) => (
+                      <div key={user.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                        <div className="space-y-1">
+                          <h4 className="font-medium">{user.fullName}</h4>
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
+                          <div className="flex gap-2">
+                            <Badge variant="secondary">{user.role}</Badge>
+                            {user.teacherType && <Badge variant="outline">{user.teacherType}</Badge>}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleApproveUser(user.id, 'approve')}
+                            className="ayat-button-primary"
+                          >
+                            Approve
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                            onClick={() => handleApproveUser(user.id, 'reject')}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {pendingUsers.length === 0 && (
+                      <p className="text-center text-muted-foreground py-8">No pending approvals</p>
+                    )}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="packages" className="space-y-4">
+              <Card className="dashboard-card">
+                <CardHeader>
+                  <CardTitle>Package Management</CardTitle>
+                  <CardDescription>
+                    Create and manage learning packages
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Package Name</Label>
+                        <Input placeholder="e.g., 8 Session Package" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Session Count</Label>
+                        <Input type="number" placeholder="8" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Base Price</Label>
+                        <Input type="number" placeholder="200" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Description</Label>
+                        <Input placeholder="Package description" />
+                      </div>
+                    </div>
+                    <Button className="ayat-button-primary">Create Package</Button>
+
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Existing Packages</h4>
+                      {packages.map((pkg) => (
+                        <div key={pkg.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                          <div>
+                            <h5 className="font-medium">{pkg.name}</h5>
+                            <p className="text-sm text-muted-foreground">{pkg.description}</p>
+                            <div className="flex gap-2 mt-1">
+                              <Badge variant="outline">{pkg.sessionCount} sessions</Badge>
+                              <Badge variant="outline">Base: {pkg.price}</Badge>
+                            </div>
+                          </div>
+                          <Badge variant={pkg.isActive ? "default" : "secondary"}>
+                            {pkg.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="currencies" className="space-y-4">
+              <Card className="dashboard-card">
+                <CardHeader>
+                  <CardTitle>Currency Settings</CardTitle>
+                  <CardDescription>
+                    Manage available currencies for payment processing
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {currencies.map((currency) => (
+                      <div key={currency.code} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                        <div>
+                          <h5 className="font-medium">{currency.name} ({currency.symbol})</h5>
+                          <p className="text-sm text-muted-foreground">{currency.code}</p>
+                        </div>
+                        <Badge variant={currency.isEnabled ? "default" : "secondary"}>
+                          {currency.isEnabled ? "Enabled" : "Disabled"}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>

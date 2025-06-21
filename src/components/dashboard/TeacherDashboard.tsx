@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -54,13 +55,10 @@ const TeacherDashboard: React.FC = () => {
     toast.success('Session marked as completed!');
   };
 
-  // ... keep existing code (renderTimeSlotButton function)
-
   const renderTimeSlotButton = (slot: { time: string; isAvailable: boolean; isBooked: boolean }) => {
     const isDisabled = loading || dateLoading || (isSelectedDateToday && !slot.isBooked);
 
     if (slot.isBooked) {
-      // Booked slots - black with red lock icon (always shown, never interactive)
       return (
         <Button
           key={slot.time}
@@ -75,9 +73,7 @@ const TeacherDashboard: React.FC = () => {
     }
 
     if (slot.isAvailable) {
-      // Available slots
       if (isSelectedDateToday) {
-        // Today's available slots - show as view-only with eye icon
         return (
           <Button
             key={slot.time}
@@ -90,7 +86,6 @@ const TeacherDashboard: React.FC = () => {
           </Button>
         );
       } else {
-        // Future available slots - interactive with trash icon on hover
         return (
           <Button
             key={slot.time}
@@ -106,9 +101,7 @@ const TeacherDashboard: React.FC = () => {
       }
     }
 
-    // Unavailable slots
     if (isSelectedDateToday) {
-      // Today's unavailable slots - show as view-only
       return (
         <Button
           key={slot.time}
@@ -121,7 +114,6 @@ const TeacherDashboard: React.FC = () => {
         </Button>
       );
     } else {
-      // Future unavailable slots - interactive
       return (
         <Button
           key={slot.time}
@@ -135,6 +127,23 @@ const TeacherDashboard: React.FC = () => {
       );
     }
   };
+
+  const ComingSoonCard = ({ title, description }: { title: string; description: string }) => (
+    <Card className="dashboard-card">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-center h-32">
+          <div className="text-center">
+            <p className="text-muted-foreground text-lg font-medium">Coming Soon</p>
+            <p className="text-sm text-muted-foreground mt-2">This feature is under development</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="space-y-6">
@@ -189,15 +198,17 @@ const TeacherDashboard: React.FC = () => {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="trials">Trial Sessions</TabsTrigger>
-          <TabsTrigger value="sessions">Paid Sessions</TabsTrigger>
-          <TabsTrigger value="availability">Availability</TabsTrigger>
+      <Tabs defaultValue="homepage" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="homepage">Homepage</TabsTrigger>
+          <TabsTrigger value="availability">Add Availability</TabsTrigger>
+          <TabsTrigger value="trials">Trial Appointments</TabsTrigger>
+          <TabsTrigger value="students">Students</TabsTrigger>
+          <TabsTrigger value="sessions">Sessions</TabsTrigger>
+          <TabsTrigger value="revenue">Revenue</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
+        <TabsContent value="homepage" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="dashboard-card">
               <CardHeader>
@@ -283,128 +294,6 @@ const TeacherDashboard: React.FC = () => {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="trials" className="space-y-4">
-          <Card className="dashboard-card">
-            <CardHeader>
-              <CardTitle>Trial Session Management</CardTitle>
-              <CardDescription>
-                Manage trial sessions and confirmations
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {trialsLoading ? (
-                <p className="text-center text-muted-foreground py-8">Loading trial sessions...</p>
-              ) : (
-                <div className="space-y-4">
-                  {trialStudents.map((student) => (
-                    <div key={student.id} className="p-4 border border-border rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium">{student.name}</h4>
-                            <span className="text-xs text-muted-foreground">({student.uniqueId})</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-muted-foreground">Age:</span> {student.age}
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Phone:</span> {student.phone}
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Country:</span> {student.country}
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Trial Date:</span> {student.trialDate || 'Not set'}
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Trial Time:</span> {student.trialTime || 'Not set'}
-                            </div>
-                            {student.parentName && (
-                              <div>
-                                <span className="text-muted-foreground">Parent:</span> {student.parentName}
-                              </div>
-                            )}
-                          </div>
-                          {student.notes && (
-                            <div className="text-sm">
-                              <span className="text-muted-foreground">Notes:</span> {student.notes}
-                            </div>
-                          )}
-                          <Badge className={student.status === 'pending' ? 'status-pending' : 'status-active'}>
-                            {student.status === 'pending' ? 'Pending Confirmation' : 'Confirmed'}
-                          </Badge>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleContactStudent(student.id, student.phone)}
-                          >
-                            WhatsApp Contact
-                          </Button>
-                          {student.status === 'pending' && (
-                            <Button 
-                              size="sm"
-                              className="ayat-button-primary"
-                              onClick={() => handleConfirmTrial(student.id)}
-                            >
-                              Confirm Appointment
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {trialStudents.length === 0 && (
-                    <p className="text-center text-muted-foreground py-8">No trial sessions found</p>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="sessions" className="space-y-4">
-          <Card className="dashboard-card">
-            <CardHeader>
-              <CardTitle>Paid Session Management</CardTitle>
-              <CardDescription>
-                Track and complete paid learning sessions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {todaySessions.map((session) => (
-                  <div key={session.id} className="p-4 border border-border rounded-lg">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <h4 className="font-medium">{session.studentName}</h4>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Session:</span> {session.sessionNumber} of {session.totalSessions}
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Time:</span> {session.time}
-                          </div>
-                        </div>
-                        <Badge className="status-active">Scheduled</Badge>
-                      </div>
-                      <Button 
-                        size="sm"
-                        className="ayat-button-primary"
-                        onClick={() => handleCompleteSession(session.id)}
-                      >
-                        Mark Complete
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="availability" className="space-y-4">
@@ -497,6 +386,142 @@ const TeacherDashboard: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="trials" className="space-y-4">
+          <Card className="dashboard-card">
+            <CardHeader>
+              <CardTitle>Trial Session Management</CardTitle>
+              <CardDescription>
+                Manage trial sessions and confirmations
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {trialsLoading ? (
+                <p className="text-center text-muted-foreground py-8">Loading trial sessions...</p>
+              ) : (
+                <div className="space-y-4">
+                  {trialStudents.map((student) => (
+                    <div key={student.id} className="p-4 border border-border rounded-lg">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium">{student.name}</h4>
+                            <span className="text-xs text-muted-foreground">({student.uniqueId})</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Age:</span> {student.age}
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Phone:</span> {student.phone}
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Country:</span> {student.country}
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Trial Date:</span> {student.trialDate || 'Not set'}
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Trial Time:</span> {student.trialTime || 'Not set'}
+                            </div>
+                            {student.parentName && (
+                              <div>
+                                <span className="text-muted-foreground">Parent:</span> {student.parentName}
+                              </div>
+                            )}
+                          </div>
+                          {student.notes && (
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Notes:</span> {student.notes}
+                            </div>
+                          )}
+                          <Badge className={student.status === 'pending' ? 'status-pending' : 'status-active'}>
+                            {student.status === 'pending' ? 'Pending Confirmation' : 'Confirmed'}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleContactStudent(student.id, student.phone)}
+                          >
+                            WhatsApp Contact
+                          </Button>
+                          {student.status === 'pending' && (
+                            <Button 
+                              size="sm"
+                              className="ayat-button-primary"
+                              onClick={() => handleConfirmTrial(student.id)}
+                            >
+                              Confirm Appointment
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {trialStudents.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">No trial sessions found</p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="students" className="space-y-4">
+          <ComingSoonCard 
+            title="Paid Students Management" 
+            description="View and manage your paid students and their learning progress"
+          />
+        </TabsContent>
+
+        <TabsContent value="sessions" className="space-y-4">
+          <Card className="dashboard-card">
+            <CardHeader>
+              <CardTitle>Paid Session Management</CardTitle>
+              <CardDescription>
+                Track and complete paid learning sessions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {todaySessions.map((session) => (
+                  <div key={session.id} className="p-4 border border-border rounded-lg">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2">
+                        <h4 className="font-medium">{session.studentName}</h4>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Session:</span> {session.sessionNumber} of {session.totalSessions}
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Time:</span> {session.time}
+                          </div>
+                        </div>
+                        <Badge className="status-active">Scheduled</Badge>
+                      </div>
+                      <Button 
+                        size="sm"
+                        className="ayat-button-primary"
+                        onClick={() => handleCompleteSession(session.id)}
+                      >
+                        Mark Complete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="revenue" className="space-y-4">
+          <ComingSoonCard 
+            title="Revenue Analytics" 
+            description="Track your earnings, payment history, and revenue analytics"
+          />
         </TabsContent>
       </Tabs>
     </div>

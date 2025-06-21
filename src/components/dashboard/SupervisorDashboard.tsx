@@ -25,6 +25,23 @@ const SupervisorDashboard: React.FC = () => {
     { id: '2', teacher: 'Sara Mohamed', issue: 'Student feedback review', priority: 'medium' }
   ];
 
+  const ComingSoonCard = ({ title, description }: { title: string; description: string }) => (
+    <Card className="dashboard-card">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-center h-32">
+          <div className="text-center">
+            <p className="text-muted-foreground text-lg font-medium">Coming Soon</p>
+            <p className="text-sm text-muted-foreground mt-2">This feature is under development</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -78,14 +95,19 @@ const SupervisorDashboard: React.FC = () => {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Team Overview</TabsTrigger>
-          <TabsTrigger value="teachers">My Teachers</TabsTrigger>
+      <Tabs defaultValue="homepage" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-8">
+          <TabsTrigger value="homepage">Homepage</TabsTrigger>
+          <TabsTrigger value="alerts">Alerts</TabsTrigger>
+          <TabsTrigger value="team">Team Management</TabsTrigger>
           <TabsTrigger value="quality">Quality Control</TabsTrigger>
+          <TabsTrigger value="reassignment">Reassignment</TabsTrigger>
+          <TabsTrigger value="students">Students</TabsTrigger>
+          <TabsTrigger value="sessions">Sessions</TabsTrigger>
+          <TabsTrigger value="analysis">Analysis</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
+        <TabsContent value="homepage" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="dashboard-card">
               <CardHeader>
@@ -149,7 +171,14 @@ const SupervisorDashboard: React.FC = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="teachers" className="space-y-4">
+        <TabsContent value="alerts" className="space-y-4">
+          <ComingSoonCard 
+            title="Alert Management" 
+            description="Monitor and manage system alerts and notifications"
+          />
+        </TabsContent>
+
+        <TabsContent value="team" className="space-y-4">
           <Card className="dashboard-card">
             <CardHeader>
               <CardTitle>Teacher Management</CardTitle>
@@ -239,6 +268,34 @@ const SupervisorDashboard: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="reassignment" className="space-y-4">
+          <ComingSoonCard 
+            title="Student Reassignment" 
+            description="Reassign students between teachers and manage capacity"
+          />
+        </TabsContent>
+
+        <TabsContent value="students" className="space-y-4">
+          <ComingSoonCard 
+            title="Student Overview" 
+            description="Monitor all students under your supervision"
+          />
+        </TabsContent>
+
+        <TabsContent value="sessions" className="space-y-4">
+          <ComingSoonCard 
+            title="Session Monitoring" 
+            description="Track and monitor all sessions in your supervision area"
+          />
+        </TabsContent>
+
+        <TabsContent value="analysis" className="space-y-4">
+          <ComingSoonCard 
+            title="Performance Analytics" 
+            description="Analyze team performance, efficiency metrics, and quality insights"
+          />
         </TabsContent>
       </Tabs>
     </div>
