@@ -16,6 +16,7 @@ export interface TrialStudent {
   uniqueId: string;
   parentName?: string;
   notes?: string;
+  platform: 'zoom' | 'google-meet';
 }
 
 export const useTeacherTrialSessions = () => {
@@ -57,6 +58,7 @@ export const useTeacherTrialSessions = () => {
         uniqueId: student.unique_id,
         parentName: student.parent_name,
         notes: student.notes,
+        platform: student.platform as 'zoom' | 'google-meet',
       })) || [];
 
       setTrialStudents(mappedStudents);
