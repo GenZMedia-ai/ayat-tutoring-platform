@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,10 +23,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { supabase } from '@/integrations/supabase/client';
+import TrialOutcomeForm from './TrialOutcomeForm';
 
 const EGYPT_TIMEZONE = 'Africa/Cairo';
 
@@ -35,6 +42,7 @@ interface TeacherStudentCardProps {
   onConfirm: (studentId: string) => void;
   onStatusChange: (studentId: string, newStatus: string) => void;
   onReschedule: (student: TrialStudent) => void;
+  onTrialOutcomeSubmitted?: () => void;
 }
 
 interface RescheduleInfo {
@@ -44,18 +52,26 @@ interface RescheduleInfo {
   rescheduleReason?: string;
 }
 
+interface SessionInfo {
+  sessionId: string;
+  studentId: string;
+}
+
 export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
   student,
   onContact,
   onConfirm,
   onStatusChange,
-  onReschedule
+  onReschedule,
+  onTrialOutcomeSubmitted
 }) => {
   const [rescheduleInfo, setRescheduleInfo] = useState<RescheduleInfo | null>(null);
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
+  const [isTrialOutcomeModalOpen, setIsTrialOutcomeModalOpen] = useState(false);
 
-  // Fetch reschedule information
+  // Fetch reschedule information and session data
   useEffect(() => {
-    const fetchRescheduleInfo = async () => {
+    const fetchSessionData = async () => {
       try {
         const { data: sessionStudents } = await supabase
           .from('session_students')
@@ -66,13 +82,20 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
           const sessionIds = sessionStudents.map(ss => ss.session_id);
           const { data: sessionData } = await supabase
             .from('sessions')
-            .select('reschedule_count, original_date, original_time, reschedule_reason')
+            .select('id, reschedule_count, original_date, original_time, reschedule_reason, scheduled_date, scheduled_time')
             .in('id', sessionIds)
             .order('created_at', { ascending: false })
             .limit(1);
 
           if (sessionData && sessionData.length > 0) {
             const session = sessionData[0];
+            
+            // Set session info for trial outcome form
+            setSessionInfo({
+              sessionId: session.id,
+              studentId: student.id
+            });
+
             if (session.reschedule_count > 0) {
               setRescheduleInfo({
                 rescheduleCount: session.reschedule_count,
@@ -84,11 +107,11 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
           }
         }
       } catch (error) {
-        console.error('Error fetching reschedule info:', error);
+        console.error('Error fetching session data:', error);
       }
     };
 
-    fetchRescheduleInfo();
+    fetchSessionData();
   }, [student.id]);
 
   const getStatusBadge = (status: string) => {
@@ -155,40 +178,17 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
     }
   };
 
-  const formatOriginalDateTime = (date?: string, time?: string) => {
-    if (!date || !time) return '';
-    
-    try {
-      console.log('🔄 Formatting original date/time:', { date, time });
-      
-      // Validate input formats
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}:\d{2}$/.test(time)) {
-        console.error('❌ Invalid original date/time format:', { date, time });
-        return '';
-      }
-      
-      // Create UTC datetime string
-      const utcDateTimeString = `${date}T${time}Z`;
-      const utcDateTime = new Date(utcDateTimeString);
-      
-      // Check if date is valid
-      if (isNaN(utcDateTime.getTime())) {
-        console.error('❌ Invalid original date object:', utcDateTimeString);
-        return '';
-      }
-      
-      // Convert to Egypt timezone
-      const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
-      
-      // Format in short Egyptian format: DD/MM at H:mm AM/PM
-      const formattedDateTime = format(egyptDateTime, 'dd/MM \'at\' h:mm a');
-      console.log('✅ Formatted Original DateTime:', formattedDateTime);
-      
-      return formattedDateTime;
-    } catch (error) {
-      console.error('❌ Original date formatting error:', error);
-      return '';
-    }
+  const handleTrialCompleted = () => {
+    setIsTrialOutcomeModalOpen(true);
+  };
+
+  const handleTrialGhosted = () => {
+    setIsTrialOutcomeModalOpen(true);
+  };
+
+  const handleTrialOutcomeSuccess = () => {
+    setIsTrialOutcomeModalOpen(false);
+    onTrialOutcomeSubmitted?.();
   };
 
   const getMenuOptions = () => {
@@ -202,8 +202,8 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
       );
     } else if (student.status === 'confirmed') {
       options.push(
-        { label: 'Mark as Completed', action: () => onStatusChange(student.id, 'trial-completed'), icon: CheckCircle },
-        { label: 'Mark as Ghosted', action: () => onStatusChange(student.id, 'trial-ghosted'), icon: XCircle },
+        { label: 'Mark as Completed', action: handleTrialCompleted, icon: CheckCircle },
+        { label: 'Mark as Ghosted', action: handleTrialGhosted, icon: XCircle },
         { label: 'Reschedule', action: () => onReschedule(student), icon: RotateCcw },
         { label: 'Contact Student', action: () => onContact(student.id, student.phone), icon: MessageCircle }
       );
@@ -217,120 +217,148 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2 flex-wrap">
-              <h3 className="font-semibold text-lg">{student.name}</h3>
-              {getStatusBadge(student.status)}
-              {rescheduleInfo && rescheduleInfo.rescheduleCount > 0 && (
-                <Badge className="bg-yellow-100 text-yellow-800 border-0">
-                  <RotateCcw className="h-3 w-3 mr-1" />
-                  Rescheduled ({rescheduleInfo.rescheduleCount}x)
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="font-mono">{student.uniqueId}</span>
-              <span>Age: {student.age}</span>
-              {student.parentName && (
-                <span>Parent: {student.parentName}</span>
-              )}
-            </div>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {getMenuOptions().map((option, index) => (
-                <DropdownMenuItem key={index} onClick={option.action}>
-                  <option.icon className="mr-2 h-4 w-4" />
-                  {option.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Contact Information */}
-        <div className="grid grid-cols-1 gap-3">
-          <div className="flex items-center gap-2 text-sm">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            <span>{student.phone}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span>{student.country}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <div className="flex flex-col">
-              <span className="font-medium">
-                {formatDateTime(student.trialDate, student.trialTime)}
-              </span>
-              {rescheduleInfo && rescheduleInfo.originalDate && rescheduleInfo.originalTime && (
-                <span className="text-xs text-muted-foreground">
-                  Originally: {formatOriginalDateTime(rescheduleInfo.originalDate, rescheduleInfo.originalTime)}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Reschedule Information */}
-        {rescheduleInfo && rescheduleInfo.rescheduleCount > 0 && (
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-yellow-800">
-                  Session Rescheduled {rescheduleInfo.rescheduleCount} time{rescheduleInfo.rescheduleCount > 1 ? 's' : ''}
-                </p>
-                {rescheduleInfo.rescheduleReason && (
-                  <p className="text-yellow-700 mt-1">
-                    Reason: {rescheduleInfo.rescheduleReason.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </p>
+    <>
+      <Card className="hover:shadow-md transition-shadow">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
+                <h3 className="font-semibold text-lg">{student.name}</h3>
+                {getStatusBadge(student.status)}
+                {rescheduleInfo && rescheduleInfo.rescheduleCount > 0 && (
+                  <Badge className="bg-yellow-100 text-yellow-800 border-0">
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Rescheduled ({rescheduleInfo.rescheduleCount}x)
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span className="font-mono">{student.uniqueId}</span>
+                <span>Age: {student.age}</span>
+                {student.parentName && (
+                  <span>Parent: {student.parentName}</span>
                 )}
               </div>
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {getMenuOptions().map((option, index) => (
+                  <DropdownMenuItem key={index} onClick={option.action}>
+                    <option.icon className="mr-2 h-4 w-4" />
+                    {option.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        )}
+        </CardHeader>
 
-        {/* Notes */}
-        {student.notes && (
-          <div className="p-3 bg-muted rounded-lg">
-            <p className="text-sm">
-              <strong>Notes:</strong> {student.notes}
-            </p>
+        <CardContent className="space-y-4">
+          {/* Contact Information */}
+          <div className="grid grid-cols-1 gap-3">
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <span>{student.phone}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span>{student.country}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">
+                {formatDateTime(student.trialDate, student.trialTime)}
+              </span>
+            </div>
           </div>
-        )}
 
-        {/* Quick Actions */}
-        {student.status === 'pending' && (
-          <div className="flex gap-2 pt-2 border-t">
-            <Button 
-              size="sm" 
-              variant="outline"
-              onClick={() => onContact(student.id, student.phone)}
-            >
-              Contact
-            </Button>
-            <Button 
-              size="sm"
-              className="ayat-button-primary"
-              onClick={() => onConfirm(student.id)}
-            >
-              Confirm
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          {/* Reschedule Information */}
+          {rescheduleInfo && rescheduleInfo.rescheduleCount > 0 && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-yellow-800">
+                    Session Rescheduled {rescheduleInfo.rescheduleCount} time{rescheduleInfo.rescheduleCount > 1 ? 's' : ''}
+                  </p>
+                  {rescheduleInfo.rescheduleReason && (
+                    <p className="text-yellow-700 mt-1">
+                      Reason: {rescheduleInfo.rescheduleReason.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {student.notes && (
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-sm">
+                <strong>Notes:</strong> {student.notes}
+              </p>
+            </div>
+          )}
+
+          {/* Quick Actions */}
+          {student.status === 'pending' && (
+            <div className="flex gap-2 pt-2 border-t">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => onContact(student.id, student.phone)}
+              >
+                Contact
+              </Button>
+              <Button 
+                size="sm"
+                className="ayat-button-primary"
+                onClick={() => onConfirm(student.id)}
+              >
+                Confirm
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Trial Outcome Modal */}
+      <Dialog open={isTrialOutcomeModalOpen} onOpenChange={setIsTrialOutcomeModalOpen}>
+        <DialogContent className="max-w-3xl">
+          {sessionInfo && (
+            <TrialOutcomeForm
+              student={{
+                id: student.id,
+                uniqueId: student.uniqueId,
+                name: student.name,
+                age: student.age,
+                phone: student.phone,
+                country: student.country,
+                platform: 'zoom', // Default platform, this could be enhanced to get actual platform
+                notes: student.notes,
+                status: student.status as any,
+                parentName: student.parentName,
+                assignedTeacher: student.assignedTeacher,
+                assignedSalesAgent: student.assignedSalesAgent,
+                assignedSupervisor: student.assignedSupervisor,
+                trialDate: student.trialDate,
+                trialTime: student.trialTime,
+                teacherType: 'quran' as any, // Default teacher type, this could be enhanced
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              }}
+              sessionId={sessionInfo.sessionId}
+              onSuccess={handleTrialOutcomeSuccess}
+              onCancel={() => setIsTrialOutcomeModalOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
