@@ -16,6 +16,9 @@ export interface TrialStudent {
   uniqueId: string;
   parentName?: string;
   notes?: string;
+  assignedTeacher?: string;
+  assignedSalesAgent?: string;
+  assignedSupervisor?: string;
 }
 
 export const useTeacherTrialSessions = () => {
@@ -57,6 +60,9 @@ export const useTeacherTrialSessions = () => {
         uniqueId: student.unique_id,
         parentName: student.parent_name,
         notes: student.notes,
+        assignedTeacher: student.assigned_teacher_id,
+        assignedSalesAgent: student.assigned_sales_agent_id,
+        assignedSupervisor: student.assigned_supervisor_id,
       })) || [];
 
       setTrialStudents(mappedStudents);

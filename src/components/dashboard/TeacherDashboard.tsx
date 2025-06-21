@@ -1,24 +1,27 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar } from 'lucide-react';
-import { DashboardHeader } from '@/components/header';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeacherTrialSessions, TrialStudent } from '@/hooks/useTeacherTrialSessions';
 import { useStudentStatusManagement } from '@/hooks/useStudentStatusManagement';
 import { useWhatsAppContact } from '@/hooks/useWhatsAppContact';
 import { TeacherStudentCard } from '@/components/teacher/TeacherStudentCard';
-import RescheduleModal from '@/components/modals/RescheduleModal';
+import { RescheduleModal } from '@/components/teacher/RescheduleModal';
 
 const TeacherDashboard = () => {
   const { user } = useAuth();
   const { trialStudents, loading, confirmTrial, refreshTrialSessions } = useTeacherTrialSessions();
   const { updateStudentStatus, rescheduleStudent } = useStudentStatusManagement();
-  const { contactStudent } = useWhatsAppContact();
+  const { logContact, openWhatsApp } = useWhatsAppContact();
   const [selectedStudent, setSelectedStudent] = useState<TrialStudent | null>(null);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
 
   const handleContact = async (studentId: string, phone: string) => {
-    const success = await contactStudent(studentId, phone);
+    // Open WhatsApp and log the contact attempt
+    openWhatsApp(phone);
+    const success = await logContact(studentId, 'trial_confirmation', true);
     if (success) {
       refreshTrialSessions();
     }
@@ -64,10 +67,7 @@ const TeacherDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader 
-        title="Teacher Dashboard" 
-        subtitle="Manage your trial sessions and student interactions" 
-      />
+      <DashboardHeader />
       
       <div className="grid gap-6">
         {trialStudents.length === 0 ? (
@@ -98,9 +98,9 @@ const TeacherDashboard = () => {
       {/* Reschedule Modal */}
       {selectedStudent && (
         <RescheduleModal
-          isOpen={isRescheduleModalOpen}
-          onClose={() => setIsRescheduleModalOpen(false)}
           student={selectedStudent}
+          open={isRescheduleModalOpen}
+          onClose={() => setIsRescheduleModalOpen(false)}
           onSuccess={handleRescheduleSuccess}
         />
       )}
