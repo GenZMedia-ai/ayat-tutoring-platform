@@ -7,10 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { useTrialOutcomes } from '@/hooks/useTrialOutcomes';
-import { Student } from '@/types';
+import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
 
 interface TrialOutcomeFormProps {
-  student: Student;
+  student: TrialStudent;
   sessionId: string;
   initialOutcome: 'completed' | 'ghosted';
   onSuccess?: () => void;

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,7 +12,7 @@ import { useTeacherTrialSessions } from '@/hooks/useTeacherTrialSessions';
 import { useWhatsAppContact } from '@/hooks/useWhatsAppContact';
 import { TeacherStudentCard } from '@/components/teacher/TeacherStudentCard';
 import { RescheduleModal } from '@/components/teacher/RescheduleModal';
-import { TrialOutcomeModal } from '@/components/teacher/TrialOutcomeModal';
+import TrialOutcomeModal from '@/components/teacher/TrialOutcomeModal';
 import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
 import { Trash2, Lock, Eye } from 'lucide-react';
 import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
