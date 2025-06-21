@@ -33,7 +33,8 @@ interface TeacherStudentCardProps {
   student: TrialStudent;
   onContact: (studentId: string, phone: string) => void;
   onConfirm: (studentId: string) => void;
-  onStatusChange: (studentId: string, newStatus: string) => void;
+  onMarkCompleted: (student: TrialStudent) => void;
+  onMarkGhosted: (student: TrialStudent) => void;
   onReschedule: (student: TrialStudent) => void;
 }
 
@@ -48,7 +49,8 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
   student,
   onContact,
   onConfirm,
-  onStatusChange,
+  onMarkCompleted,
+  onMarkGhosted,
   onReschedule
 }) => {
   const [rescheduleInfo, setRescheduleInfo] = useState<RescheduleInfo | null>(null);
@@ -202,8 +204,8 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
       );
     } else if (student.status === 'confirmed') {
       options.push(
-        { label: 'Mark as Completed', action: () => onStatusChange(student.id, 'trial-completed'), icon: CheckCircle },
-        { label: 'Mark as Ghosted', action: () => onStatusChange(student.id, 'trial-ghosted'), icon: XCircle },
+        { label: 'Mark as Completed', action: () => onMarkCompleted(student), icon: CheckCircle },
+        { label: 'Mark as Ghosted', action: () => onMarkGhosted(student), icon: XCircle },
         { label: 'Reschedule', action: () => onReschedule(student), icon: RotateCcw },
         { label: 'Contact Student', action: () => onContact(student.id, student.phone), icon: MessageCircle }
       );

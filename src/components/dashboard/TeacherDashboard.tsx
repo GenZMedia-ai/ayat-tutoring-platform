@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,10 +8,10 @@ import { toast } from 'sonner';
 import { useTeacherAvailability } from '@/hooks/useTeacherAvailability';
 import { useServerDate } from '@/hooks/useServerDate';
 import { useTeacherTrialSessions } from '@/hooks/useTeacherTrialSessions';
-import { useStudentStatusManagement } from '@/hooks/useStudentStatusManagement';
 import { useWhatsAppContact } from '@/hooks/useWhatsAppContact';
 import { TeacherStudentCard } from '@/components/teacher/TeacherStudentCard';
 import { RescheduleModal } from '@/components/teacher/RescheduleModal';
+import { TrialOutcomeModal } from '@/components/teacher/TrialOutcomeModal';
 import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
 import { Trash2, Lock, Eye } from 'lucide-react';
 import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
@@ -20,10 +19,12 @@ import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
 const TeacherDashboard: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [rescheduleStudent, setRescheduleStudent] = useState<TrialStudent | null>(null);
+  const [trialOutcomeStudent, setTrialOutcomeStudent] = useState<TrialStudent | null>(null);
+  const [trialOutcomeType, setTrialOutcomeType] = useState<'completed' | 'ghosted'>('completed');
+  
   const { timeSlots, loading, toggleAvailability } = useTeacherAvailability(selectedDate);
   const { isDateToday, loading: dateLoading } = useServerDate();
   const { trialStudents, loading: trialsLoading, confirmTrial, refreshTrialSessions } = useTeacherTrialSessions();
-  const { updateStudentStatus, rescheduleStudent: performReschedule } = useStudentStatusManagement();
   const { logContact, openWhatsApp } = useWhatsAppContact();
   
   // Check if selected date is today according to server
@@ -70,15 +71,22 @@ const TeacherDashboard: React.FC = () => {
     }
   };
 
-  const handleStatusChange = async (studentId: string, newStatus: string) => {
-    // Get current student to pass current status for validation
-    const student = trialStudents.find(s => s.id === studentId);
-    const currentStatus = student?.status;
-    
-    const success = await updateStudentStatus(studentId, newStatus, currentStatus);
-    if (success) {
-      refreshTrialSessions();
-    }
+  const handleMarkCompleted = (student: TrialStudent) => {
+    console.log('🎯 Opening completed trial outcome modal for student:', student.name);
+    setTrialOutcomeStudent(student);
+    setTrialOutcomeType('completed');
+  };
+
+  const handleMarkGhosted = (student: TrialStudent) => {
+    console.log('👻 Opening ghosted trial outcome modal for student:', student.name);
+    setTrialOutcomeStudent(student);
+    setTrialOutcomeType('ghosted');
+  };
+
+  const handleTrialOutcomeSuccess = () => {
+    console.log('✅ Trial outcome submitted successfully');
+    setTrialOutcomeStudent(null);
+    refreshTrialSessions();
   };
 
   const handleReschedule = (student: TrialStudent) => {
@@ -438,7 +446,7 @@ const TeacherDashboard: React.FC = () => {
             <CardHeader>
               <CardTitle>Trial Session Management</CardTitle>
               <CardDescription>
-                Manage trial sessions and confirmations. Click the three-dot menu for more options.
+                Manage trial sessions and confirmations. Use the dropdown menu to mark trials as completed or ghosted.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -459,7 +467,8 @@ const TeacherDashboard: React.FC = () => {
                           student={student}
                           onContact={handleContactStudent}
                           onConfirm={handleConfirmTrial}
-                          onStatusChange={handleStatusChange}
+                          onMarkCompleted={handleMarkCompleted}
+                          onMarkGhosted={handleMarkGhosted}
                           onReschedule={handleReschedule}
                         />
                       ))}
@@ -532,6 +541,15 @@ const TeacherDashboard: React.FC = () => {
         open={!!rescheduleStudent}
         onClose={() => setRescheduleStudent(null)}
         onSuccess={handleRescheduleSuccess}
+      />
+
+      {/* Trial Outcome Modal */}
+      <TrialOutcomeModal
+        student={trialOutcomeStudent}
+        outcome={trialOutcomeType}
+        open={!!trialOutcomeStudent}
+        onClose={() => setTrialOutcomeStudent(null)}
+        onSuccess={handleTrialOutcomeSuccess}
       />
     </div>
   );
