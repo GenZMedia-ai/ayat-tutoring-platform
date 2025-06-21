@@ -160,7 +160,10 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
               <Label htmlFor="platform">Platform</Label>
               <Select
                 value={formData.platform}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, platform: value }))}
+                onValueChange={(value) => setFormData(prev => ({ 
+                  ...prev, 
+                  platform: value as 'zoom' | 'google-meet'
+                }))}
               >
                 <SelectTrigger>
                   <SelectValue />
