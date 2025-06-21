@@ -22,7 +22,28 @@ export const useFamilyGroups = () => {
         return;
       }
 
-      setFamilyGroups(data || []);
+      // Type-safe mapping from database schema to our interface
+      const mappedFamilyGroups: FamilyGroup[] = (data || []).map(row => ({
+        id: row.id,
+        unique_id: row.unique_id,
+        parent_name: row.parent_name,
+        phone: row.phone,
+        country: row.country,
+        platform: row.platform as 'zoom' | 'google-meet',
+        notes: row.notes || undefined,
+        status: row.status as FamilyGroup['status'],
+        assigned_teacher_id: row.assigned_teacher_id || undefined,
+        assigned_sales_agent_id: row.assigned_sales_agent_id,
+        assigned_supervisor_id: row.assigned_supervisor_id || undefined,
+        trial_date: row.trial_date || undefined,
+        trial_time: row.trial_time || undefined,
+        teacher_type: row.teacher_type as FamilyGroup['teacher_type'],
+        student_count: row.student_count,
+        created_at: row.created_at,
+        updated_at: row.updated_at
+      }));
+
+      setFamilyGroups(mappedFamilyGroups);
     } catch (error) {
       console.error('Exception fetching family groups:', error);
       toast.error('Failed to load family groups');
@@ -51,7 +72,7 @@ export const useFamilyGroups = () => {
       setFamilyGroups(prev => 
         prev.map(family => 
           family.id === familyId 
-            ? { ...family, status: newStatus as any, updated_at: new Date().toISOString() }
+            ? { ...family, status: newStatus as FamilyGroup['status'], updated_at: new Date().toISOString() }
             : family
         )
       );

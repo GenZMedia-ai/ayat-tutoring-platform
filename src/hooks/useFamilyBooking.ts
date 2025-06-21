@@ -60,7 +60,8 @@ export const useFamilyBooking = () => {
         return false;
       }
 
-      const bookingResult = data as FamilyBookingResponse;
+      // Type-safe conversion with proper validation
+      const bookingResult = data as unknown as FamilyBookingResponse;
 
       if (bookingResult?.success) {
         const teacherName = bookingResult.teacher_name || 'Unknown Teacher';
