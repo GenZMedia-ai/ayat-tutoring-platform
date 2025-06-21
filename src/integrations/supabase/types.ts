@@ -640,6 +640,10 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      is_current_user_teacher: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       log_booking_operation: {
         Args: {
           p_operation_type: string

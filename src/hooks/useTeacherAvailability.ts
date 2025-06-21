@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,7 +36,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     return slots;
   };
 
-  // PHASE 5: Simplified Egypt time to UTC conversion - hour only, preserve date
+  // SIMPLIFIED: Egypt time to UTC conversion - hour only, preserve date
   const egyptTimeToUTC = (date: Date, time: string): string => {
     console.log('🔄 SIMPLIFIED Egypt time to UTC conversion:', { date: date.toDateString(), time });
     
@@ -65,7 +66,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     return utcTime;
   };
 
-  // PHASE 5: Simplified UTC to Egypt time conversion
+  // SIMPLIFIED: UTC to Egypt time conversion
   const utcToEgyptTime = (utcTime: string, contextDate: Date): string => {
     console.log('🔄 SIMPLIFIED UTC to Egypt time conversion:', utcTime);
     
@@ -95,6 +96,31 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     return egyptTime;
   };
 
+  // Check if current date is today in Egypt timezone
+  const isToday = (date: Date): boolean => {
+    const today = new Date();
+    const egyptToday = new Date(today.toLocaleString("en-US", {timeZone: "Africa/Cairo"}));
+    return date.toDateString() === egyptToday.toDateString();
+  };
+
+  // Enhanced validation for teacher operations on today's availability
+  const validateTeacherTodayOperation = (date: Date): boolean => {
+    // Only apply restrictions to teachers, not admins
+    if (user?.role !== 'teacher') {
+      console.log('✅ Non-teacher user - no restrictions applied');
+      return true;
+    }
+
+    if (isToday(date)) {
+      console.log('❌ Teacher attempting to modify today\'s availability - blocked');
+      toast.error('Cannot modify today\'s availability. Today\'s schedule is locked to prevent disruption of confirmed bookings.');
+      return false;
+    }
+
+    console.log('✅ Teacher operation allowed - not today\'s date');
+    return true;
+  };
+
   // Fetch availability data from database
   const fetchAvailability = useCallback(async () => {
     if (!selectedDate || !user) return;
@@ -102,7 +128,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     setLoading(true);
     try {
       const dateString = format(selectedDate, 'yyyy-MM-dd');
-      console.log('📊 PHASE 5: Fetching availability for date (preserved):', dateString);
+      console.log('📊 Fetching availability for date (preserved):', dateString);
       
       const { data, error } = await supabase
         .from('teacher_availability')
@@ -157,7 +183,12 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
   const toggleAvailability = async (time: string) => {
     if (!selectedDate || !user) return;
 
-    console.log('🎯 PHASE 5: Toggling availability for time (simplified):', time);
+    console.log('🎯 Toggling availability for time (simplified):', time);
+
+    // Enhanced teacher validation for today's availability
+    if (!validateTeacherTodayOperation(selectedDate)) {
+      return; // Validation failed, operation blocked
+    }
 
     const slot = timeSlots.find(s => s.time === time);
     if (!slot || slot.isBooked) {
@@ -168,10 +199,11 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     const dateString = format(selectedDate, 'yyyy-MM-dd');
     const utcTime = egyptTimeToUTC(selectedDate, time);
 
-    console.log('💾 PHASE 5: Saving availability with preserved date:', {
+    console.log('💾 Saving availability with preserved date:', {
       originalDate: dateString,
       egyptTime: time,
       utcTime: utcTime,
+      userRole: user.role,
       datePreservationCheck: 'Same date used for storage'
     });
 
@@ -187,7 +219,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
 
           if (error) {
             console.error('❌ Error removing availability:', error);
-            if (error.message?.includes('Cannot modify availability for today')) {
+            if (error.message?.includes('Teachers cannot modify availability for today')) {
               toast.error('Cannot modify today\'s availability. Today\'s schedule is locked.');
             } else {
               toast.error('Failed to remove availability');
@@ -204,6 +236,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
           time_slot: utcTime,
           is_available: true,
           is_booked: false,
+          userRole: user.role,
         });
         
         const { error } = await supabase
@@ -218,7 +251,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
 
         if (error) {
           console.error('❌ Error adding availability:', error);
-          if (error.message?.includes('Cannot modify availability for today')) {
+          if (error.message?.includes('Teachers cannot modify availability for today')) {
             toast.error('Cannot modify today\'s availability. Today\'s schedule is locked.');
           } else {
             toast.error('Failed to add availability');
@@ -233,13 +266,17 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
       toast.success(slot.isAvailable ? 'Time slot removed' : 'Time slot added');
     } catch (error) {
       console.error('❌ Error toggling availability:', error);
-      toast.error('Failed to update availability');
+      if (error instanceof Error && error.message?.includes('Teachers cannot modify availability for today')) {
+        toast.error('Cannot modify today\'s availability. Today\'s schedule is locked.');
+      } else {
+        toast.error('Failed to update availability');
+      }
     }
   };
 
   // Force refresh availability - useful after reschedule operations
   const forceRefresh = useCallback(() => {
-    console.log('🔄 PHASE 5: Force refreshing availability data...');
+    console.log('🔄 Force refreshing availability data...');
     fetchAvailability();
   }, [fetchAvailability]);
 
