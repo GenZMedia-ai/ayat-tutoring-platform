@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export const useStudentStatusManagement = () => {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
-  const userRole = user?.user_metadata?.role || 'teacher';
+  const userRole = user?.role || 'teacher';
   const { validateTransition, requiresConfirmation } = useStatusValidation(userRole);
 
   const updateStudentStatus = async (studentId: string, newStatus: string, currentStatus?: string) => {
