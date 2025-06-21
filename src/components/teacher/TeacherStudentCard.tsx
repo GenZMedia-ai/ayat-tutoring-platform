@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,7 +66,8 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
 }) => {
   const [rescheduleInfo, setRescheduleInfo] = useState<RescheduleInfo | null>(null);
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
-  const [isTrialOutcomeModalOpen, setIsTrialOutcomeModalOpen] = useState(false);
+  const [isTrialCompletedModalOpen, setIsTrialCompletedModalOpen] = useState(false);
+  const [isTrialGhostedModalOpen, setIsTrialGhostedModalOpen] = useState(false);
 
   // Fetch reschedule information and session data
   useEffect(() => {
@@ -179,15 +179,20 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
   };
 
   const handleTrialCompleted = () => {
-    setIsTrialOutcomeModalOpen(true);
+    setIsTrialCompletedModalOpen(true);
   };
 
   const handleTrialGhosted = () => {
-    setIsTrialOutcomeModalOpen(true);
+    setIsTrialGhostedModalOpen(true);
   };
 
-  const handleTrialOutcomeSuccess = () => {
-    setIsTrialOutcomeModalOpen(false);
+  const handleTrialCompletedSuccess = () => {
+    setIsTrialCompletedModalOpen(false);
+    onTrialOutcomeSubmitted?.();
+  };
+
+  const handleTrialGhostedSuccess = () => {
+    setIsTrialGhostedModalOpen(false);
     onTrialOutcomeSubmitted?.();
   };
 
@@ -327,8 +332,8 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
         </CardContent>
       </Card>
 
-      {/* Trial Outcome Modal */}
-      <Dialog open={isTrialOutcomeModalOpen} onOpenChange={setIsTrialOutcomeModalOpen}>
+      {/* Trial Completed Modal */}
+      <Dialog open={isTrialCompletedModalOpen} onOpenChange={setIsTrialCompletedModalOpen}>
         <DialogContent className="max-w-3xl">
           {sessionInfo && (
             <TrialOutcomeForm
@@ -339,7 +344,7 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
                 age: student.age,
                 phone: student.phone,
                 country: student.country,
-                platform: 'zoom', // Default platform, this could be enhanced to get actual platform
+                platform: 'zoom' as any,
                 notes: student.notes,
                 status: student.status as any,
                 parentName: student.parentName,
@@ -348,13 +353,48 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
                 assignedSupervisor: student.assignedSupervisor,
                 trialDate: student.trialDate,
                 trialTime: student.trialTime,
-                teacherType: 'quran' as any, // Default teacher type, this could be enhanced
+                teacherType: 'quran' as any,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
               }}
               sessionId={sessionInfo.sessionId}
-              onSuccess={handleTrialOutcomeSuccess}
-              onCancel={() => setIsTrialOutcomeModalOpen(false)}
+              initialOutcome="completed"
+              onSuccess={handleTrialCompletedSuccess}
+              onCancel={() => setIsTrialCompletedModalOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Trial Ghosted Modal */}
+      <Dialog open={isTrialGhostedModalOpen} onOpenChange={setIsTrialGhostedModalOpen}>
+        <DialogContent className="max-w-3xl">
+          {sessionInfo && (
+            <TrialOutcomeForm
+              student={{
+                id: student.id,
+                uniqueId: student.uniqueId,
+                name: student.name,
+                age: student.age,
+                phone: student.phone,
+                country: student.country,
+                platform: 'zoom' as any,
+                notes: student.notes,
+                status: student.status as any,
+                parentName: student.parentName,
+                assignedTeacher: student.assignedTeacher,
+                assignedSalesAgent: student.assignedSalesAgent,
+                assignedSupervisor: student.assignedSupervisor,
+                trialDate: student.trialDate,
+                trialTime: student.trialTime,
+                teacherType: 'quran' as any,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              }}
+              sessionId={sessionInfo.sessionId}
+              initialOutcome="ghosted"
+              onSuccess={handleTrialGhostedSuccess}
+              onCancel={() => setIsTrialGhostedModalOpen(false)}
             />
           )}
         </DialogContent>
