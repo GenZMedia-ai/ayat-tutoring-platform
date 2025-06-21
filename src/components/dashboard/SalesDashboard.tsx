@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import SimpleSalesDashboard from './SimpleSalesDashboard';
+import SalesTrialAppointments from '../sales/SalesTrialAppointments';
 
 const SalesDashboard: React.FC = () => {
   const ComingSoonCard = ({ title, description }: { title: string; description: string }) => (
@@ -49,10 +50,7 @@ const SalesDashboard: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="trials" className="space-y-4">
-          <ComingSoonCard 
-            title="Trial Appointments Management" 
-            description="Schedule and manage trial sessions for prospective students"
-          />
+          <SalesTrialAppointments />
         </TabsContent>
 
         <TabsContent value="followup" className="space-y-4">
