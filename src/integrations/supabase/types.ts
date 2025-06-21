@@ -108,6 +108,54 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_links: {
+        Row: {
+          amount: number
+          clicked_at: string | null
+          created_at: string
+          created_by: string
+          currency: string
+          expires_at: string
+          id: string
+          package_id: string | null
+          paid_at: string | null
+          status: string
+          stripe_session_id: string | null
+          student_ids: string[]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          clicked_at?: string | null
+          created_at?: string
+          created_by: string
+          currency?: string
+          expires_at: string
+          id?: string
+          package_id?: string | null
+          paid_at?: string | null
+          status?: string
+          stripe_session_id?: string | null
+          student_ids: string[]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          clicked_at?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          expires_at?: string
+          id?: string
+          package_id?: string | null
+          paid_at?: string | null
+          status?: string
+          stripe_session_id?: string | null
+          student_ids?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           approved_at: string | null
@@ -152,6 +200,48 @@ export type Database = {
           role?: string
           status?: string
           teacher_type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sales_followups: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          outcome: string | null
+          reason: string
+          sales_agent_id: string
+          scheduled_date: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          reason: string
+          sales_agent_id: string
+          scheduled_date: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          reason?: string
+          sales_agent_id?: string
+          scheduled_date?: string
+          student_id?: string
           updated_at?: string
         }
         Relationships: []
@@ -201,10 +291,15 @@ export type Database = {
           idempotency_key: string | null
           notes: string | null
           reschedule_count: number
+          reschedule_reason: string | null
           scheduled_date: string
           scheduled_time: string
           session_number: number
           status: string
+          trial_outcome: string | null
+          trial_outcome_notes: string | null
+          trial_outcome_submitted_at: string | null
+          trial_outcome_submitted_by: string | null
           updated_at: string
         }
         Insert: {
@@ -215,10 +310,15 @@ export type Database = {
           idempotency_key?: string | null
           notes?: string | null
           reschedule_count?: number
+          reschedule_reason?: string | null
           scheduled_date: string
           scheduled_time: string
           session_number?: number
           status?: string
+          trial_outcome?: string | null
+          trial_outcome_notes?: string | null
+          trial_outcome_submitted_at?: string | null
+          trial_outcome_submitted_by?: string | null
           updated_at?: string
         }
         Update: {
@@ -229,10 +329,15 @@ export type Database = {
           idempotency_key?: string | null
           notes?: string | null
           reschedule_count?: number
+          reschedule_reason?: string | null
           scheduled_date?: string
           scheduled_time?: string
           session_number?: number
           status?: string
+          trial_outcome?: string | null
+          trial_outcome_notes?: string | null
+          trial_outcome_submitted_at?: string | null
+          trial_outcome_submitted_by?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -336,6 +441,81 @@ export type Database = {
         }
         Relationships: []
       }
+      trial_outcomes: {
+        Row: {
+          created_at: string
+          id: string
+          outcome: string
+          recommended_package: string | null
+          session_id: string | null
+          student_behavior: string | null
+          student_id: string
+          submitted_at: string
+          submitted_by: string
+          teacher_notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          outcome: string
+          recommended_package?: string | null
+          session_id?: string | null
+          student_behavior?: string | null
+          student_id: string
+          submitted_at?: string
+          submitted_by: string
+          teacher_notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          outcome?: string
+          recommended_package?: string | null
+          session_id?: string | null
+          student_behavior?: string | null
+          student_id?: string
+          submitted_at?: string
+          submitted_by?: string
+          teacher_notes?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_contacts: {
+        Row: {
+          attempt_number: number
+          contact_type: string
+          contacted_at: string
+          contacted_by: string
+          created_at: string
+          id: string
+          notes: string | null
+          student_id: string
+          success: boolean
+        }
+        Insert: {
+          attempt_number?: number
+          contact_type?: string
+          contacted_at?: string
+          contacted_by: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          student_id: string
+          success?: boolean
+        }
+        Update: {
+          attempt_number?: number
+          contact_type?: string
+          contacted_at?: string
+          contacted_by?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          student_id?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -369,6 +549,15 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      log_whatsapp_contact: {
+        Args: {
+          p_student_id: string
+          p_contact_type?: string
+          p_success?: boolean
+          p_notes?: string
+        }
+        Returns: Json
+      }
       search_available_teachers: {
         Args: {
           p_date: string
@@ -392,6 +581,17 @@ export type Database = {
           p_utc_start_time: string
           p_teacher_type: string
           p_teacher_id: string
+        }
+        Returns: Json
+      }
+      submit_trial_outcome: {
+        Args: {
+          p_student_id: string
+          p_session_id: string
+          p_outcome: string
+          p_teacher_notes?: string
+          p_student_behavior?: string
+          p_recommended_package?: string
         }
         Returns: Json
       }
