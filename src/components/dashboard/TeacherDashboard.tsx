@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar } from 'lucide-react';
-import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeacherTrialSessions, TrialStudent } from '@/hooks/useTeacherTrialSessions';
 import { useStudentStatusManagement } from '@/hooks/useStudentStatusManagement';
@@ -67,8 +66,6 @@ const TeacherDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader />
-      
       <div className="grid gap-6">
         {trialStudents.length === 0 ? (
           <Card>
