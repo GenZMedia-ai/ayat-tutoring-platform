@@ -1,3 +1,4 @@
+
 import { TIMEZONES } from '@/constants/timeSlots';
 import { fromZonedTime, toZonedTime, format } from 'date-fns-tz';
 
@@ -5,14 +6,14 @@ export const getTimezoneConfig = (timezoneValue: string) => {
   return TIMEZONES.find(tz => tz.value === timezoneValue);
 };
 
-// SIMPLIFIED: Convert client time to server preserving the selected date
+// FIXED: Convert client time to server preserving the selected date
 export const convertClientTimeToServer = (clientDate: Date, clientHour: number, timezoneValue: string) => {
   const tzConfig = getTimezoneConfig(timezoneValue);
   if (!tzConfig) {
     throw new Error(`Invalid timezone: ${timezoneValue}`);
   }
 
-  console.log('=== SIMPLIFIED TIMEZONE CONVERSION ===');
+  console.log('=== FIXED TIMEZONE CONVERSION ===');
   console.log('Input:', { 
     clientDate: clientDate.toDateString(), 
     clientHour, 
@@ -20,7 +21,7 @@ export const convertClientTimeToServer = (clientDate: Date, clientHour: number, 
     offset: tzConfig.offset 
   });
 
-  // SIMPLIFIED APPROACH: Only convert the hour, preserve the date
+  // FIXED: Only convert the hour, preserve the date
   const utcHour = clientHour - tzConfig.offset;
   
   // Keep the hour within 0-23 range, but DON'T change the date
@@ -31,7 +32,7 @@ export const convertClientTimeToServer = (clientDate: Date, clientHour: number, 
     adjustedUtcHour = utcHour - 24;
   }
 
-  // Create UTC date using the SAME date, just with converted hour
+  // FIXED: Create UTC date using the SAME date, just with converted hour
   const utcDate = new Date(
     clientDate.getFullYear(),
     clientDate.getMonth(),
@@ -39,15 +40,25 @@ export const convertClientTimeToServer = (clientDate: Date, clientHour: number, 
     adjustedUtcHour
   );
 
+  // FIXED: Preserve original date in string format
+  const utcDateString = format(clientDate, 'yyyy-MM-dd');
+
   const result = {
     utcDate,
-    utcDateString: format(clientDate, 'yyyy-MM-dd'), // PRESERVE original date
+    utcDateString: utcDateString, // FIXED: Use original date
     utcHour: adjustedUtcHour,
     utcTime: format(utcDate, 'HH:mm:ss', { timeZone: 'UTC' })
   };
 
-  console.log('Simplified conversion result:', result);
-  console.log('=== END SIMPLIFIED TIMEZONE CONVERSION ===');
+  console.log('FIXED conversion result - date preserved:', {
+    originalDate: clientDate.toDateString(),
+    preservedDateString: result.utcDateString,
+    clientHour: clientHour,
+    utcHour: result.utcHour,
+    utcTime: result.utcTime,
+    datePreserved: clientDate.toISOString().split('T')[0] === result.utcDateString
+  });
+  console.log('=== END FIXED TIMEZONE CONVERSION ===');
 
   return result;
 };

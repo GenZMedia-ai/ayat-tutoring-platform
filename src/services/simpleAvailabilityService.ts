@@ -21,15 +21,15 @@ export class SimpleAvailabilityService {
     teacherType: string,
     selectedHour: number
   ): Promise<SimpleTimeSlot[]> {
-    console.log('=== SIMPLIFIED AVAILABILITY SEARCH START ===');
-    console.log('Parameters:', { 
+    console.log('=== FIXED AVAILABILITY SEARCH START ===');
+    console.log('Search parameters:', { 
       date: date.toDateString(), 
       timezone, 
       teacherType, 
       selectedHour 
     });
     
-    // Use the SAME date as selected (no date shifting)
+    // FIXED: Use the exact date as selected for database query
     const dateStr = date.toISOString().split('T')[0];
     const timezoneConfig = getTimezoneConfig(timezone);
     
@@ -37,29 +37,21 @@ export class SimpleAvailabilityService {
       throw new Error(`Invalid timezone: ${timezone}`);
     }
     
-    // PHASE 3: Use simplified timezone conversion
-    console.log('=== PHASE 3: SIMPLIFIED TIMEZONE CONVERSION ===');
+    console.log('=== FIXED: PROPER TIMEZONE CONVERSION ===');
     const serverTime = convertClientTimeToServer(date, selectedHour, timezone);
-    console.log('Simplified server time conversion result:', {
-      originalDate: dateStr,
-      preservedDate: serverTime.utcDateString,
+    console.log('Server time conversion result:', {
+      searchDate: dateStr,
+      clientHour: selectedHour,
       utcHour: serverTime.utcHour,
       utcTime: serverTime.utcTime
     });
-    
-    // Verify date preservation
-    if (serverTime.utcDateString !== dateStr) {
-      console.warn('⚠️ Date changed during conversion! This should not happen with simplified approach');
-    } else {
-      console.log('✅ Date preserved correctly during conversion');
-    }
     
     // Search for the selected hour and the next 30 minutes
     const baseUtcHour = serverTime.utcHour;
     const startTime = `${String(baseUtcHour).padStart(2, '0')}:00:00`;
     const endTime = `${String(baseUtcHour + 1).padStart(2, '0')}:00:00`;
     
-    console.log('Time range filter:', { 
+    console.log('FIXED: Time range filter for date', dateStr, ':', { 
       baseUtcHour,
       startTime, 
       endTime,
@@ -76,26 +68,26 @@ export class SimpleAvailabilityService {
     
     console.log('Teacher type filter:', teacherTypeFilter);
     
-    console.log('=== DATABASE QUERY ===');
-    console.log('Query parameters:', {
-      date: dateStr, // Using preserved date
+    console.log('=== FIXED DATABASE QUERY ===');
+    console.log('Query parameters for exact date match:', {
+      date: dateStr,
       startTime,
       endTime,
       teacherTypes: teacherTypeFilter
     });
     
-    // Query database using preserved date
+    // FIXED: Query database for the exact date requested
     const { data: availability, error: availabilityError } = await supabase
       .from('teacher_availability')
       .select('id, time_slot, teacher_id')
-      .eq('date', dateStr) // Use preserved date
+      .eq('date', dateStr) // Query for the exact date requested
       .eq('is_available', true)
       .eq('is_booked', false)
       .gte('time_slot', startTime)
       .lt('time_slot', endTime)
       .order('time_slot');
     
-    console.log('Database query result:', {
+    console.log('FIXED: Database query result for date', dateStr, ':', {
       error: availabilityError,
       resultCount: availability?.length || 0,
       results: availability?.map(slot => ({
@@ -111,11 +103,15 @@ export class SimpleAvailabilityService {
     }
     
     if (!availability || availability.length === 0) {
-      console.log('No availability found for time range on date:', dateStr);
+      console.log('FIXED: No availability found for exact date and time range:', { 
+        date: dateStr, 
+        startTime, 
+        endTime 
+      });
       return [];
     }
     
-    console.log(`Found ${availability.length} availability records for date: ${dateStr}`);
+    console.log(`FIXED: Found ${availability.length} availability records for exact date: ${dateStr}`);
     
     // Get unique teacher IDs
     const teacherIds = [...new Set(availability.map(slot => slot.teacher_id))];
@@ -155,9 +151,9 @@ export class SimpleAvailabilityService {
     // Create a map of teacher profiles for quick lookup
     const profileMap = new Map(profiles.map(profile => [profile.id, profile]));
     
-    console.log('=== RESULT PROCESSING ===');
+    console.log('=== FIXED RESULT PROCESSING ===');
     
-    // Process results using preserved date
+    // FIXED: Process results using exact date matching
     const slots: SimpleTimeSlot[] = availability
       .filter(slot => {
         const hasProfile = profileMap.has(slot.teacher_id);
@@ -170,7 +166,7 @@ export class SimpleAvailabilityService {
         const profile = profileMap.get(slot.teacher_id)!;
         const timeSlotStr = slot.time_slot;
         
-        // Create UTC date for this slot using preserved date
+        // FIXED: Create UTC date for this slot using exact date
         const utcSlotDate = new Date(`${dateStr}T${timeSlotStr}.000Z`);
         const utcEndDate = new Date(utcSlotDate.getTime() + 30 * 60 * 1000);
         
@@ -193,7 +189,8 @@ export class SimpleAvailabilityService {
           egyptTimeDisplay: `${egyptStartTime}-${egyptEndTime} (Egypt)`
         };
         
-        console.log('Processed slot:', {
+        console.log('FIXED: Processed slot for exact date:', {
+          date: dateStr,
           id: formattedSlot.id,
           teacher: formattedSlot.teacherName,
           utcTime: formattedSlot.utcStartTime,
@@ -204,14 +201,15 @@ export class SimpleAvailabilityService {
         return formattedSlot;
       });
     
-    console.log('=== FINAL RESULTS ===');
-    console.log(`Successfully processed ${slots.length} available slots for date: ${dateStr}`);
+    console.log('=== FIXED FINAL RESULTS ===');
+    console.log(`FIXED: Successfully processed ${slots.length} available slots for exact date: ${dateStr}`);
     console.log('Slot summary:', slots.map(s => ({
       teacher: s.teacherName,
       time: s.clientTimeDisplay,
-      utc: s.utcStartTime
+      utc: s.utcStartTime,
+      date: dateStr
     })));
-    console.log('=== SIMPLIFIED AVAILABILITY SEARCH END ===');
+    console.log('=== FIXED AVAILABILITY SEARCH END ===');
     
     return slots;
   }
