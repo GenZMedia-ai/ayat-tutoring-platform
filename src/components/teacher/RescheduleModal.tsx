@@ -18,6 +18,7 @@ import { useStudentStatusManagement } from '@/hooks/useStudentStatusManagement';
 import { useTeacherAvailability } from '@/hooks/useTeacherAvailability';
 import { LoadingSpinner } from './LoadingSpinner';
 import { format } from 'date-fns';
+import { Lock } from 'lucide-react';
 
 interface RescheduleModalProps {
   student: TrialStudent | null;
@@ -97,12 +98,47 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
 
   if (!student) return null;
 
-  // Filter available time slots (not booked and available)
+  // Categorize time slots
   const availableTimeSlots = timeSlots.filter(slot => 
     slot.isAvailable && !slot.isBooked
   );
+  
+  const bookedTimeSlots = timeSlots.filter(slot => 
+    slot.isBooked
+  );
 
   const isFormValid = rescheduleReason && selectedDate && selectedTimeSlot;
+
+  const renderTimeSlotButton = (slot: { time: string; isAvailable: boolean; isBooked: boolean; studentId?: string }, isBooked = false) => {
+    const isCurrentStudentSlot = slot.studentId === student.id;
+    const isSelected = selectedTimeSlot === slot.time;
+    const isDisabled = isBooked && !isCurrentStudentSlot;
+
+    return (
+      <Button
+        key={slot.time}
+        variant={isSelected ? "default" : "outline"}
+        size="sm"
+        disabled={isDisabled}
+        onClick={() => !isDisabled && setSelectedTimeSlot(slot.time)}
+        className={`text-sm relative ${
+          isDisabled 
+            ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' 
+            : isCurrentStudentSlot 
+              ? 'border-blue-500 bg-blue-50 text-blue-700' 
+              : ''
+        }`}
+      >
+        {isDisabled && <Lock className="h-3 w-3 mr-1" />}
+        {slot.time}
+        {isCurrentStudentSlot && (
+          <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+            ✓
+          </span>
+        )}
+      </Button>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -158,7 +194,7 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
           {selectedDate && (
             <div className="space-y-3">
               <Label className="text-sm font-medium">
-                Available Time Slots for {selectedDate.toDateString()}
+                Time Slots for {selectedDate.toDateString()}
               </Label>
               
               {availabilityLoading ? (
@@ -166,33 +202,65 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
                   <LoadingSpinner size="md" />
                   <span className="ml-2 text-sm text-muted-foreground">Loading available slots...</span>
                 </div>
-              ) : availableTimeSlots.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p className="text-sm">No available time slots for this date.</p>
-                  <p className="text-xs mt-1">Please select a different date or contact the teacher to add availability.</p>
-                </div>
               ) : (
-                <div className="grid grid-cols-4 gap-2">
-                  {availableTimeSlots.map((slot) => (
-                    <Button
-                      key={slot.time}
-                      variant={selectedTimeSlot === slot.time ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedTimeSlot(slot.time)}
-                      className="text-sm"
-                    >
-                      {slot.time}
-                    </Button>
-                  ))}
+                <div className="space-y-4">
+                  {/* Available Slots */}
+                  {availableTimeSlots.length > 0 && (
+                    <div>
+                      <Label className="text-xs text-green-700 font-medium">
+                        ✅ Available Slots ({availableTimeSlots.length})
+                      </Label>
+                      <div className="grid grid-cols-4 gap-2 mt-2">
+                        {availableTimeSlots.map((slot) => renderTimeSlotButton(slot))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Booked Slots */}
+                  {bookedTimeSlots.length > 0 && (
+                    <div>
+                      <Label className="text-xs text-red-700 font-medium">
+                        🔒 Booked Slots ({bookedTimeSlots.length})
+                      </Label>
+                      <div className="grid grid-cols-4 gap-2 mt-2">
+                        {bookedTimeSlots.map((slot) => renderTimeSlotButton(slot, true))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No slots message */}
+                  {availableTimeSlots.length === 0 && bookedTimeSlots.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">No time slots found for this date.</p>
+                      <p className="text-xs mt-1">Please select a different date or contact the teacher to add availability.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
 
-          {/* Egypt Time Zone Notice */}
-          {selectedDate && availableTimeSlots.length > 0 && (
+          {/* Legend */}
+          {selectedDate && (availableTimeSlots.length > 0 || bookedTimeSlots.length > 0) && (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-              <p className="text-xs text-blue-800">
+              <p className="text-xs text-blue-800 font-medium mb-2">Legend:</p>
+              <div className="grid grid-cols-2 gap-2 text-xs text-blue-700">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-green-100 border border-green-300 rounded"></div>
+                  <span>Available for booking</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-gray-100 border border-gray-300 rounded flex items-center justify-center">
+                    <Lock className="h-2 w-2" />
+                  </div>
+                  <span>Booked (unavailable)</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-blue-100 border border-blue-500 rounded"></div>
+                  <span>Current student's slot</span>
+                </div>
+              </div>
+              <p className="text-xs text-blue-800 mt-2">
                 ℹ️ All times are displayed in Egypt timezone (UTC+2). The selected time will be automatically converted for database storage.
               </p>
             </div>

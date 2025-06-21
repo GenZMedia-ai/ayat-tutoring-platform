@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 
 export const useRescheduleNotifications = (onReschedule?: () => void) => {
   useEffect(() => {
+    console.log('🔄 Setting up reschedule notifications');
+
     // Listen for updates to teacher_availability table
     const availabilityChannel = supabase
       .channel('reschedule-availability-changes')
@@ -54,9 +56,31 @@ export const useRescheduleNotifications = (onReschedule?: () => void) => {
       )
       .subscribe();
 
+    // Listen for session updates (reschedule tracking)
+    const sessionsChannel = supabase
+      .channel('reschedule-session-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'sessions',
+          filter: 'reschedule_count=gt.0'
+        },
+        (payload) => {
+          console.log('📝 Session reschedule tracked:', payload);
+          if (onReschedule) {
+            onReschedule();
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
+      console.log('🔄 Cleaning up reschedule notification channels');
       supabase.removeChannel(availabilityChannel);
       supabase.removeChannel(studentsChannel);
+      supabase.removeChannel(sessionsChannel);
     };
   }, [onReschedule]);
 };

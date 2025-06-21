@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,8 @@ import {
   Video,
   CheckCircle,
   XCircle,
-  RotateCcw
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -24,6 +25,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
 import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+import { supabase } from '@/integrations/supabase/client';
+
+const EGYPT_TIMEZONE = 'Africa/Cairo';
 
 interface TeacherStudentCardProps {
   student: TrialStudent;
@@ -33,6 +38,13 @@ interface TeacherStudentCardProps {
   onReschedule: (student: TrialStudent) => void;
 }
 
+interface RescheduleInfo {
+  rescheduleCount: number;
+  originalDate?: string;
+  originalTime?: string;
+  rescheduleReason?: string;
+}
+
 export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
   student,
   onContact,
@@ -40,6 +52,46 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
   onStatusChange,
   onReschedule
 }) => {
+  const [rescheduleInfo, setRescheduleInfo] = useState<RescheduleInfo | null>(null);
+
+  // Fetch reschedule information
+  useEffect(() => {
+    const fetchRescheduleInfo = async () => {
+      try {
+        const { data: sessionStudents } = await supabase
+          .from('session_students')
+          .select('session_id')
+          .eq('student_id', student.id);
+
+        if (sessionStudents && sessionStudents.length > 0) {
+          const sessionIds = sessionStudents.map(ss => ss.session_id);
+          const { data: sessionData } = await supabase
+            .from('sessions')
+            .select('reschedule_count, original_date, original_time, reschedule_reason')
+            .in('id', sessionIds)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (sessionData && sessionData.length > 0) {
+            const session = sessionData[0];
+            if (session.reschedule_count > 0) {
+              setRescheduleInfo({
+                rescheduleCount: session.reschedule_count,
+                originalDate: session.original_date,
+                originalTime: session.original_time,
+                rescheduleReason: session.reschedule_reason
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching reschedule info:', error);
+      }
+    };
+
+    fetchRescheduleInfo();
+  }, [student.id]);
+
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; label: string }> = {
       'pending': { color: 'bg-orange-100 text-orange-800', label: 'Pending' },
@@ -59,10 +111,26 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
   const formatDateTime = (date?: string, time?: string) => {
     if (!date || !time) return 'Not scheduled';
     try {
-      const dateTime = new Date(`${date}T${time}`);
-      return format(dateTime, 'MMM dd, yyyy at HH:mm');
-    } catch {
+      // Create UTC datetime string and convert to Egypt time for display
+      const utcDateTimeString = `${date}T${time}Z`;
+      const utcDateTime = new Date(utcDateTimeString);
+      const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
+      return format(egyptDateTime, 'MMM dd, yyyy at HH:mm');
+    } catch (error) {
+      console.error('Date formatting error:', error);
       return 'Invalid date';
+    }
+  };
+
+  const formatOriginalDateTime = (date?: string, time?: string) => {
+    if (!date || !time) return '';
+    try {
+      const utcDateTimeString = `${date}T${time}Z`;
+      const utcDateTime = new Date(utcDateTimeString);
+      const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
+      return format(egyptDateTime, 'MMM dd at HH:mm');
+    } catch (error) {
+      return '';
     }
   };
 
@@ -96,9 +164,15 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
               <h3 className="font-semibold text-lg">{student.name}</h3>
               {getStatusBadge(student.status)}
+              {rescheduleInfo && rescheduleInfo.rescheduleCount > 0 && (
+                <Badge className="bg-yellow-100 text-yellow-800 border-0">
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Rescheduled ({rescheduleInfo.rescheduleCount}x)
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span className="font-mono">{student.uniqueId}</span>
@@ -139,9 +213,37 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span>{formatDateTime(student.trialDate, student.trialTime)}</span>
+            <div className="flex flex-col">
+              <span className="font-medium">
+                {formatDateTime(student.trialDate, student.trialTime)}
+              </span>
+              {rescheduleInfo && rescheduleInfo.originalDate && rescheduleInfo.originalTime && (
+                <span className="text-xs text-muted-foreground">
+                  Originally: {formatOriginalDateTime(rescheduleInfo.originalDate, rescheduleInfo.originalTime)}
+                </span>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Reschedule Information */}
+        {rescheduleInfo && rescheduleInfo.rescheduleCount > 0 && (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-yellow-800">
+                  Session Rescheduled {rescheduleInfo.rescheduleCount} time{rescheduleInfo.rescheduleCount > 1 ? 's' : ''}
+                </p>
+                {rescheduleInfo.rescheduleReason && (
+                  <p className="text-yellow-700 mt-1">
+                    Reason: {rescheduleInfo.rescheduleReason.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Notes */}
         {student.notes && (

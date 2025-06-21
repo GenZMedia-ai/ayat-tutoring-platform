@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -83,7 +82,7 @@ export const useStudentStatusManagement = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('🔄 Rescheduling student:', { studentId, newDate, newTime, reason });
+      console.log('🔄 Rescheduling student:', { studentId, newDate, newTime, reason, currentDate, currentTime });
       
       // Convert Egypt time to UTC for database storage
       const dateString = format(newDate, 'yyyy-MM-dd');
@@ -136,9 +135,7 @@ export const useStudentStatusManagement = () => {
         return false;
       }
 
-      // Start transaction-like operations
-      
-      // 1. Free up old slot if it exists
+      // CRITICAL FIX: Free up old slot first
       if (oldDate && oldTime) {
         console.log('🔓 Freeing old slot:', { oldDate, oldTime });
         const { error: oldSlotError } = await supabase
@@ -154,11 +151,12 @@ export const useStudentStatusManagement = () => {
 
         if (oldSlotError) {
           console.error('❌ Error freeing old slot:', oldSlotError);
-          // Continue anyway - don't fail the whole operation
+          toast.error('Failed to free old time slot');
+          return false;
         }
       }
 
-      // 2. Book new slot
+      // Book new slot
       console.log('🔒 Booking new slot:', { teacherId, dateString, utcTime });
       const { error: newSlotError } = await supabase
         .from('teacher_availability')
@@ -175,7 +173,8 @@ export const useStudentStatusManagement = () => {
         return false;
       }
 
-      // 3. Update student trial date and time
+      // CRITICAL FIX: Update student trial date and time
+      console.log('📝 Updating student record:', { studentId, dateString, utcTime });
       const { error: studentUpdateError } = await supabase
         .from('students')
         .update({ 
@@ -191,8 +190,7 @@ export const useStudentStatusManagement = () => {
         return false;
       }
 
-      // 4. Update session with reschedule info
-      // First, get the session that matches this student
+      // Update session with reschedule info
       const { data: sessionStudents, error: sessionStudentsError } = await supabase
         .from('session_students')
         .select('session_id')
