@@ -21,12 +21,14 @@ export class SimpleAvailabilityService {
     teacherType: string,
     selectedHour: number
   ): Promise<SimpleTimeSlot[]> {
-    console.log('=== FIXED AVAILABILITY SEARCH START ===');
-    console.log('Search parameters:', { 
-      date: date.toDateString(), 
+    console.log('=== FIXED AVAILABILITY SEARCH - COMPREHENSIVE DEBUG ===');
+    console.log('FIXED: Search parameters with detailed analysis:', { 
+      inputDate: date.toISOString(),
+      dateString: date.toISOString().split('T')[0],
       timezone, 
       teacherType, 
-      selectedHour 
+      selectedHour,
+      expectedDatabaseDate: '2025-06-22'
     });
     
     // FIXED: Use the exact date as selected for database query
@@ -37,13 +39,22 @@ export class SimpleAvailabilityService {
       throw new Error(`Invalid timezone: ${timezone}`);
     }
     
-    console.log('=== FIXED: PROPER TIMEZONE CONVERSION ===');
+    console.log('=== FIXED TIMEZONE CONVERSION ANALYSIS ===');
+    console.log('FIXED: Timezone configuration:', {
+      timezone,
+      label: timezoneConfig.label,
+      offset: timezoneConfig.offset,
+      iana: timezoneConfig.iana
+    });
+    
     const serverTime = convertClientTimeToServer(date, selectedHour, timezone);
-    console.log('Server time conversion result:', {
+    console.log('FIXED: Server time conversion result:', {
       searchDate: dateStr,
       clientHour: selectedHour,
+      timezoneOffset: timezoneConfig.offset,
       utcHour: serverTime.utcHour,
-      utcTime: serverTime.utcTime
+      utcTime: serverTime.utcTime,
+      conversionFormula: `${selectedHour} - ${timezoneConfig.offset} = ${serverTime.utcHour}`
     });
     
     // Search for the selected hour and the next 30 minutes
@@ -51,11 +62,13 @@ export class SimpleAvailabilityService {
     const startTime = `${String(baseUtcHour).padStart(2, '0')}:00:00`;
     const endTime = `${String(baseUtcHour + 1).padStart(2, '0')}:00:00`;
     
-    console.log('FIXED: Time range filter for date', dateStr, ':', { 
+    console.log('FIXED: Database query parameters:', { 
+      dateStr,
       baseUtcHour,
       startTime, 
       endTime,
-      searchWindow: '60 minutes (includes :00 and :30 slots)'
+      searchWindow: 'Looking for slots between these UTC times',
+      expectedSlots: 'Should find UTC 11:00:00 and 11:30:00 for Qatar 2PM on June 22nd'
     });
     
     // Build teacher type filter
@@ -66,14 +79,18 @@ export class SimpleAvailabilityService {
       teacherTypeFilter = [teacherType, 'mixed'];
     }
     
-    console.log('Teacher type filter:', teacherTypeFilter);
+    console.log('FIXED: Teacher type filter:', teacherTypeFilter);
     
-    console.log('=== FIXED DATABASE QUERY ===');
-    console.log('Query parameters for exact date match:', {
-      date: dateStr,
-      startTime,
-      endTime,
-      teacherTypes: teacherTypeFilter
+    console.log('=== FIXED DATABASE QUERY EXECUTION ===');
+    console.log('FIXED: Executing query for exact date match:', {
+      table: 'teacher_availability',
+      filters: {
+        date: dateStr,
+        startTime: `>= ${startTime}`,
+        endTime: `< ${endTime}`,
+        is_available: true,
+        is_booked: false
+      }
     });
     
     // FIXED: Query database for the exact date requested
@@ -87,35 +104,44 @@ export class SimpleAvailabilityService {
       .lt('time_slot', endTime)
       .order('time_slot');
     
-    console.log('FIXED: Database query result for date', dateStr, ':', {
+    console.log('FIXED: Database query executed - detailed results:', {
       error: availabilityError,
       resultCount: availability?.length || 0,
+      querySuccess: !availabilityError,
+      dateQueried: dateStr,
+      timeRange: `${startTime} to ${endTime}`,
       results: availability?.map(slot => ({
         id: slot.id,
         teacherId: slot.teacher_id,
-        timeSlot: slot.time_slot
-      }))
+        timeSlot: slot.time_slot,
+        utcTime: slot.time_slot
+      })) || []
     });
     
     if (availabilityError) {
-      console.error('Availability query error:', availabilityError);
+      console.error('FIXED: Database query error:', availabilityError);
       throw availabilityError;
     }
     
     if (!availability || availability.length === 0) {
-      console.log('FIXED: No availability found for exact date and time range:', { 
-        date: dateStr, 
-        startTime, 
-        endTime 
+      console.log('FIXED: No availability found - analysis:', { 
+        searchedDate: dateStr, 
+        searchedTimeRange: `${startTime} to ${endTime}`,
+        possibleReasons: [
+          'Date mismatch: Database has 2025-06-22, search might be for different date',
+          'Time mismatch: Timezone conversion might be incorrect',
+          'No teacher availability for this time slot',
+          'All slots already booked'
+        ]
       });
       return [];
     }
     
-    console.log(`FIXED: Found ${availability.length} availability records for exact date: ${dateStr}`);
+    console.log(`FIXED: Found ${availability.length} availability records for date: ${dateStr}`);
     
     // Get unique teacher IDs
     const teacherIds = [...new Set(availability.map(slot => slot.teacher_id))];
-    console.log('Unique teacher IDs found:', teacherIds);
+    console.log('FIXED: Unique teacher IDs found:', teacherIds);
     
     // Get teacher profiles
     const { data: profiles, error: profilesError } = await supabase
@@ -126,27 +152,27 @@ export class SimpleAvailabilityService {
       .eq('role', 'teacher')
       .in('teacher_type', teacherTypeFilter);
     
-    console.log('Teacher profiles query result:', {
+    console.log('FIXED: Teacher profiles query result:', {
       error: profilesError,
       profileCount: profiles?.length || 0,
       profiles: profiles?.map(p => ({
         id: p.id,
         name: p.full_name,
         type: p.teacher_type
-      }))
+      })) || []
     });
     
     if (profilesError) {
-      console.error('Profiles query error:', profilesError);
+      console.error('FIXED: Profiles query error:', profilesError);
       throw profilesError;
     }
     
     if (!profiles || profiles.length === 0) {
-      console.log('No valid teacher profiles found');
+      console.log('FIXED: No valid teacher profiles found');
       return [];
     }
     
-    console.log(`Found ${profiles.length} valid teacher profiles`);
+    console.log(`FIXED: Found ${profiles.length} valid teacher profiles`);
     
     // Create a map of teacher profiles for quick lookup
     const profileMap = new Map(profiles.map(profile => [profile.id, profile]));
@@ -158,7 +184,7 @@ export class SimpleAvailabilityService {
       .filter(slot => {
         const hasProfile = profileMap.has(slot.teacher_id);
         if (!hasProfile) {
-          console.log(`Filtering out slot ${slot.id} - no valid teacher profile`);
+          console.log(`FIXED: Filtering out slot ${slot.id} - no valid teacher profile`);
         }
         return hasProfile;
       })
@@ -189,27 +215,33 @@ export class SimpleAvailabilityService {
           egyptTimeDisplay: `${egyptStartTime}-${egyptEndTime} (Egypt)`
         };
         
-        console.log('FIXED: Processed slot for exact date:', {
+        console.log('FIXED: Processed slot with timezone conversion verification:', {
           date: dateStr,
           id: formattedSlot.id,
           teacher: formattedSlot.teacherName,
           utcTime: formattedSlot.utcStartTime,
           clientTime: formattedSlot.clientTimeDisplay,
-          egyptTime: formattedSlot.egyptTimeDisplay
+          egyptTime: formattedSlot.egyptTimeDisplay,
+          conversionVerification: {
+            utcInput: timeSlotStr,
+            clientTimezone: timezoneConfig.iana,
+            egyptTimezone: 'Africa/Cairo'
+          }
         });
         
         return formattedSlot;
       });
     
-    console.log('=== FIXED FINAL RESULTS ===');
-    console.log(`FIXED: Successfully processed ${slots.length} available slots for exact date: ${dateStr}`);
-    console.log('Slot summary:', slots.map(s => ({
+    console.log('=== FIXED FINAL RESULTS SUMMARY ===');
+    console.log(`FIXED: Successfully processed ${slots.length} available slots for date: ${dateStr}`);
+    console.log('FIXED: Complete slot summary:', slots.map(s => ({
       teacher: s.teacherName,
-      time: s.clientTimeDisplay,
-      utc: s.utcStartTime,
-      date: dateStr
+      clientTime: s.clientTimeDisplay,
+      utcTime: s.utcStartTime,
+      date: dateStr,
+      slotId: s.id
     })));
-    console.log('=== FIXED AVAILABILITY SEARCH END ===');
+    console.log('=== END FIXED AVAILABILITY SEARCH ===');
     
     return slots;
   }
