@@ -1,10 +1,9 @@
-
 import React from 'react';
-import SimpleSalesDashboard from './SimpleSalesDashboard';
+import EnhancedSalesDashboard from './EnhancedSalesDashboard';
 
 // Replace the complex dashboard with the simplified version
 const SalesDashboard: React.FC = () => {
-  return <SimpleSalesDashboard />;
+  return <EnhancedSalesDashboard />;
 };
 
 export default SalesDashboard;
