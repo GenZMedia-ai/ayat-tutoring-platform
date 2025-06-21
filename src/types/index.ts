@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   email: string;
@@ -75,6 +74,7 @@ export type StudentStatus =
   | 'confirmed' 
   | 'trial-completed' 
   | 'trial-ghosted'
+  | 'awaiting-payment'
   | 'paid' 
   | 'active' 
   | 'expired'
