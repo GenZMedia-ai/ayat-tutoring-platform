@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +15,7 @@ export interface TrialStudent {
   uniqueId: string;
   parentName?: string;
   notes?: string;
+  sessionId?: string; // Added session ID to the interface
 }
 
 export const useTeacherTrialSessions = () => {
@@ -30,9 +30,20 @@ export const useTeacherTrialSessions = () => {
     try {
       console.log('🔍 Fetching trial sessions for teacher:', user.id);
       
+      // Updated query to join with sessions table to get session ID
       const { data, error } = await supabase
         .from('students')
-        .select('*')
+        .select(`
+          *,
+          session_students(
+            session_id,
+            sessions(
+              id,
+              scheduled_date,
+              scheduled_time
+            )
+          )
+        `)
         .eq('assigned_teacher_id', user.id)
         .in('status', ['pending', 'confirmed'])
         .order('created_at', { ascending: false });
@@ -43,22 +54,30 @@ export const useTeacherTrialSessions = () => {
         return;
       }
 
-      console.log('📋 Fetched trial sessions:', data);
+      console.log('📋 Fetched trial sessions with session data:', data);
 
-      const mappedStudents: TrialStudent[] = data?.map(student => ({
-        id: student.id,
-        name: student.name,
-        age: student.age,
-        phone: student.phone,
-        country: student.country,
-        trialDate: student.trial_date || '',
-        trialTime: student.trial_time || '',
-        status: student.status,
-        uniqueId: student.unique_id,
-        parentName: student.parent_name,
-        notes: student.notes,
-      })) || [];
+      const mappedStudents: TrialStudent[] = data?.map(student => {
+        // Get the session ID from the joined data
+        const sessionStudent = student.session_students?.[0];
+        const sessionId = sessionStudent?.sessions?.id || sessionStudent?.session_id;
+        
+        return {
+          id: student.id,
+          name: student.name,
+          age: student.age,
+          phone: student.phone,
+          country: student.country,
+          trialDate: student.trial_date || '',
+          trialTime: student.trial_time || '',
+          status: student.status,
+          uniqueId: student.unique_id,
+          parentName: student.parent_name,
+          notes: student.notes,
+          sessionId: sessionId, // Include the actual session ID
+        };
+      }) || [];
 
+      console.log('📋 Mapped students with session IDs:', mappedStudents);
       setTrialStudents(mappedStudents);
     } catch (error) {
       console.error('❌ Error in fetchTrialSessions:', error);

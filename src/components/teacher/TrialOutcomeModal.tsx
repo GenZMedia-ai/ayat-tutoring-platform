@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import TrialOutcomeForm from './TrialOutcomeForm';
 import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
+import { toast } from 'sonner';
 
 interface TrialOutcomeModalProps {
   student: TrialStudent | null;
@@ -26,8 +27,20 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
 }) => {
   if (!student) return null;
 
-  // Create a mock session ID - in a real implementation, this should come from the session data
-  const sessionId = `session_${student.id}_${student.trialDate}_${student.trialTime}`;
+  // Validate that we have a session ID
+  if (!student.sessionId) {
+    console.error('❌ No session ID found for student:', student.name);
+    
+    // Show error and close modal
+    React.useEffect(() => {
+      if (open && !student.sessionId) {
+        toast.error('Session data not found. Please refresh and try again.');
+        onClose();
+      }
+    }, [open, student.sessionId, onClose]);
+    
+    return null;
+  }
 
   const handleSuccess = () => {
     onSuccess();
@@ -39,7 +52,7 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
       <DialogContent className="max-w-2xl">
         <TrialOutcomeForm
           student={student}
-          sessionId={sessionId}
+          sessionId={student.sessionId} // Use the real session ID
           initialOutcome={outcome}
           onSuccess={handleSuccess}
           onCancel={onClose}

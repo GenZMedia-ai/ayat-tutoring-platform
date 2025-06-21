@@ -55,6 +55,13 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
 }) => {
   const [rescheduleInfo, setRescheduleInfo] = useState<RescheduleInfo | null>(null);
 
+  // Log session ID for debugging
+  console.log('🎯 Student card rendered with session ID:', {
+    studentName: student.name,
+    studentId: student.id,
+    sessionId: student.sessionId
+  });
+
   // Fetch reschedule information
   useEffect(() => {
     const fetchRescheduleInfo = async () => {
@@ -203,9 +210,19 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
         { label: 'Reschedule', action: () => onReschedule(student), icon: RotateCcw }
       );
     } else if (student.status === 'confirmed') {
+      // Add validation for session ID before allowing outcome actions
+      const canMarkOutcome = !!student.sessionId;
+      
+      if (canMarkOutcome) {
+        options.push(
+          { label: 'Mark as Completed', action: () => onMarkCompleted(student), icon: CheckCircle },
+          { label: 'Mark as Ghosted', action: () => onMarkGhosted(student), icon: XCircle }
+        );
+      } else {
+        console.warn('⚠️ Cannot mark outcome - no session ID for student:', student.name);
+      }
+      
       options.push(
-        { label: 'Mark as Completed', action: () => onMarkCompleted(student), icon: CheckCircle },
-        { label: 'Mark as Ghosted', action: () => onMarkGhosted(student), icon: XCircle },
         { label: 'Reschedule', action: () => onReschedule(student), icon: RotateCcw },
         { label: 'Contact Student', action: () => onContact(student.id, student.phone), icon: MessageCircle }
       );

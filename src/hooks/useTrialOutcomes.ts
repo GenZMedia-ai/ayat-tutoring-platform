@@ -18,7 +18,18 @@ export const useTrialOutcomes = () => {
     setIsSubmitting(true);
     
     try {
-      console.log('Submitting trial outcome:', {
+      // Validate inputs
+      if (!studentId || !sessionId) {
+        throw new Error('Student ID and Session ID are required');
+      }
+
+      // Validate that sessionId is a valid UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(sessionId)) {
+        throw new Error('Invalid session ID format');
+      }
+
+      console.log('📝 Submitting trial outcome:', {
         studentId,
         sessionId,
         outcome,
@@ -37,11 +48,11 @@ export const useTrialOutcomes = () => {
       });
 
       if (error) {
-        console.error('Error submitting trial outcome:', error);
+        console.error('❌ Error submitting trial outcome:', error);
         throw error;
       }
 
-      console.log('Trial outcome submitted successfully:', data);
+      console.log('✅ Trial outcome submitted successfully:', data);
 
       toast({
         title: "Trial Outcome Submitted",
@@ -50,10 +61,22 @@ export const useTrialOutcomes = () => {
 
       return data;
     } catch (error: any) {
-      console.error('Failed to submit trial outcome:', error);
+      console.error('❌ Failed to submit trial outcome:', error);
+      
+      // Provide user-friendly error messages
+      let errorMessage = "Failed to submit trial outcome";
+      
+      if (error.message?.includes('Invalid session ID format')) {
+        errorMessage = "Session data is invalid. Please refresh and try again.";
+      } else if (error.message?.includes('required')) {
+        errorMessage = "Missing required information. Please refresh and try again.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to submit trial outcome",
+        description: errorMessage,
         variant: "destructive",
       });
       throw error;
