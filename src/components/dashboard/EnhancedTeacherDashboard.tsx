@@ -10,11 +10,12 @@ import EarningsWidget from '@/components/teacher/EarningsWidget';
 import TrialOutcomeForm from '@/components/teacher/TrialOutcomeForm';
 import WhatsAppContactButton from '@/components/teacher/WhatsAppContactButton';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Student } from '@/types';
 
 const EnhancedTeacherDashboard: React.FC = () => {
   const { trialStudents, loading: trialsLoading, confirmTrial } = useTeacherTrialSessions();
   const { students, loading, refetchData } = useTrialSessionFlow();
-  const [selectedStudentForOutcome, setSelectedStudentForOutcome] = useState<any>(null);
+  const [selectedStudentForOutcome, setSelectedStudentForOutcome] = useState<Student | null>(null);
   
   useRealTimeUpdates(refetchData);
 
