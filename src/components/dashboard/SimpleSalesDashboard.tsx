@@ -17,8 +17,11 @@ import { FamilyCard } from '@/components/family/FamilyCard';
 import { supabase } from '@/integrations/supabase/client';
 
 const SimpleSalesDashboard: React.FC = () => {
-  // FIXED: Changed default date to June 22nd to match available database data
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date('2025-06-22'));
+  // FIXED: Use UTC date to prevent timezone conversion issues
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
+    const utcDate = new Date(Date.UTC(2025, 5, 22)); // Month is 0-indexed, June 22nd
+    return utcDate;
+  });
   const [timezone, setTimezone] = useState('qatar');
   const [teacherType, setTeacherType] = useState('mixed');
   const [selectedHour, setSelectedHour] = useState(14);
@@ -104,40 +107,16 @@ const SimpleSalesDashboard: React.FC = () => {
       return;
     }
     
-    console.log('=== FIXED SALES DASHBOARD SEARCH DEBUG ===');
-    console.log('FIXED: Search triggered with corrected parameters:', {
-      selectedDate: selectedDate.toISOString(),
-      dateString: selectedDate.toISOString().split('T')[0],
-      timezone,
-      teacherType,
-      selectedHour,
-      expectedMatch: 'Should find database slots for 2025-06-22'
-    });
-    console.log('FIXED: Expected database UTC times to find:', {
-      qatarOffset: 3,
-      clientHour: selectedHour,
-      expectedUtcHour: selectedHour - 3,
-      expectedUtcTimes: [`${String(selectedHour - 3).padStart(2, '0')}:00:00`, `${String(selectedHour - 3).padStart(2, '0')}:30:00`]
-    });
-    
     checkAvailability(selectedDate, timezone, teacherType, selectedHour);
   };
 
   const handleBookNow = (slot: any) => {
-    console.log('=== FAMILY-ENHANCED BOOKING SLOT SELECTION ===');
-    console.log('Selected slot:', slot);
     setSelectedSlot(slot);
     setIsBookingModalOpen(true);
   };
 
   const handleBookingSubmit = async (data: SimpleBookingData, isMultiStudent: boolean) => {
     if (!selectedDate || !selectedSlot) return false;
-    
-    console.log('=== FAMILY-ENHANCED BOOKING SUBMISSION ===');
-    console.log('Enhanced booking system - processing booking request', {
-      isMultiStudent,
-      isFamily: isMultiStudent && data.students && data.students.length > 1
-    });
     
     const success = await bookTrialSession(
       data,
@@ -148,8 +127,6 @@ const SimpleSalesDashboard: React.FC = () => {
     );
     
     if (success) {
-      console.log('=== FAMILY-ENHANCED BOOKING SUCCESS - REFRESHING DATA ===');
-      // Refresh both availability and family groups
       setTimeout(() => {
         handleSearchAvailability();
         fetchFamilyGroups();
@@ -160,7 +137,6 @@ const SimpleSalesDashboard: React.FC = () => {
   };
 
   const handleFamilyContact = (family: any) => {
-    // Implement WhatsApp contact logic
     const message = `Hello ${family.parent_name}, this is regarding your family trial session. Please let us know if you have any questions.`;
     const whatsappUrl = `https://wa.me/${family.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
@@ -169,9 +145,9 @@ const SimpleSalesDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-primary">Family-Enhanced Sales Dashboard</h2>
-        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-          Family Booking System - FIXED Date Selection
+        <h2 className="text-3xl font-bold text-primary">Sales Command Center</h2>
+        <Badge variant="outline" className="text-xs">
+          Sales Agent Dashboard
         </Badge>
       </div>
 
@@ -231,30 +207,21 @@ const SimpleSalesDashboard: React.FC = () => {
       {/* Main Content with Tabs */}
       <Tabs defaultValue="booking" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="booking">New Bookings</TabsTrigger>
+          <TabsTrigger value="booking">Quick Availability Checker</TabsTrigger>
           <TabsTrigger value="families">Family Groups</TabsTrigger>
         </TabsList>
 
         <TabsContent value="booking" className="space-y-4">
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>Family-Enhanced Booking System - FIXED</CardTitle>
+              <CardTitle>Quick Availability Checker</CardTitle>
               <CardDescription>
-                ✅ FIXED: Default date now matches database availability (June 22nd) - supports both individual and family trial sessions
+                Search and book available trial session slots for both individual and family bookings
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      <strong>🔧 FIXED:</strong> Default date corrected to June 22nd to match database availability
-                    </p>
-                    <p className="text-xs text-blue-600 mt-1">
-                      ✅ Date selection • ✅ Timezone conversion • ✅ Database query alignment
-                    </p>
-                  </div>
-                  
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Teacher Type</Label>
@@ -308,11 +275,15 @@ const SimpleSalesDashboard: React.FC = () => {
                     mode="single"
                     selected={selectedDate}
                     onSelect={(date) => {
-                      console.log('FIXED: Calendar date selected:', {
-                        selectedDate: date?.toISOString(),
-                        dateString: date?.toISOString().split('T')[0]
-                      });
-                      setSelectedDate(date);
+                      if (date) {
+                        // Convert selected date to UTC to prevent timezone issues
+                        const utcDate = new Date(Date.UTC(
+                          date.getFullYear(),
+                          date.getMonth(),
+                          date.getDate()
+                        ));
+                        setSelectedDate(utcDate);
+                      }
                     }}
                     className="rounded-md border"
                     disabled={(date) => date < new Date('2025-06-21')}
@@ -323,7 +294,7 @@ const SimpleSalesDashboard: React.FC = () => {
                     className="w-full ayat-button-primary"
                     disabled={loading}
                   >
-                    {loading ? 'Searching...' : 'Search Available Slots (FIXED Date Selection)'}
+                    {loading ? 'Searching...' : 'Search Available Slots'}
                   </Button>
                 </div>
 
@@ -339,18 +310,14 @@ const SimpleSalesDashboard: React.FC = () => {
                   
                   {loading && (
                     <div className="text-center py-8 text-muted-foreground">
-                      FIXED: Searching for slots on {selectedDate?.toISOString().split('T')[0]}...
+                      Searching for slots on {selectedDate?.toISOString().split('T')[0]}...
                     </div>
                   )}
                   
                   {!loading && availableSlots.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground space-y-2">
                       <p>No available slots found for {selectedDate?.toDateString()}.</p>
-                      <p className="text-sm">FIXED: System now searches correct date:</p>
-                      <p className="text-xs text-blue-600">
-                        ✅ June 22nd: Database has availability at UTC 11:00-14:30<br/>
-                        ❌ Other dates: No data available
-                      </p>
+                      <p className="text-sm">Try selecting a different date or time.</p>
                     </div>
                   )}
                   
@@ -416,7 +383,6 @@ const SimpleSalesDashboard: React.FC = () => {
                     family={family}
                     onContact={() => handleFamilyContact(family)}
                     onEdit={() => {
-                      // Implement edit family functionality
                       toast.info('Edit family functionality coming soon');
                     }}
                     onStatusChange={(status) => updateFamilyStatus(family.id, status)}

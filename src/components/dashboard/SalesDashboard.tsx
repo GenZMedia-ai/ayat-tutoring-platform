@@ -30,19 +30,18 @@ const SalesDashboard: React.FC = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold text-primary">Sales Dashboard</h2>
         <Badge variant="outline" className="text-xs">
-          Sales Agent Access
+          Sales Agent Portal
         </Badge>
       </div>
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="homepage" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="homepage">Homepage</TabsTrigger>
-          <TabsTrigger value="trials">Trial Appointments</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="homepage">Command Center</TabsTrigger>
+          <TabsTrigger value="trials">Trial Management</TabsTrigger>
           <TabsTrigger value="followup">Follow-up</TabsTrigger>
           <TabsTrigger value="students">Students</TabsTrigger>
-          <TabsTrigger value="sessions">Sessions</TabsTrigger>
-          <TabsTrigger value="analysis">Analysis</TabsTrigger>
+          <TabsTrigger value="analysis">Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="homepage" className="space-y-4">
@@ -62,15 +61,8 @@ const SalesDashboard: React.FC = () => {
 
         <TabsContent value="students" className="space-y-4">
           <ComingSoonCard 
-            title="Paid Students Management" 
+            title="Student Management" 
             description="View and manage your converted students and their enrollment status"
-          />
-        </TabsContent>
-
-        <TabsContent value="sessions" className="space-y-4">
-          <ComingSoonCard 
-            title="Session Monitoring" 
-            description="Monitor ongoing sessions and track completion rates"
           />
         </TabsContent>
 
