@@ -4,15 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useTrialOutcomes } from '@/hooks/useTrialOutcomes';
 import { Student } from '@/types';
 
 interface TrialOutcomeFormProps {
   student: Student;
   sessionId: string;
-  initialOutcome: 'completed' | 'ghosted';
   onSuccess?: () => void;
   onCancel?: () => void;
 }
@@ -20,10 +20,10 @@ interface TrialOutcomeFormProps {
 const TrialOutcomeForm: React.FC<TrialOutcomeFormProps> = ({
   student,
   sessionId,
-  initialOutcome,
   onSuccess,
   onCancel
 }) => {
+  const [outcome, setOutcome] = useState<'completed' | 'ghosted' | 'rescheduled'>('completed');
   const [teacherNotes, setTeacherNotes] = useState('');
   const [studentBehavior, setStudentBehavior] = useState('');
   const [recommendedPackage, setRecommendedPackage] = useState('');
@@ -35,12 +35,10 @@ const TrialOutcomeForm: React.FC<TrialOutcomeFormProps> = ({
       await submitTrialOutcome(
         student.id,
         sessionId,
-        initialOutcome,
+        outcome,
         teacherNotes || undefined,
-        // Only include student behavior for completed trials
-        initialOutcome === 'completed' ? (studentBehavior || undefined) : undefined,
-        // Only include recommended package for completed trials
-        initialOutcome === 'completed' ? (recommendedPackage || undefined) : undefined
+        studentBehavior || undefined,
+        recommendedPackage || undefined
       );
       
       onSuccess?.();
@@ -49,67 +47,92 @@ const TrialOutcomeForm: React.FC<TrialOutcomeFormProps> = ({
     }
   };
 
-  const getFormTitle = () => {
-    return initialOutcome === 'completed' 
-      ? 'Submit Completed Trial Outcome' 
-      : 'Submit Ghosted Trial Report';
+  const getOutcomeIcon = (outcomeType: string) => {
+    switch (outcomeType) {
+      case 'completed':
+        return <CheckCircle className="w-5 h-5 text-green-600" />;
+      case 'ghosted':
+        return <XCircle className="w-5 h-5 text-red-600" />;
+      case 'rescheduled':
+        return <Clock className="w-5 h-5 text-yellow-600" />;
+      default:
+        return null;
+    }
   };
 
-  const getFormDescription = () => {
-    return initialOutcome === 'completed'
-      ? `Mark the trial session as completed for ${student.name}. This will return control to the Sales team for follow-up.`
-      : `Mark the trial session as ghosted for ${student.name}. The student did not attend or respond.`;
-  };
-
-  const getOutcomeIcon = () => {
-    return initialOutcome === 'completed' 
-      ? <CheckCircle className="w-6 h-6 text-green-600" />
-      : <XCircle className="w-6 h-6 text-red-600" />;
+  const getOutcomeDescription = (outcomeType: string) => {
+    switch (outcomeType) {
+      case 'completed':
+        return 'Student attended and completed the trial session';
+      case 'ghosted':
+        return 'Student did not show up or respond';
+      case 'rescheduled':
+        return 'Session needs to be rescheduled';
+      default:
+        return '';
+    }
   };
 
   return (
     <Card className="w-full max-w-2xl">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          {getOutcomeIcon()}
-          {getFormTitle()}
+          Submit Trial Outcome
         </CardTitle>
         <CardDescription>
-          {getFormDescription()}
+          Mark the trial session outcome for {student.name}. This will return control to the Sales team for follow-up.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <div>
+          <Label className="text-base font-medium">Trial Outcome</Label>
+          <RadioGroup
+            value={outcome}
+            onValueChange={(value) => setOutcome(value as 'completed' | 'ghosted' | 'rescheduled')}
+            className="mt-3"
+          >
+            {(['completed', 'ghosted', 'rescheduled'] as const).map((option) => (
+              <div key={option} className="flex items-center space-x-3 p-3 border rounded-lg">
+                <RadioGroupItem value={option} id={option} />
+                <div className="flex items-center gap-2 flex-1">
+                  {getOutcomeIcon(option)}
+                  <div>
+                    <Label htmlFor={option} className="font-medium capitalize cursor-pointer">
+                      {option}
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      {getOutcomeDescription(option)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="teacherNotes">Session Notes</Label>
           <Textarea
             id="teacherNotes"
-            placeholder={
-              initialOutcome === 'completed' 
-                ? "Describe how the session went, what was covered, any observations..."
-                : "Note any attempts to contact the student, reasons for no-show, etc..."
-            }
+            placeholder="Describe how the session went, what was covered, any observations..."
             value={teacherNotes}
             onChange={(e) => setTeacherNotes(e.target.value)}
             rows={3}
           />
         </div>
 
-        {/* Only show student behavior field for completed trials */}
-        {initialOutcome === 'completed' && (
-          <div className="space-y-2">
-            <Label htmlFor="studentBehavior">Student Behavior & Engagement</Label>
-            <Textarea
-              id="studentBehavior"
-              placeholder="How engaged was the student? Any behavioral notes or learning style observations..."
-              value={studentBehavior}
-              onChange={(e) => setStudentBehavior(e.target.value)}
-              rows={3}
-            />
-          </div>
-        )}
+        <div className="space-y-2">
+          <Label htmlFor="studentBehavior">Student Behavior & Engagement</Label>
+          <Textarea
+            id="studentBehavior"
+            placeholder="How engaged was the student? Any behavioral notes or learning style observations..."
+            value={studentBehavior}
+            onChange={(e) => setStudentBehavior(e.target.value)}
+            rows={3}
+          />
+        </div>
 
-        {/* Only show recommended package for completed trials */}
-        {initialOutcome === 'completed' && (
+        {outcome === 'completed' && (
           <div className="space-y-2">
             <Label htmlFor="recommendedPackage">Recommended Package</Label>
             <Select value={recommendedPackage} onValueChange={setRecommendedPackage}>
@@ -133,7 +156,7 @@ const TrialOutcomeForm: React.FC<TrialOutcomeFormProps> = ({
             disabled={isSubmitting}
             className="flex-1"
           >
-            {isSubmitting ? 'Submitting...' : `Submit ${initialOutcome === 'completed' ? 'Completed' : 'Ghosted'} Trial`}
+            {isSubmitting ? 'Submitting...' : 'Submit Outcome'}
           </Button>
           <Button
             variant="outline"
