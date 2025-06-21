@@ -192,39 +192,46 @@ export const useStudentStatusManagement = () => {
       }
 
       // 4. Update session with reschedule info
-      const { data: sessionData, error: sessionFetchError } = await supabase
-        .from('sessions')
-        .select('id, reschedule_count, original_date, original_time')
-        .eq('scheduled_date', oldDate || dateString)
-        .eq('scheduled_time', oldTime || utcTime)
-        .in('id', [
-          // Get session from session_students join
-          supabase
-            .from('session_students')
-            .select('session_id')
-            .eq('student_id', studentId)
-        ])
-        .order('created_at', { ascending: false })
-        .limit(1);
+      // First, get the session that matches this student
+      const { data: sessionStudents, error: sessionStudentsError } = await supabase
+        .from('session_students')
+        .select('session_id')
+        .eq('student_id', studentId);
 
-      if (sessionData && sessionData.length > 0) {
-        const session = sessionData[0];
-        const { error: sessionUpdateError } = await supabase
+      if (sessionStudentsError) {
+        console.error('❌ Error fetching session students:', sessionStudentsError);
+        // Don't fail the operation for this
+      } else if (sessionStudents && sessionStudents.length > 0) {
+        // Get the most recent session for this student
+        const sessionIds = sessionStudents.map(ss => ss.session_id);
+        const { data: sessionData, error: sessionFetchError } = await supabase
           .from('sessions')
-          .update({
-            scheduled_date: dateString,
-            scheduled_time: utcTime,
-            reschedule_count: (session.reschedule_count || 0) + 1,
-            reschedule_reason: reason,
-            original_date: session.original_date || oldDate,
-            original_time: session.original_time || oldTime,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', session.id);
+          .select('id, reschedule_count, original_date, original_time, scheduled_date, scheduled_time')
+          .in('id', sessionIds)
+          .eq('scheduled_date', oldDate || dateString)
+          .eq('scheduled_time', oldTime || utcTime)
+          .order('created_at', { ascending: false })
+          .limit(1);
 
-        if (sessionUpdateError) {
-          console.error('❌ Error updating session:', sessionUpdateError);
-          // Don't fail the operation for this
+        if (sessionData && sessionData.length > 0) {
+          const session = sessionData[0];
+          const { error: sessionUpdateError } = await supabase
+            .from('sessions')
+            .update({
+              scheduled_date: dateString,
+              scheduled_time: utcTime,
+              reschedule_count: (session.reschedule_count || 0) + 1,
+              reschedule_reason: reason,
+              original_date: session.original_date || oldDate,
+              original_time: session.original_time || oldTime,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', session.id);
+
+          if (sessionUpdateError) {
+            console.error('❌ Error updating session:', sessionUpdateError);
+            // Don't fail the operation for this
+          }
         }
       }
 
