@@ -37,7 +37,7 @@ export const useSessionCompletion = () => {
         throw error;
       }
 
-      return data as SessionCompletionResponse;
+      return data as unknown as SessionCompletionResponse;
     },
     onSuccess: (data) => {
       if (data.package_complete) {
