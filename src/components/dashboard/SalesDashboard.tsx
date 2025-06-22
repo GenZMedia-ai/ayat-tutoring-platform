@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import SimpleSalesDashboard from './SimpleSalesDashboard';
 import SalesTrialAppointments from '../sales/SalesTrialAppointments';
+import { FollowUpManagementTab } from '../sales/FollowUpManagementTab';
 
 const SalesDashboard: React.FC = () => {
   const ComingSoonCard = ({ title, description }: { title: string; description: string }) => (
@@ -53,10 +54,7 @@ const SalesDashboard: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="followup" className="space-y-4">
-          <ComingSoonCard 
-            title="Follow-up Queue" 
-            description="Track and manage follow-up tasks for leads and students"
-          />
+          <FollowUpManagementTab />
         </TabsContent>
 
         <TabsContent value="students" className="space-y-4">

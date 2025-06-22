@@ -306,6 +306,41 @@ export type Database = {
         }
         Relationships: []
       }
+      session_reminders: {
+        Row: {
+          created_at: string | null
+          id: string
+          reminder_type: string
+          scheduled_for: string
+          sent_at: string | null
+          session_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          reminder_type: string
+          scheduled_for: string
+          sent_at?: string | null
+          session_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          reminder_type?: string
+          scheduled_for?: string
+          sent_at?: string | null
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_reminders_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_students: {
         Row: {
           created_at: string
@@ -414,15 +449,19 @@ export type Database = {
           assigned_sales_agent_id: string
           assigned_supervisor_id: string | null
           assigned_teacher_id: string | null
+          completed_sessions: number | null
           country: string
           created_at: string
           family_group_id: string | null
           id: string
           name: string
           notes: string | null
+          package_purchased_at: string | null
+          package_session_count: number | null
           parent_name: string | null
           phone: string
           platform: string
+          registration_completed_at: string | null
           status: string
           teacher_type: string
           trial_date: string | null
@@ -435,15 +474,19 @@ export type Database = {
           assigned_sales_agent_id: string
           assigned_supervisor_id?: string | null
           assigned_teacher_id?: string | null
+          completed_sessions?: number | null
           country: string
           created_at?: string
           family_group_id?: string | null
           id?: string
           name: string
           notes?: string | null
+          package_purchased_at?: string | null
+          package_session_count?: number | null
           parent_name?: string | null
           phone: string
           platform: string
+          registration_completed_at?: string | null
           status?: string
           teacher_type: string
           trial_date?: string | null
@@ -456,15 +499,19 @@ export type Database = {
           assigned_sales_agent_id?: string
           assigned_supervisor_id?: string | null
           assigned_teacher_id?: string | null
+          completed_sessions?: number | null
           country?: string
           created_at?: string
           family_group_id?: string | null
           id?: string
           name?: string
           notes?: string | null
+          package_purchased_at?: string | null
+          package_session_count?: number | null
           parent_name?: string | null
           phone?: string
           platform?: string
+          registration_completed_at?: string | null
           status?: string
           teacher_type?: string
           trial_date?: string | null
@@ -616,6 +663,23 @@ export type Database = {
         }
         Returns: Json
       }
+      check_subscription_completion: {
+        Args: { p_student_id: string }
+        Returns: Json
+      }
+      complete_session_with_details: {
+        Args: {
+          p_session_id: string
+          p_actual_minutes: number
+          p_learning_notes: string
+          p_attendance_confirmed: boolean
+        }
+        Returns: Json
+      }
+      complete_student_registration: {
+        Args: { p_student_id: string; p_session_schedules: Json }
+        Returns: Json
+      }
       confirm_trial: {
         Args: { p_student_id: string }
         Returns: Json
@@ -631,6 +695,22 @@ export type Database = {
       get_egypt_current_date: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_teacher_paid_students: {
+        Args: { p_teacher_id: string }
+        Returns: {
+          id: string
+          unique_id: string
+          name: string
+          age: number
+          phone: string
+          country: string
+          platform: string
+          package_session_count: number
+          package_purchased_at: string
+          parent_name: string
+          notes: string
+        }[]
       }
       get_user_role: {
         Args: { user_id: string }

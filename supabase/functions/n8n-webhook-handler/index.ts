@@ -43,7 +43,8 @@ serve(async (req) => {
       sessions_created,
       teacher_assignment,
       notifications_sent,
-      next_steps 
+      next_steps,
+      package_metadata
     } = webhookData;
 
     if (!event_type || !student_unique_id || !stripe_session_id || !processing_status) {
@@ -82,7 +83,45 @@ serve(async (req) => {
       logStep("Found student(s)", { count: students.length, studentIds: students.map(s => s.id) });
     }
 
-    // Step 2: Update teacher assignment if provided
+    // Step 2: Update package information from payment metadata
+    if (package_metadata && processing_status === 'success') {
+      logStep("Updating package information", package_metadata);
+      
+      const studentIds = students ? students.map(s => s.id) : [];
+      
+      if (studentIds.length > 0) {
+        const { error: packageUpdateError } = await supabaseClient
+          .from('students')
+          .update({ 
+            package_session_count: package_metadata.session_count || 0,
+            package_purchased_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .in('id', studentIds);
+
+        if (packageUpdateError) {
+          logStep("Error updating package information", { error: packageUpdateError });
+        } else {
+          logStep("Package information updated successfully");
+        }
+      }
+
+      // Also update family group if applicable
+      if (!students || students.length === 0) {
+        const { error: familyPackageError } = await supabaseClient
+          .from('family_groups')
+          .update({ 
+            updated_at: new Date().toISOString()
+          })
+          .eq('unique_id', student_unique_id);
+
+        if (familyPackageError) {
+          logStep("Error updating family package information", { error: familyPackageError });
+        }
+      }
+    }
+
+    // Step 3: Update teacher assignment if provided
     if (teacher_assignment && teacher_assignment.teacher_id) {
       logStep("Updating teacher assignment", teacher_assignment);
 
@@ -120,7 +159,7 @@ serve(async (req) => {
       }
     }
 
-    // Step 3: Create session records if provided
+    // Step 4: Create session records if provided (future automated scheduling)
     if (sessions_created && Array.isArray(sessions_created) && sessions_created.length > 0) {
       logStep("Creating session records", { sessionCount: sessions_created.length });
 
@@ -163,15 +202,15 @@ serve(async (req) => {
       }
     }
 
-    // Step 4: Update student status to 'active' if processing was successful
+    // Step 5: Update student status based on processing result
     if (processing_status === 'success') {
-      logStep("Updating student status to active");
+      logStep("Updating student status to paid");
 
       if (students && students.length > 0) {
         const { error: statusUpdateError } = await supabaseClient
           .from('students')
           .update({ 
-            status: 'active',
+            status: 'paid',
             updated_at: new Date().toISOString()
           })
           .in('id', students.map(s => s.id));
@@ -179,7 +218,7 @@ serve(async (req) => {
         if (statusUpdateError) {
           logStep("Error updating student status", { error: statusUpdateError });
         } else {
-          logStep("Student status updated to active");
+          logStep("Student status updated to paid");
         }
       }
 
@@ -188,7 +227,7 @@ serve(async (req) => {
         const { error: familyStatusError } = await supabaseClient
           .from('family_groups')
           .update({ 
-            status: 'active',
+            status: 'paid',
             updated_at: new Date().toISOString()
           })
           .eq('unique_id', student_unique_id);
@@ -199,7 +238,7 @@ serve(async (req) => {
       }
     }
 
-    // Step 5: Update payment link with processing completion
+    // Step 6: Update payment link with processing completion
     const { error: paymentLinkError } = await supabaseClient
       .from('payment_links')
       .update({
@@ -214,7 +253,7 @@ serve(async (req) => {
       logStep("Payment link updated with processing status");
     }
 
-    // Step 6: Log the notification status and next steps
+    // Step 7: Log the notification status and next steps
     logStep("Processing completed", {
       notifications_sent,
       next_steps,
