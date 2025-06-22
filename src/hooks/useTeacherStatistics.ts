@@ -65,10 +65,10 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
       
       console.log('🔍 Fetching teacher statistics:', { teacherId: user.id, dateRange, start, end });
 
-      // Fetch trial statistics
+      // Fetch trial statistics from students table
       const { data: trialStats, error: trialError } = await supabase
         .from('students')
-        .select('status, trial_date, reschedule_count')
+        .select('status, trial_date')
         .eq('assigned_teacher_id', user.id)
         .gte('trial_date', start)
         .lte('trial_date', end);
@@ -90,13 +90,34 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
         return;
       }
 
+      // Fetch reschedule statistics from sessions table
+      const { data: rescheduledSessions, error: rescheduledError } = await supabase
+        .from('sessions')
+        .select('id, reschedule_count, session_students!inner(student_id)')
+        .gte('scheduled_date', start)
+        .lte('scheduled_date', end)
+        .gt('reschedule_count', 0);
+
+      if (rescheduledError) {
+        console.error('❌ Error fetching rescheduled sessions:', rescheduledError);
+      }
+
+      // Filter rescheduled sessions for this teacher's students
+      let rescheduledCount = 0;
+      if (rescheduledSessions) {
+        const teacherStudentIds = trialStats?.map(s => s.id) || [];
+        rescheduledCount = rescheduledSessions.filter(session => 
+          session.session_students.some(ss => teacherStudentIds.includes(ss.student_id))
+        ).length;
+      }
+
       // Calculate statistics
       const newStats: TeacherStats = {
         currentCapacity: capacityData?.length || 0,
         pendingTrials: trialStats?.filter(s => s.status === 'pending').length || 0,
         confirmedTrials: trialStats?.filter(s => s.status === 'confirmed').length || 0,
         completedTrials: trialStats?.filter(s => s.status === 'trial-completed').length || 0,
-        rescheduledTrials: trialStats?.filter(s => s.reschedule_count > 0).length || 0,
+        rescheduledTrials: rescheduledCount,
         ghostedTrials: trialStats?.filter(s => s.status === 'trial-ghosted').length || 0
       };
 
