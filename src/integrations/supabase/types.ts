@@ -616,15 +616,6 @@ export type Database = {
         }
         Returns: Json
       }
-      complete_session_with_details: {
-        Args: {
-          session_id_param: string
-          actual_minutes_param: number
-          completion_notes_param: string
-          attendance_confirmed_param: boolean
-        }
-        Returns: Json
-      }
       confirm_trial: {
         Args: { p_student_id: string }
         Returns: Json

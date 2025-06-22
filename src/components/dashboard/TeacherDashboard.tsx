@@ -5,8 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTeacherMixedTrialSessions } from '@/hooks/useTeacherMixedTrialSessions';
 import { UnifiedTeacherStudentCard } from '@/components/teacher/UnifiedTeacherStudentCard';
-import { PaidStudentsSection } from '@/components/teacher/PaidStudentsSection';
-import { TodayPaidSessionsSection } from '@/components/teacher/TodayPaidSessionsSection';
 
 const TeacherDashboard: React.FC = () => {
   const { trialItems, loading, refreshTrialSessions } = useTeacherMixedTrialSessions();
@@ -25,25 +23,11 @@ const TeacherDashboard: React.FC = () => {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="homepage" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="homepage">Home</TabsTrigger>
-          <TabsTrigger value="paid-sessions">Paid Sessions</TabsTrigger>
+      <Tabs defaultValue="trials" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="trials">Trial Management</TabsTrigger>
           <TabsTrigger value="availability">Availability</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="homepage" className="space-y-4">
-          {/* Paid Students Section */}
-          <PaidStudentsSection />
-          
-          {/* Today's Paid Sessions */}
-          <TodayPaidSessionsSection />
-        </TabsContent>
-
-        <TabsContent value="paid-sessions" className="space-y-4">
-          <TodayPaidSessionsSection />
-        </TabsContent>
 
         <TabsContent value="trials" className="space-y-4">
           {/* Quick Stats */}
