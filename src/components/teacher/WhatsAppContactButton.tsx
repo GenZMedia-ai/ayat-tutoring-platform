@@ -7,21 +7,30 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { MessageCircle, Phone, ExternalLink } from 'lucide-react';
 import { useWhatsAppContacts } from '@/hooks/useWhatsAppContacts';
-import { Student } from '@/types';
 
 interface WhatsAppContactButtonProps {
-  student: Student;
-  contactType?: 'trial_confirmation' | 'follow_up' | 'reminder';
+  studentId: string;
+  phone: string;
+  studentName: string;
+  contactType?: 'trial_confirmation' | 'follow_up' | 'reminder' | 'package_purchased' | 'session_reminder';
+  customMessage?: string;
   size?: 'sm' | 'default' | 'lg';
   variant?: 'default' | 'outline' | 'ghost';
+  className?: string;
+  children?: React.ReactNode;
   onContactLogged?: () => void;
 }
 
 const WhatsAppContactButton: React.FC<WhatsAppContactButtonProps> = ({
-  student,
+  studentId,
+  phone,
+  studentName,
   contactType = 'trial_confirmation',
+  customMessage,
   size = 'default',
   variant = 'default',
+  className = '',
+  children,
   onContactLogged
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -31,28 +40,15 @@ const WhatsAppContactButton: React.FC<WhatsAppContactButtonProps> = ({
   const { logWhatsAppContact, isLogging } = useWhatsAppContacts();
 
   const generateWhatsAppMessage = () => {
-    const trialTime = student.trialTime ? 
-      new Date(`2000-01-01T${student.trialTime}`).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      }) : 'TBD';
-
-    const trialDate = student.trialDate ? 
-      new Date(student.trialDate).toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }) : 'TBD';
+    if (customMessage) {
+      return customMessage;
+    }
 
     switch (contactType) {
       case 'trial_confirmation':
-        return `Hello ${student.name}! 👋
+        return `Hello ${studentName}! 👋
 
-This is your English teacher confirming your trial lesson scheduled for:
-📅 ${trialDate}
-⏰ ${trialTime}
+This is your English teacher confirming your trial lesson.
 
 I'm excited to meet you and help you with your English learning journey! Please confirm if this time works for you.
 
@@ -60,7 +56,7 @@ Best regards,
 Your English Teacher 📚✨`;
 
       case 'follow_up':
-        return `Hi ${student.name}! 👋
+        return `Hi ${studentName}! 👋
 
 I hope you're doing well. I wanted to follow up regarding your English learning journey. 
 
@@ -70,19 +66,33 @@ Best regards,
 Your English Teacher 📚`;
 
       case 'reminder':
-        return `Hi ${student.name}! 👋
+        return `Hi ${studentName}! 👋
 
-Just a friendly reminder about your trial lesson:
-📅 ${trialDate}
-⏰ ${trialTime}
+Just a friendly reminder about your upcoming lesson.
 
 Looking forward to our session! Please let me know if you need any technical help with the platform.
 
 Best regards,
 Your English Teacher 📚✨`;
 
+      case 'package_purchased':
+        return `Congratulations ${studentName}! 🎉
+
+Your package has been confirmed. Let's schedule your sessions. When would be a good time to discuss the schedule?
+
+Best regards,
+Your English Teacher 📚`;
+
+      case 'session_reminder':
+        return `Hi ${studentName}! 👋
+
+Reminder about your session today. Looking forward to our lesson!
+
+Best regards,
+Your English Teacher 📚✨`;
+
       default:
-        return `Hello ${student.name}! 👋
+        return `Hello ${studentName}! 👋
 
 I hope this message finds you well. Please let me know if you have any questions about your English lessons.
 
@@ -94,13 +104,18 @@ Your English Teacher 📚`;
   const openWhatsApp = () => {
     const message = generateWhatsAppMessage();
     const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/${student.phone.replace(/\D/g, '')}?text=${encodedMessage}`;
+    const whatsappUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodedMessage}`;
     window.open(whatsappUrl, '_blank');
   };
 
   const handleContactLogged = async () => {
     try {
-      await logWhatsAppContact(student.id, contactType, success, notes || undefined);
+      // Map extended contact types to basic ones for logging
+      const logContactType = ['package_purchased', 'session_reminder'].includes(contactType) 
+        ? 'follow_up' 
+        : contactType as 'trial_confirmation' | 'follow_up' | 'reminder';
+        
+      await logWhatsAppContact(studentId, logContactType, success, notes || undefined);
       setIsOpen(false);
       setNotes('');
       onContactLogged?.();
@@ -117,6 +132,10 @@ Your English Teacher 📚`;
         return 'Follow-up';
       case 'reminder':
         return 'Reminder';
+      case 'package_purchased':
+        return 'Package Purchase';
+      case 'session_reminder':
+        return 'Session Reminder';
       default:
         return 'Contact';
     }
@@ -125,16 +144,20 @@ Your English Teacher 📚`;
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant={variant} size={size} className="gap-2">
-          <MessageCircle className="w-4 h-4" />
-          WhatsApp
+        <Button variant={variant} size={size} className={className}>
+          {children || (
+            <>
+              <MessageCircle className="w-4 h-4 mr-2" />
+              WhatsApp
+            </>
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Phone className="w-5 h-5" />
-            Contact {student.name}
+            Contact {studentName}
           </DialogTitle>
           <DialogDescription>
             {getContactTypeLabel()} via WhatsApp

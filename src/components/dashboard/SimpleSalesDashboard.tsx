@@ -196,10 +196,10 @@ const SimpleSalesDashboard: React.FC = () => {
             <div className="space-y-3">
               {items.slice(0, 5).map((item) => {
                 const data = item.data;
-                // Handle both individual students and family groups
+                // Handle both individual students and family groups with proper type checking
                 const displayName = item.type === 'individual' 
-                  ? data.name 
-                  : data.parentName || 'Family Group';
+                  ? ('name' in data ? data.name : 'Individual Student')
+                  : ('parent_name' in data ? data.parent_name : 'Family Group');
                 const status = item.type === 'individual' ? data.status : data.status;
                 
                 return (
