@@ -69,6 +69,11 @@ export interface Student {
   paymentData?: PaymentData;
   sessions?: Session[];
   familyGroupId?: string; // New field for family grouping
+  // New fields for post-payment workflow
+  packageSessionCount?: number;
+  completedSessions?: number;
+  packagePurchasedAt?: string;
+  registrationCompletedAt?: string;
 }
 
 // New interface for Family Groups
