@@ -25,6 +25,7 @@ const statusTransitions: StatusTransition[] = [
   { from: 'trial-ghosted', to: 'dropped', allowedRoles: ['sales', 'admin'] },
   { from: 'awaiting-payment', to: 'paid', allowedRoles: ['sales', 'admin'] },
   { from: 'awaiting-payment', to: 'dropped', allowedRoles: ['sales', 'admin'] },
+  { from: 'awaiting-payment', to: 'trial-completed', allowedRoles: ['sales', 'admin'] },
   { from: 'paid', to: 'active', allowedRoles: ['sales', 'admin'] },
   
   // Admin can do additional transitions
@@ -32,6 +33,7 @@ const statusTransitions: StatusTransition[] = [
   { from: 'confirmed', to: 'cancelled', allowedRoles: ['admin'] },
   { from: 'active', to: 'expired', allowedRoles: ['admin'] },
   { from: 'active', to: 'cancelled', allowedRoles: ['admin'] },
+  { from: 'expired', to: 'awaiting-payment', allowedRoles: ['sales', 'admin'] },
 ];
 
 export const useStatusValidation = (userRole: string) => {

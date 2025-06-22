@@ -42,18 +42,18 @@ export const StatusChangeModal: React.FC<StatusChangeModalProps> = ({
       case 'trial-completed':
         return [
           { value: 'awaiting-payment', label: 'Awaiting Payment' },
-          { value: 'trial-ghosted', label: 'Mark as Ghosted' }
+          { value: 'dropped', label: 'Mark as Dropped' }
         ];
       case 'trial-ghosted':
         return [
           { value: 'awaiting-payment', label: 'Awaiting Payment' },
-          { value: 'trial-completed', label: 'Mark as Completed' }
+          { value: 'dropped', label: 'Mark as Dropped' }
         ];
       case 'awaiting-payment':
         return [
           { value: 'paid', label: 'Mark as Paid' },
           { value: 'trial-completed', label: 'Back to Trial Completed' },
-          { value: 'expired', label: 'Mark as Expired' }
+          { value: 'dropped', label: 'Mark as Dropped' }
         ];
       case 'paid':
         return [
@@ -80,6 +80,8 @@ export const StatusChangeModal: React.FC<StatusChangeModalProps> = ({
 
     setLoading(true);
     try {
+      console.log('🔄 Changing student status:', { from: student.status, to: newStatus });
+
       const { error } = await supabase
         .from('students')
         .update({
@@ -89,21 +91,20 @@ export const StatusChangeModal: React.FC<StatusChangeModalProps> = ({
         .eq('id', student.id);
 
       if (error) {
-        console.error('Error updating student status:', error);
+        console.error('❌ Error updating student status:', error);
         toast.error('Failed to update student status');
         return;
       }
 
       // If there are notes, create a follow-up entry or log
       if (notes.trim()) {
-        // This could be extended to create follow-up entries
-        console.log('Status change notes:', notes);
+        console.log('📝 Status change notes:', notes);
       }
 
       toast.success(`Student status updated to ${newStatus}`);
       onSuccess();
     } catch (error) {
-      console.error('Error updating student status:', error);
+      console.error('❌ Error updating student status:', error);
       toast.error('Failed to update student status');
     } finally {
       setLoading(false);

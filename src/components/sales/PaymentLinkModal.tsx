@@ -60,6 +60,15 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
     return true;
   };
 
+  const validateStudentStatus = () => {
+    const validStatuses = ['trial-completed', 'trial-ghosted'];
+    if (!validStatuses.includes(student.status)) {
+      toast.error(`Cannot create payment link for student with status: ${student.status}. Student must have completed or ghosted trial.`);
+      return false;
+    }
+    return true;
+  };
+
   const createStripePaymentLink = async (finalPrice: number) => {
     console.log('🔗 Creating Stripe payment link...');
     
@@ -81,7 +90,7 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
 
     if (error) {
       console.error('❌ Stripe edge function error:', error);
-      throw new Error(`Stripe API error: ${error.message}`);
+      throw new Error(`Payment system error: ${error.message}`);
     }
 
     console.log('✅ Stripe payment link created:', data);
@@ -91,21 +100,6 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
   const updateStudentStatus = async () => {
     console.log('📝 Updating student status to awaiting-payment...');
     
-    // First verify the current status
-    const { data: currentStudent, error: fetchError } = await supabase
-      .from('students')
-      .select('status')
-      .eq('id', student.id)
-      .single();
-
-    if (fetchError) {
-      console.error('❌ Error fetching current student status:', fetchError);
-      throw new Error('Failed to verify student status');
-    }
-
-    console.log('Current student status:', currentStudent.status);
-
-    // Update to awaiting-payment
     const { error: updateError } = await supabase
       .from('students')
       .update({ 
@@ -116,22 +110,14 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
 
     if (updateError) {
       console.error('❌ Error updating student status:', updateError);
-      
-      // Provide specific error messages for different constraint violations
-      if (updateError.message?.includes('students_status_check')) {
-        throw new Error('Database constraint error: awaiting-payment status not allowed. Migration may not be applied.');
-      } else if (updateError.message?.includes('violates check constraint')) {
-        throw new Error('Status transition not allowed by database constraints');
-      }
-      
-      throw new Error(`Database update failed: ${updateError.message}`);
+      throw new Error(`Failed to update student status: ${updateError.message}`);
     }
 
     console.log('✅ Student status updated successfully');
   };
 
   const handleCreatePaymentLink = async () => {
-    if (!validateInputs()) return;
+    if (!validateInputs() || !validateStudentStatus()) return;
 
     setIsCreating(true);
     const finalPrice = calculateFinalPrice();
@@ -148,7 +134,7 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
       // Step 1: Create Stripe payment link
       const stripeData = await createStripePaymentLink(finalPrice);
 
-      // Step 2: Update student status
+      // Step 2: Update student status to awaiting-payment
       await updateStudentStatus();
 
       // Step 3: Copy to clipboard and notify success
@@ -165,12 +151,9 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
     } catch (error: any) {
       console.error('❌ Payment link creation failed:', error);
       
-      // Provide user-friendly error messages based on error type
       const errorMessage = error?.message || 'Unknown error occurred';
       
-      if (errorMessage.includes('Database constraint error')) {
-        toast.error('Status update failed - database constraint error. Please contact support.');
-      } else if (errorMessage.includes('Stripe API error')) {
+      if (errorMessage.includes('Payment system error')) {
         toast.error('Payment system error. Please check Stripe configuration.');
       } else if (errorMessage.includes('STRIPE_SECRET_KEY')) {
         toast.error('Stripe not configured. Please contact administrator.');

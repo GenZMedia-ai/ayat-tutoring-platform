@@ -15,7 +15,6 @@ export const useStudentStatusManagement = () => {
   const { validateTransition, requiresConfirmation } = useStatusValidation(userRole);
 
   const validateStatusConstraint = async (newStatus: string) => {
-    // Check if the status is valid according to database constraints
     const validStatuses = [
       'pending', 'confirmed', 'trial-completed', 'trial-ghosted', 
       'awaiting-payment', 'paid', 'active', 'expired', 'cancelled', 'dropped'
@@ -75,15 +74,7 @@ export const useStudentStatusManagement = () => {
 
       if (error) {
         console.error('❌ Error updating student status:', error);
-        
-        // Handle specific database constraint errors
-        if (error.message?.includes('students_status_check')) {
-          toast.error(`Status '${newStatus}' is not allowed. Database constraint error.`);
-        } else if (error.message?.includes('violates check constraint')) {
-          toast.error('Invalid status transition. Please check business rules.');
-        } else {
-          toast.error('Failed to update student status');
-        }
+        toast.error('Failed to update student status');
         return false;
       }
 
