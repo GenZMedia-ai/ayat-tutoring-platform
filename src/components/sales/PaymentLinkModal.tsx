@@ -58,6 +58,14 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
     setIsCreating(true);
 
     try {
+      console.log('🔗 Creating payment link for student:', {
+        studentId: student.id,
+        studentName: student.name,
+        packageId: selectedPackage.id,
+        currency: selectedCurrency.code,
+        amount: finalPrice
+      });
+
       // Call Stripe edge function to create payment link
       const { data, error } = await supabase.functions.invoke('create-payment-link', {
         body: {
@@ -75,7 +83,12 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        throw error;
+      }
+
+      console.log('✅ Payment link created successfully:', data);
 
       // Update student status to awaiting payment
       const { error: updateError } = await supabase
@@ -83,7 +96,12 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
         .update({ status: 'awaiting-payment' })
         .eq('id', student.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('❌ Error updating student status:', updateError);
+        throw updateError;
+      }
+
+      console.log('✅ Student status updated to awaiting-payment');
 
       // Copy payment link to clipboard
       if (data?.url) {
@@ -93,8 +111,16 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
 
       onSuccess();
     } catch (error) {
-      console.error('Error creating payment link:', error);
-      toast.error('Failed to create payment link');
+      console.error('❌ Error creating payment link:', error);
+      
+      // Provide more specific error messages
+      if (error?.message?.includes('status_check')) {
+        toast.error('Status update failed - database constraint error. Please contact support.');
+      } else if (error?.message?.includes('stripe')) {
+        toast.error('Stripe configuration error. Please check payment settings.');
+      } else {
+        toast.error(`Failed to create payment link: ${error?.message || 'Unknown error'}`);
+      }
     } finally {
       setIsCreating(false);
     }

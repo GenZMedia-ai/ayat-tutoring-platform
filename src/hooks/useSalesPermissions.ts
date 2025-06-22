@@ -52,7 +52,7 @@ export const useSalesPermissions = (status: StudentStatus): SalesPermissions => 
           canCreatePaymentLink: true,
           canCreateFollowUp: true,
           canViewAll: true,
-          statusMessage: 'Managing payment process'
+          statusMessage: 'Payment link created - managing payment process'
         };
 
       case 'paid':
