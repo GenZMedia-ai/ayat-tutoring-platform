@@ -27,7 +27,7 @@ export const TeacherAvailabilityTab: React.FC = () => {
           </p>
         </div>
         <Badge variant="outline" className="px-3 py-1">
-          Teacher: {user?.full_name}
+          Teacher: {user?.fullName}
         </Badge>
       </div>
 
