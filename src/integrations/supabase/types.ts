@@ -616,6 +616,10 @@ export type Database = {
         }
         Returns: Json
       }
+      confirm_trial: {
+        Args: { p_student_id: string }
+        Returns: Json
+      }
       generate_family_unique_id: {
         Args: Record<PropertyKey, never>
         Returns: string

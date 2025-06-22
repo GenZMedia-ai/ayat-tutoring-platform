@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { useTrialConfirmation } from './useTrialConfirmation';
 
 export interface TrialStudent {
   id: string;
@@ -15,13 +16,14 @@ export interface TrialStudent {
   uniqueId: string;
   parentName?: string;
   notes?: string;
-  sessionId?: string; // Added session ID to the interface
+  sessionId?: string;
 }
 
 export const useTeacherTrialSessions = () => {
   const { user } = useAuth();
   const [trialStudents, setTrialStudents] = useState<TrialStudent[]>([]);
   const [loading, setLoading] = useState(false);
+  const { confirmTrial: confirmTrialRPC } = useTrialConfirmation();
 
   const fetchTrialSessions = async () => {
     if (!user) return;
@@ -88,31 +90,11 @@ export const useTeacherTrialSessions = () => {
   };
 
   const confirmTrial = async (studentId: string) => {
-    try {
-      console.log('✅ Confirming trial for student:', studentId);
-      
-      const { error } = await supabase
-        .from('students')
-        .update({ 
-          status: 'confirmed',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', studentId);
-
-      if (error) {
-        console.error('❌ Error confirming trial:', error);
-        toast.error('Failed to confirm trial');
-        return false;
-      }
-
-      toast.success('Trial confirmed successfully!');
-      await fetchTrialSessions(); // Refresh data
-      return true;
-    } catch (error) {
-      console.error('❌ Error in confirmTrial:', error);
-      toast.error('Failed to confirm trial');
-      return false;
+    const success = await confirmTrialRPC(studentId);
+    if (success) {
+      await fetchTrialSessions(); // Refresh data after successful confirmation
     }
+    return success;
   };
 
   useEffect(() => {

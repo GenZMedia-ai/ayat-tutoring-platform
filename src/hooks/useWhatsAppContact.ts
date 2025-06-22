@@ -31,11 +31,8 @@ export const useWhatsAppContact = () => {
 
       console.log('✅ Contact logged successfully:', data);
       
-      if (success && contactType === 'trial_confirmation') {
-        toast.success('Contact logged and student status updated to confirmed');
-      } else {
-        toast.success('Contact attempt logged successfully');
-      }
+      // Updated message - no longer mentions status changes
+      toast.success('Contact attempt logged successfully');
       
       return true;
     } catch (error) {

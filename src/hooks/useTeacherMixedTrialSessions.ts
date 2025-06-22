@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { FamilyGroup } from '@/types/family';
+import { useTrialConfirmation } from './useTrialConfirmation';
 
 export interface TeacherTrialStudent {
   id: string;
@@ -44,6 +44,7 @@ export const useTeacherMixedTrialSessions = () => {
   const { user } = useAuth();
   const [trialItems, setTrialItems] = useState<TeacherMixedTrialItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const { confirmTrial: confirmTrialRPC } = useTrialConfirmation();
 
   const fetchTrialSessions = async () => {
     if (!user) return;
@@ -119,8 +120,6 @@ export const useTeacherMixedTrialSessions = () => {
 
       // Transform family groups
       const transformedFamilies: TeacherMixedTrialItem[] = (familyGroups || []).map(family => {
-        // For families, we'll need to get the session ID from one of the family students
-        // This is a temporary solution - ideally we'd link sessions directly to families
         return {
           type: 'family' as const,
           id: family.id,
@@ -135,7 +134,7 @@ export const useTeacherMixedTrialSessions = () => {
             uniqueId: family.unique_id,
             studentCount: family.student_count,
             notes: family.notes,
-            sessionId: undefined, // Will be set separately if needed
+            sessionId: undefined,
           } as TeacherTrialFamily
         };
       });
@@ -162,21 +161,13 @@ export const useTeacherMixedTrialSessions = () => {
       console.log('✅ Confirming trial for item:', item);
       
       if (item.type === 'individual') {
-        const { error } = await supabase
-          .from('students')
-          .update({ 
-            status: 'confirmed',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', item.id);
-
-        if (error) {
-          console.error('❌ Error confirming individual trial:', error);
-          toast.error('Failed to confirm trial');
-          return false;
+        const success = await confirmTrialRPC(item.id);
+        if (success) {
+          await fetchTrialSessions(); // Refresh data
         }
+        return success;
       } else {
-        // Confirm family group and all associated students
+        // For family groups, confirm the family and all associated students
         const { error: familyError } = await supabase
           .from('family_groups')
           .update({ 
@@ -204,11 +195,11 @@ export const useTeacherMixedTrialSessions = () => {
           console.error('❌ Error confirming family students:', studentsError);
           // Don't fail the whole operation, just log it
         }
-      }
 
-      toast.success('Trial confirmed successfully!');
-      await fetchTrialSessions(); // Refresh data
-      return true;
+        toast.success('Family trial confirmed successfully!');
+        await fetchTrialSessions(); // Refresh data
+        return true;
+      }
     } catch (error) {
       console.error('❌ Error in confirmTrial:', error);
       toast.error('Failed to confirm trial');
@@ -220,7 +211,6 @@ export const useTeacherMixedTrialSessions = () => {
     fetchTrialSessions();
   }, [user]);
 
-  // Set up real-time updates
   useEffect(() => {
     if (!user) return;
 
