@@ -136,6 +136,15 @@ export const PaidStudentCard: React.FC<PaidStudentCardProps> = ({
               id: student.id,
               name: student.name,
               phone: student.phone,
+              uniqueId: student.unique_id,
+              age: student.age,
+              country: student.country,
+              platform: student.platform,
+              teacherType: 'kids',
+              status: student.status,
+              assignedSalesAgent: '',
+              createdAt: student.created_at,
+              updatedAt: student.updated_at,
               trialDate: undefined,
               trialTime: undefined
             }}

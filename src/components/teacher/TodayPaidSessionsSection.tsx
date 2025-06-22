@@ -13,6 +13,10 @@ export const TodayPaidSessionsSection: React.FC = () => {
   const scheduledCount = todaySessions.filter(s => s.status === 'scheduled').length;
   const completedCount = todaySessions.filter(s => s.status === 'completed').length;
 
+  const handleCompleteSession = async (sessionId: string, actualMinutes: number, notes: string): Promise<void> => {
+    await completeSession(sessionId, actualMinutes, notes);
+  };
+
   if (loading) {
     return (
       <Card className="dashboard-card">
@@ -97,7 +101,7 @@ export const TodayPaidSessionsSection: React.FC = () => {
               <TodayPaidSessionCard
                 key={session.session_id}
                 session={session}
-                onComplete={completeSession}
+                onComplete={handleCompleteSession}
               />
             ))}
           </div>

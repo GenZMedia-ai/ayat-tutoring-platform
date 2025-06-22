@@ -36,14 +36,17 @@ export const usePaidStudents = () => {
       setLoading(true);
       setError(null);
       
+      // Use direct query instead of RPC since the function may not be available yet
       const { data, error: fetchError } = await supabase
-        .rpc('get_teacher_paid_students', {
-          teacher_id_param: user.id
-        });
+        .from('students')
+        .select('*')
+        .eq('assigned_teacher_id', user.id)
+        .in('status', ['paid', 'active'])
+        .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
       
-      setPaidStudents(data || []);
+      setPaidStudents((data || []) as PaidStudent[]);
     } catch (err) {
       console.error('Error fetching paid students:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch paid students');
@@ -54,18 +57,49 @@ export const usePaidStudents = () => {
 
   const completeRegistration = async (studentId: string, sessionsData: any[]) => {
     try {
-      const { data, error } = await supabase
-        .rpc('complete_student_registration', {
-          student_id_param: studentId,
-          sessions_data: sessionsData
-        });
+      // Since RPC functions may not be available, use direct database operations
+      const { error: updateError } = await supabase
+        .from('students')
+        .update({
+          status: 'active',
+          registration_completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', studentId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+      
+      // Create sessions for the student
+      for (const sessionData of sessionsData) {
+        const { data: sessionResult, error: sessionError } = await supabase
+          .from('sessions')
+          .insert({
+            scheduled_date: sessionData.scheduled_date,
+            scheduled_time: sessionData.scheduled_time,
+            session_number: sessionData.session_number,
+            status: 'scheduled',
+            notes: `Registration session - ${sessionData.session_number}`
+          })
+          .select()
+          .single();
+
+        if (sessionError) throw sessionError;
+
+        // Link student to session
+        const { error: linkError } = await supabase
+          .from('session_students')
+          .insert({
+            session_id: sessionResult.id,
+            student_id: studentId
+          });
+
+        if (linkError) throw linkError;
+      }
       
       // Refresh the paid students list
       await fetchPaidStudents();
       
-      return { success: true, data };
+      return { success: true };
     } catch (err) {
       console.error('Error completing registration:', err);
       throw err;

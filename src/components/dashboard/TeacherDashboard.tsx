@@ -9,10 +9,10 @@ import { PaidStudentsSection } from '@/components/teacher/PaidStudentsSection';
 import { TodayPaidSessionsSection } from '@/components/teacher/TodayPaidSessionsSection';
 
 const TeacherDashboard: React.FC = () => {
-  const { students, loading, error, refetchData } = useTeacherMixedTrialSessions();
+  const { trialItems, loading, refreshTrialSessions } = useTeacherMixedTrialSessions();
 
   const getStatusCount = (status: string) => {
-    return students.filter(s => s.status === status).length;
+    return trialItems.filter(item => item.status === status).length;
   };
 
   return (
@@ -108,26 +108,20 @@ const TeacherDashboard: React.FC = () => {
                 </div>
               )}
 
-              {error && (
-                <div className="text-center py-8">
-                  <p className="text-red-600 mb-4">Error: {error}</p>
-                </div>
-              )}
-
-              {!loading && !error && students.length === 0 && (
+              {!loading && trialItems.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <p>No trial students found.</p>
                   <p className="text-sm">Trial bookings will appear here once assigned to you.</p>
                 </div>
               )}
 
-              {!loading && !error && students.length > 0 && (
+              {!loading && trialItems.length > 0 && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {students.map((student) => (
+                  {trialItems.map((item) => (
                     <UnifiedTeacherStudentCard
-                      key={student.id}
-                      student={student}
-                      onRefresh={refetchData}
+                      key={item.id}
+                      item={item}
+                      onRefresh={refreshTrialSessions}
                     />
                   ))}
                 </div>

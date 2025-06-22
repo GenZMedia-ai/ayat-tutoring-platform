@@ -52,9 +52,8 @@ export const useTodayPaidSessions = () => {
               id,
               name,
               unique_id,
-              completed_sessions,
-              package_session_count,
-              assigned_teacher_id
+              assigned_teacher_id,
+              status
             )
           )
         `)
@@ -75,8 +74,8 @@ export const useTodayPaidSessions = () => {
         student_id: session.session_students[0]?.students?.id || '',
         student_name: session.session_students[0]?.students?.name || '',
         student_unique_id: session.session_students[0]?.students?.unique_id || '',
-        completed_sessions: session.session_students[0]?.students?.completed_sessions || 0,
-        package_session_count: session.session_students[0]?.students?.package_session_count || 0,
+        completed_sessions: 0, // Will be updated when database columns are available
+        package_session_count: 0, // Will be updated when database columns are available
         status: session.status,
         notes: session.notes,
         actual_minutes: session.actual_minutes,
@@ -94,20 +93,24 @@ export const useTodayPaidSessions = () => {
 
   const completeSession = async (sessionId: string, actualMinutes: number, notes: string) => {
     try {
-      const { data, error } = await supabase
-        .rpc('complete_session_with_details', {
-          session_id_param: sessionId,
-          actual_minutes_param: actualMinutes,
-          completion_notes_param: notes,
-          attendance_confirmed_param: true
-        });
+      // Use direct database operations instead of RPC
+      const { error } = await supabase
+        .from('sessions')
+        .update({
+          status: 'completed',
+          actual_minutes: actualMinutes,
+          notes: notes,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sessionId);
 
       if (error) throw error;
       
       // Refresh the sessions list
       await fetchTodaySessions();
       
-      return { success: true, data };
+      return { success: true };
     } catch (err) {
       console.error('Error completing session:', err);
       throw err;
