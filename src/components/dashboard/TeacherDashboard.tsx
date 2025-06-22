@@ -5,6 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Calendar, Users, BookOpen } from 'lucide-react';
 import { TeacherHomepage } from './TeacherHomepage';
+import { TeacherAvailabilityTab } from '../teacher/TeacherAvailabilityTab';
+import { TeacherSessionsTab } from '../teacher/TeacherSessionsTab';
+import { TeacherReportsTab } from '../teacher/TeacherReportsTab';
 
 const TeacherDashboard: React.FC = () => {
   const ComingSoonCard = ({ title, description, icon: Icon }: { 
@@ -54,27 +57,15 @@ const TeacherDashboard: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="availability" className="space-y-4">
-          <ComingSoonCard 
-            title="Availability Management" 
-            description="Set your weekly availability and manage time slots"
-            icon={Clock}
-          />
+          <TeacherAvailabilityTab />
         </TabsContent>
 
         <TabsContent value="sessions" className="space-y-4">
-          <ComingSoonCard 
-            title="Session History" 
-            description="View all past and upcoming sessions with detailed information"
-            icon={Calendar}
-          />
+          <TeacherSessionsTab />
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-4">
-          <ComingSoonCard 
-            title="Performance Reports" 
-            description="Track your teaching statistics and student progress"
-            icon={BookOpen}
-          />
+          <TeacherReportsTab />
         </TabsContent>
       </Tabs>
     </div>
