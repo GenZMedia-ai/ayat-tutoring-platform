@@ -3,6 +3,12 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+interface ConfirmTrialResponse {
+  success: boolean;
+  student_id?: string;
+  message?: string;
+}
+
 export const useTrialConfirmation = () => {
   const [loading, setLoading] = useState(false);
 
@@ -21,13 +27,15 @@ export const useTrialConfirmation = () => {
         return false;
       }
 
-      if (!data.success) {
-        console.error('❌ Trial confirmation failed:', data.message);
-        toast.error(data.message || 'Failed to confirm trial');
+      const response = data as ConfirmTrialResponse;
+
+      if (!response.success) {
+        console.error('❌ Trial confirmation failed:', response.message);
+        toast.error(response.message || 'Failed to confirm trial');
         return false;
       }
 
-      console.log('✅ Trial confirmed successfully:', data);
+      console.log('✅ Trial confirmed successfully:', response);
       toast.success('Trial confirmed successfully!');
       return true;
     } catch (error) {
