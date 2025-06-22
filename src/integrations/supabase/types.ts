@@ -178,6 +178,7 @@ export type Database = {
           expires_at: string
           id: string
           package_id: string | null
+          package_session_count: number | null
           paid_at: string | null
           status: string
           stripe_session_id: string | null
@@ -193,6 +194,7 @@ export type Database = {
           expires_at: string
           id?: string
           package_id?: string | null
+          package_session_count?: number | null
           paid_at?: string | null
           status?: string
           stripe_session_id?: string | null
@@ -208,6 +210,7 @@ export type Database = {
           expires_at?: string
           id?: string
           package_id?: string | null
+          package_session_count?: number | null
           paid_at?: string | null
           status?: string
           stripe_session_id?: string | null
@@ -616,6 +619,23 @@ export type Database = {
         }
         Returns: Json
       }
+      check_subscription_completion: {
+        Args: { p_student_id: string }
+        Returns: Json
+      }
+      complete_session_with_details: {
+        Args: {
+          p_session_id: string
+          p_actual_minutes: number
+          p_learning_notes: string
+          p_attendance_confirmed?: boolean
+        }
+        Returns: Json
+      }
+      complete_student_registration: {
+        Args: { p_student_id: string; p_session_data: Json }
+        Returns: Json
+      }
       confirm_trial: {
         Args: { p_student_id: string }
         Returns: Json
@@ -631,6 +651,24 @@ export type Database = {
       get_egypt_current_date: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_teacher_paid_students: {
+        Args: { p_teacher_id: string }
+        Returns: {
+          id: string
+          unique_id: string
+          name: string
+          age: number
+          phone: string
+          country: string
+          platform: string
+          parent_name: string
+          package_session_count: number
+          payment_amount: number
+          payment_currency: string
+          payment_date: string
+          notes: string
+        }[]
       }
       get_user_role: {
         Args: { user_id: string }

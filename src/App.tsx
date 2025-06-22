@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,6 +20,8 @@ import TeacherTrials from "./components/dashboard/teacher/TeacherTrials";
 import TeacherStudents from "./components/dashboard/teacher/TeacherStudents";
 import TeacherSessions from "./components/dashboard/teacher/TeacherSessions";
 import TeacherRevenue from "./components/dashboard/teacher/TeacherRevenue";
+import TeacherPaidRegistration from "./components/dashboard/teacher/TeacherPaidRegistration";
+import TeacherSessionManagement from "./components/dashboard/teacher/TeacherSessionManagement";
 
 // Sales Tab Components
 import SalesHomepage from "./components/dashboard/sales/SalesHomepage";
@@ -69,6 +70,8 @@ const App = () => (
               <Route path="students" element={<TeacherStudents />} />
               <Route path="sessions" element={<TeacherSessions />} />
               <Route path="revenue" element={<TeacherRevenue />} />
+              <Route path="paid-registration" element={<TeacherPaidRegistration />} />
+              <Route path="session-management" element={<TeacherSessionManagement />} />
               <Route index element={<Navigate to="homepage" replace />} />
             </Route>
 
