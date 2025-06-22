@@ -27,7 +27,7 @@ export const useTrialConfirmation = () => {
         return false;
       }
 
-      const response = data as ConfirmTrialResponse;
+      const response = data as unknown as ConfirmTrialResponse;
 
       if (!response.success) {
         console.error('❌ Trial confirmation failed:', response.message);
