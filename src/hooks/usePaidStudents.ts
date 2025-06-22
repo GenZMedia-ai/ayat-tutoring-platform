@@ -46,7 +46,28 @@ export const usePaidStudents = () => {
 
       if (fetchError) throw fetchError;
       
-      setPaidStudents((data || []) as PaidStudent[]);
+      // Transform data to match PaidStudent interface
+      const transformedData: PaidStudent[] = (data || []).map(student => ({
+        id: student.id,
+        unique_id: student.unique_id,
+        name: student.name,
+        age: student.age,
+        phone: student.phone,
+        country: student.country,
+        platform: student.platform,
+        notes: student.notes,
+        status: student.status,
+        parent_name: student.parent_name,
+        package_session_count: 0, // Default values until columns exist
+        completed_sessions: 0, // Default values until columns exist
+        package_purchased_at: undefined,
+        registration_completed_at: undefined,
+        family_group_id: student.family_group_id,
+        created_at: student.created_at,
+        updated_at: student.updated_at
+      }));
+      
+      setPaidStudents(transformedData);
     } catch (err) {
       console.error('Error fetching paid students:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch paid students');
@@ -62,7 +83,6 @@ export const usePaidStudents = () => {
         .from('students')
         .update({
           status: 'active',
-          registration_completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', studentId);

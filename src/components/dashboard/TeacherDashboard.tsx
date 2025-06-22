@@ -12,7 +12,7 @@ const TeacherDashboard: React.FC = () => {
   const { trialItems, loading, refreshTrialSessions } = useTeacherMixedTrialSessions();
 
   const getStatusCount = (status: string) => {
-    return trialItems.filter(item => item.status === status).length;
+    return trialItems.filter(item => item.data.status === status).length;
   };
 
   return (
@@ -121,7 +121,11 @@ const TeacherDashboard: React.FC = () => {
                     <UnifiedTeacherStudentCard
                       key={item.id}
                       item={item}
-                      onRefresh={refreshTrialSessions}
+                      onContact={() => {}}
+                      onConfirm={() => {}}
+                      onMarkCompleted={() => {}}
+                      onMarkGhosted={() => {}}
+                      onReschedule={() => {}}
                     />
                   ))}
                 </div>
