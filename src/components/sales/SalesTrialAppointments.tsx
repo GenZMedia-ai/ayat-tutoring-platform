@@ -13,6 +13,7 @@ import { UnifiedTrialCard } from '@/components/shared/UnifiedTrialCard';
 import { FamilyCard } from '@/components/family/FamilyCard';
 import { StudentEditModal } from './StudentEditModal';
 import { StatusChangeModal } from './StatusChangeModal';
+import { FollowUpManagementTab } from './FollowUpManagementTab';
 import { FamilyGroup } from '@/types/family';
 import { TrialSessionFlowStudent } from '@/types/trial';
 import { toast } from 'sonner';
@@ -92,7 +93,7 @@ const SalesTrialAppointments: React.FC = () => {
         <div>
           <h3 className="text-lg font-semibold">Trial Appointments</h3>
           <p className="text-sm text-muted-foreground">
-            Manage individual and family trial sessions
+            Manage individual and family trial sessions, and process payments
           </p>
         </div>
         <Button onClick={() => {
@@ -104,11 +105,12 @@ const SalesTrialAppointments: React.FC = () => {
         </Button>
       </div>
 
-      {/* Tabs for Individual vs Family */}
+      {/* Main Tabs for Trial Management */}
       <Tabs defaultValue="individual" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="individual">Individual Bookings</TabsTrigger>
           <TabsTrigger value="families">Family Groups</TabsTrigger>
+          <TabsTrigger value="followup">Follow-up & Payment</TabsTrigger>
         </TabsList>
 
         <TabsContent value="individual" className="space-y-4">
@@ -255,6 +257,10 @@ const SalesTrialAppointments: React.FC = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="followup" className="space-y-4">
+          <FollowUpManagementTab />
         </TabsContent>
       </Tabs>
 
