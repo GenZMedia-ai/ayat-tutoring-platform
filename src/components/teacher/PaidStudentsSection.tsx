@@ -17,7 +17,7 @@ const PaidStudentsSection: React.FC = () => {
   const handleContactStudent = async (studentId: string, phone: string) => {
     try {
       openWhatsApp(phone);
-      await logContact(studentId, 'payment_confirmation', true, 'WhatsApp contact for payment confirmation');
+      await logContact(studentId, 'follow_up', true, 'WhatsApp contact for payment confirmation');
       await refreshPaidStudents();
     } catch (error) {
       console.error('Error handling contact:', error);

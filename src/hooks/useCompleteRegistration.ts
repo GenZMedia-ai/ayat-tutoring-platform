@@ -9,6 +9,13 @@ export interface SessionData {
   time: string;
 }
 
+interface RegistrationResult {
+  success: boolean;
+  sessions_created: number;
+  student_status: string;
+  message: string;
+}
+
 export const useCompleteRegistration = () => {
   const [loading, setLoading] = useState(false);
 
@@ -35,7 +42,8 @@ export const useCompleteRegistration = () => {
       }
 
       console.log('✅ Registration completed successfully:', data);
-      toast.success(`Registration completed! ${data.sessions_created} sessions scheduled`);
+      const result = data as RegistrationResult;
+      toast.success(`Registration completed! ${result.sessions_created} sessions scheduled`);
       return true;
     } catch (error) {
       console.error('❌ Error in completeRegistration:', error);

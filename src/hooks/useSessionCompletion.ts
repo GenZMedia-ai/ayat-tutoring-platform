@@ -3,6 +3,17 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+interface SessionCompletionResult {
+  success: boolean;
+  session_completed: boolean;
+  subscription_completed: boolean;
+  student_status: string;
+  progress: {
+    completed_sessions: number;
+    total_sessions: number;
+  };
+}
+
 export const useSessionCompletion = () => {
   const [loading, setLoading] = useState(false);
 
@@ -34,14 +45,15 @@ export const useSessionCompletion = () => {
       }
 
       console.log('✅ Session completed successfully:', data);
+      const result = data as SessionCompletionResult;
       
-      if (data.subscription_completed) {
+      if (result.subscription_completed) {
         toast.success('Session completed! Student subscription has ended - renewal needed');
       } else {
         toast.success('Session completed successfully');
       }
       
-      return data;
+      return result;
     } catch (error) {
       console.error('❌ Error in completeSession:', error);
       toast.error('Failed to complete session');

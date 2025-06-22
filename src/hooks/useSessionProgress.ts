@@ -10,6 +10,13 @@ export interface SessionProgress {
   completionPercentage: number;
 }
 
+interface ProgressResult {
+  total_sessions: number;
+  completed_sessions: number;
+  student_status: string;
+  completion_percentage: number;
+}
+
 export const useSessionProgress = (studentId: string) => {
   const [progress, setProgress] = useState<SessionProgress | null>(null);
   const [loading, setLoading] = useState(false);
@@ -31,12 +38,13 @@ export const useSessionProgress = (studentId: string) => {
       }
 
       console.log('📊 Session progress:', data);
+      const result = data as ProgressResult;
 
       setProgress({
-        totalSessions: data.total_sessions,
-        completedSessions: data.completed_sessions,
-        studentStatus: data.student_status,
-        completionPercentage: data.completion_percentage
+        totalSessions: result.total_sessions,
+        completedSessions: result.completed_sessions,
+        studentStatus: result.student_status,
+        completionPercentage: result.completion_percentage
       });
     } catch (error) {
       console.error('❌ Error in checkProgress:', error);
