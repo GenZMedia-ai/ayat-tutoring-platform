@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { MessageCircle, Calendar, User } from 'lucide-react';
 import { usePaidStudents } from '@/hooks/usePaidStudents';
 import { useAuth } from '@/contexts/AuthContext';
 import { RegistrationModal } from './RegistrationModal';
-import { WhatsAppContactButton } from './WhatsAppContactButton';
+import WhatsAppContactButton from './WhatsAppContactButton';
 
 export const PaidStudentsSection: React.FC = () => {
   const { user } = useAuth();

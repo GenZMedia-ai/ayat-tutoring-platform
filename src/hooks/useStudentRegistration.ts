@@ -17,9 +17,16 @@ export const useStudentRegistration = () => {
       studentId: string; 
       sessionSchedules: SessionSchedule[] 
     }) => {
+      // Convert SessionSchedule array to the format expected by RPC
+      const formattedSchedules = sessionSchedules.map(schedule => ({
+        date: schedule.date,
+        time: schedule.time,
+        sessionNumber: schedule.sessionNumber
+      }));
+
       const { data, error } = await supabase.rpc('complete_student_registration', {
         p_student_id: studentId,
-        p_session_schedules: sessionSchedules
+        p_session_schedules: formattedSchedules
       });
 
       if (error) {

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { Clock, CheckCircle, MessageCircle, User } from 'lucide-react';
 import { useTodayPaidSessions } from '@/hooks/useTodayPaidSessions';
 import { useAuth } from '@/contexts/AuthContext';
 import { SessionCompletionModal } from './SessionCompletionModal';
-import { WhatsAppContactButton } from './WhatsAppContactButton';
+import WhatsAppContactButton from './WhatsAppContactButton';
 
 export const TodayPaidSessions: React.FC = () => {
   const { user } = useAuth();

@@ -196,13 +196,16 @@ const SimpleSalesDashboard: React.FC = () => {
             <div className="space-y-3">
               {items.slice(0, 5).map((item) => {
                 const data = item.data;
-                const name = item.type === 'individual' ? data.name : data.parent_name;
+                // Handle both individual students and family groups
+                const displayName = item.type === 'individual' 
+                  ? data.name 
+                  : data.parentName || 'Family Group';
                 const status = item.type === 'individual' ? data.status : data.status;
                 
                 return (
                   <div key={item.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                     <div>
-                      <p className="font-medium">{name}</p>
+                      <p className="font-medium">{displayName}</p>
                       <p className="text-sm text-muted-foreground">
                         {item.type === 'individual' ? 'Individual' : 'Family'} • {data.country}
                       </p>

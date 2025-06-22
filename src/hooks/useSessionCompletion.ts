@@ -10,6 +10,16 @@ interface CompleteSessionData {
   attendanceConfirmed: boolean;
 }
 
+interface SessionCompletionResponse {
+  success: boolean;
+  session_id: string;
+  student_id: string;
+  completed_sessions: number;
+  package_sessions: number;
+  package_complete: boolean;
+  message: string;
+}
+
 export const useSessionCompletion = () => {
   const queryClient = useQueryClient();
 
@@ -27,7 +37,7 @@ export const useSessionCompletion = () => {
         throw error;
       }
 
-      return data;
+      return data as SessionCompletionResponse;
     },
     onSuccess: (data) => {
       if (data.package_complete) {
