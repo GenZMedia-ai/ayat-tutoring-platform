@@ -38,7 +38,7 @@ export const useSessionProgress = (studentId: string) => {
       }
 
       console.log('📊 Session progress:', data);
-      const result = data as ProgressResult;
+      const result = data as unknown as ProgressResult;
 
       setProgress({
         totalSessions: result.total_sessions,

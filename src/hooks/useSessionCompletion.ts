@@ -45,7 +45,7 @@ export const useSessionCompletion = () => {
       }
 
       console.log('✅ Session completed successfully:', data);
-      const result = data as SessionCompletionResult;
+      const result = data as unknown as SessionCompletionResult;
       
       if (result.subscription_completed) {
         toast.success('Session completed! Student subscription has ended - renewal needed');

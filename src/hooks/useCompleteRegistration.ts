@@ -42,7 +42,7 @@ export const useCompleteRegistration = () => {
       }
 
       console.log('✅ Registration completed successfully:', data);
-      const result = data as RegistrationResult;
+      const result = data as unknown as RegistrationResult;
       toast.success(`Registration completed! ${result.sessions_created} sessions scheduled`);
       return true;
     } catch (error) {
