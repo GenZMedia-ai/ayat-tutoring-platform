@@ -1,13 +1,10 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import AdminDashboard from '@/components/dashboard/AdminDashboard';
-import SupervisorDashboard from '@/components/dashboard/SupervisorDashboard';
-import SalesDashboard from '@/components/dashboard/SalesDashboard';
-import TeacherDashboard from '@/components/dashboard/TeacherDashboard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const Index = () => {
@@ -89,34 +86,26 @@ const Index = () => {
     );
   }
 
-  // Render role-specific dashboard for approved users
-  const renderDashboard = () => {
-    switch (user.role) {
-      case 'admin':
-        return <AdminDashboard />;
-      case 'supervisor':
-        return <SupervisorDashboard />;
-      case 'sales':
-        return <SalesDashboard />;
-      case 'teacher':
-        return <TeacherDashboard />;
-      default:
-        return (
+  // Redirect approved users to their role-specific dashboard
+  switch (user.role) {
+    case 'admin':
+      return <Navigate to="/admin" replace />;
+    case 'supervisor':
+      return <Navigate to="/supervisor" replace />;
+    case 'sales':
+      return <Navigate to="/sales" replace />;
+    case 'teacher':
+      return <Navigate to="/teacher" replace />;
+    default:
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <DashboardHeader />
           <div className="p-6">
             <p>Unknown role: {user.role}</p>
           </div>
-        );
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardHeader />
-      <main className="p-6">
-        {renderDashboard()}
-      </main>
-    </div>
-  );
+        </div>
+      );
+  }
 };
 
 export default Index;
