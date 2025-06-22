@@ -11,9 +11,11 @@ import { usePackageManagement } from '@/hooks/usePackageManagement';
 import { useCurrencyManagement } from '@/hooks/useCurrencyManagement';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { TrialSessionFlowStudent } from '@/types/trial';
+import { FamilyGroup } from '@/types/family';
 
 interface PaymentLinkModalProps {
-  student: any;
+  student: TrialSessionFlowStudent | FamilyGroup;
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -35,6 +37,63 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
 
   const enabledCurrencies = currencies.filter(c => c.is_enabled);
   const activePackages = packages.filter(p => p.is_active);
+
+  // Helper functions to handle both individual students and family groups
+  const isIndividualStudent = (data: any): data is TrialSessionFlowStudent => {
+    return 'uniqueId' in data && 'name' in data;
+  };
+
+  const isFamilyGroup = (data: any): data is FamilyGroup => {
+    return 'unique_id' in data && 'parent_name' in data;
+  };
+
+  const getStudentId = () => {
+    return student.id;
+  };
+
+  const getStudentName = () => {
+    if (isIndividualStudent(student)) {
+      return student.name;
+    } else if (isFamilyGroup(student)) {
+      return student.parent_name;
+    }
+    return 'Unknown';
+  };
+
+  const getStudentUniqueId = () => {
+    if (isIndividualStudent(student)) {
+      return student.uniqueId;
+    } else if (isFamilyGroup(student)) {
+      return student.unique_id;
+    }
+    return 'Unknown';
+  };
+
+  const getStudentAge = () => {
+    if (isIndividualStudent(student)) {
+      return student.age;
+    }
+    return null; // Family groups don't have a single age
+  };
+
+  const getStudentPhone = () => {
+    return student.phone;
+  };
+
+  const getStudentCountry = () => {
+    return student.country;
+  };
+
+  const getStudentStatus = () => {
+    return student.status;
+  };
+
+  const getStudentCount = () => {
+    if (isFamilyGroup(student)) {
+      return student.student_count;
+    }
+    return 1;
+  };
 
   const calculateFinalPrice = () => {
     if (useCustomPrice && customPrice) {
@@ -61,9 +120,18 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
   };
 
   const validateStudentStatus = () => {
+    const studentStatus = getStudentStatus();
+    console.log('🔍 Validating student status:', studentStatus);
+    
+    if (!studentStatus) {
+      console.error('❌ Student status is missing');
+      toast.error('Student data is incomplete - missing status information');
+      return false;
+    }
+    
     const validStatuses = ['trial-completed', 'trial-ghosted'];
-    if (!validStatuses.includes(student.status)) {
-      toast.error(`Cannot create payment link for student with status: ${student.status}. Student must have completed or ghosted trial.`);
+    if (!validStatuses.includes(studentStatus)) {
+      toast.error(`Cannot create payment link for student with status: ${studentStatus}. Student must have completed or ghosted trial.`);
       return false;
     }
     return true;
@@ -72,18 +140,22 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
   const createStripePaymentLink = async (finalPrice: number) => {
     console.log('🔗 Creating Stripe payment link...');
     
+    const studentId = getStudentId();
+    const studentUniqueId = getStudentUniqueId();
+    
     const { data, error } = await supabase.functions.invoke('create-payment-link', {
       body: {
-        student_ids: [student.id],
+        student_ids: [studentId],
         package_id: selectedPackage.id,
         currency: selectedCurrency.code,
         amount: finalPrice,
-        payment_type: 'single_student',
+        payment_type: isFamilyGroup(student) ? 'family_group' : 'single_student',
         metadata: {
           system_name: 'AyatWBian',
-          student_unique_id: student.uniqueId,
-          payment_type: 'single_student',
-          package_session_count: selectedPackage.session_count.toString()
+          student_unique_id: studentUniqueId,
+          payment_type: isFamilyGroup(student) ? 'family_group' : 'single_student',
+          package_session_count: selectedPackage.session_count.toString(),
+          student_count: getStudentCount().toString()
         }
       }
     });
@@ -100,13 +172,16 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
   const updateStudentStatus = async () => {
     console.log('📝 Updating student status to awaiting-payment...');
     
+    const studentId = getStudentId();
+    const tableName = isFamilyGroup(student) ? 'family_groups' : 'students';
+    
     const { error: updateError } = await supabase
-      .from('students')
+      .from(tableName)
       .update({ 
         status: 'awaiting-payment',
         updated_at: new Date().toISOString()
       })
-      .eq('id', student.id);
+      .eq('id', studentId);
 
     if (updateError) {
       console.error('❌ Error updating student status:', updateError);
@@ -124,8 +199,9 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
 
     try {
       console.log('🚀 Starting payment link creation process:', {
-        studentId: student.id,
-        studentName: student.name,
+        studentId: getStudentId(),
+        studentName: getStudentName(),
+        studentType: isFamilyGroup(student) ? 'family' : 'individual',
         packageId: selectedPackage.id,
         currency: selectedCurrency.code,
         amount: finalPrice
@@ -173,20 +249,32 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
         <DialogHeader>
           <DialogTitle>Create Payment Link</DialogTitle>
           <DialogDescription>
-            Create a payment link for {student.name} ({student.uniqueId})
+            Create a payment link for {getStudentName()} ({getStudentUniqueId()})
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           <div className="p-4 bg-muted rounded-lg">
-            <h4 className="font-medium mb-2">Student Information</h4>
+            <h4 className="font-medium mb-2">
+              {isFamilyGroup(student) ? 'Family Group Information' : 'Student Information'}
+            </h4>
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><span className="font-medium">Name:</span> {student.name}</div>
-              <div><span className="font-medium">Age:</span> {student.age}</div>
-              <div><span className="font-medium">Phone:</span> {student.phone}</div>
-              <div><span className="font-medium">Country:</span> {student.country}</div>
+              <div><span className="font-medium">Name:</span> {getStudentName()}</div>
+              {isIndividualStudent(student) && (
+                <div><span className="font-medium">Age:</span> {getStudentAge()}</div>
+              )}
+              {isFamilyGroup(student) && (
+                <div><span className="font-medium">Students:</span> {getStudentCount()}</div>
+              )}
+              <div><span className="font-medium">Phone:</span> {getStudentPhone()}</div>
+              <div><span className="font-medium">Country:</span> {getStudentCountry()}</div>
               <div><span className="font-medium">Status:</span> 
-                <Badge variant="outline" className="ml-2">{student.status}</Badge>
+                <Badge variant="outline" className="ml-2">{getStudentStatus()}</Badge>
+              </div>
+              <div><span className="font-medium">Type:</span> 
+                <Badge variant="outline" className="ml-2">
+                  {isFamilyGroup(student) ? 'Family Group' : 'Individual'}
+                </Badge>
               </div>
             </div>
           </div>
@@ -231,6 +319,12 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
                   <span>Currency:</span>
                   <span>{selectedCurrency.name} ({selectedCurrency.symbol})</span>
                 </div>
+                {isFamilyGroup(student) && (
+                  <div className="flex justify-between">
+                    <span>Students:</span>
+                    <span>{getStudentCount()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-medium text-green-800">
                   <span>Final Price:</span>
                   <span>{selectedCurrency.symbol}{calculateFinalPrice()}</span>

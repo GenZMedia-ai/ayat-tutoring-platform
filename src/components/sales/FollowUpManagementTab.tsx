@@ -11,7 +11,7 @@ import { FamilyGroup } from '@/types/family';
 
 export const FollowUpManagementTab: React.FC = () => {
   const { items, loading } = useMixedStudentData();
-  const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<any>(null);
+  const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<TrialSessionFlowStudent | FamilyGroup | null>(null);
 
   // Filter students that are trial-completed and need follow-up
   const trialCompletedStudents = items.filter(item => {
@@ -31,6 +31,27 @@ export const FollowUpManagementTab: React.FC = () => {
     const message = `Hello ${name}! Thank you for completing your trial session. I'd like to discuss our learning packages with you. When would be a good time to talk?`;
     const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
+  };
+
+  const handleCreatePaymentLink = (item: any) => {
+    console.log('🔗 Opening payment modal for item:', item);
+    
+    // Extract the actual student/family data from the wrapper
+    const studentData = item.data;
+    
+    // Add debug logging
+    console.log('📋 Student data status:', studentData.status);
+    console.log('📋 Student data type:', item.type);
+    console.log('📋 Full student data:', studentData);
+    
+    // Validate that the data has required fields
+    if (!studentData.status) {
+      console.error('❌ Missing status in student data');
+      return;
+    }
+    
+    // Set the actual student data (not the wrapper item)
+    setSelectedStudentForPayment(studentData);
   };
 
   const getName = (item: any) => {
@@ -158,7 +179,7 @@ export const FollowUpManagementTab: React.FC = () => {
                     </Button>
                     <Button
                       size="sm"
-                      onClick={() => setSelectedStudentForPayment(item)}
+                      onClick={() => handleCreatePaymentLink(item)}
                       className="flex-1"
                     >
                       <CreditCard className="h-4 w-4 mr-2" />
