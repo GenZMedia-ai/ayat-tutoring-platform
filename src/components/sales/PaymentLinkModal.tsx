@@ -43,22 +43,101 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
     return selectedPackage?.price || 0;
   };
 
-  const handleCreatePaymentLink = async () => {
-    if (!selectedPackage || !selectedCurrency) {
-      toast.error('Please select a package and currency');
-      return;
+  const validateInputs = () => {
+    if (!selectedPackage) {
+      toast.error('Please select a package');
+      return false;
     }
-
+    if (!selectedCurrency) {
+      toast.error('Please select a currency');
+      return false;
+    }
     const finalPrice = calculateFinalPrice();
     if (finalPrice <= 0) {
       toast.error('Please enter a valid price');
-      return;
+      return false;
+    }
+    return true;
+  };
+
+  const createStripePaymentLink = async (finalPrice: number) => {
+    console.log('🔗 Creating Stripe payment link...');
+    
+    const { data, error } = await supabase.functions.invoke('create-payment-link', {
+      body: {
+        student_ids: [student.id],
+        package_id: selectedPackage.id,
+        currency: selectedCurrency.code,
+        amount: finalPrice,
+        payment_type: 'single_student',
+        metadata: {
+          system_name: 'AyatWBian',
+          student_unique_id: student.uniqueId,
+          payment_type: 'single_student',
+          package_session_count: selectedPackage.session_count.toString()
+        }
+      }
+    });
+
+    if (error) {
+      console.error('❌ Stripe edge function error:', error);
+      throw new Error(`Stripe API error: ${error.message}`);
     }
 
+    console.log('✅ Stripe payment link created:', data);
+    return data;
+  };
+
+  const updateStudentStatus = async () => {
+    console.log('📝 Updating student status to awaiting-payment...');
+    
+    // First verify the current status
+    const { data: currentStudent, error: fetchError } = await supabase
+      .from('students')
+      .select('status')
+      .eq('id', student.id)
+      .single();
+
+    if (fetchError) {
+      console.error('❌ Error fetching current student status:', fetchError);
+      throw new Error('Failed to verify student status');
+    }
+
+    console.log('Current student status:', currentStudent.status);
+
+    // Update to awaiting-payment
+    const { error: updateError } = await supabase
+      .from('students')
+      .update({ 
+        status: 'awaiting-payment',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', student.id);
+
+    if (updateError) {
+      console.error('❌ Error updating student status:', updateError);
+      
+      // Provide specific error messages for different constraint violations
+      if (updateError.message?.includes('students_status_check')) {
+        throw new Error('Database constraint error: awaiting-payment status not allowed. Migration may not be applied.');
+      } else if (updateError.message?.includes('violates check constraint')) {
+        throw new Error('Status transition not allowed by database constraints');
+      }
+      
+      throw new Error(`Database update failed: ${updateError.message}`);
+    }
+
+    console.log('✅ Student status updated successfully');
+  };
+
+  const handleCreatePaymentLink = async () => {
+    if (!validateInputs()) return;
+
     setIsCreating(true);
+    const finalPrice = calculateFinalPrice();
 
     try {
-      console.log('🔗 Creating payment link for student:', {
+      console.log('🚀 Starting payment link creation process:', {
         studentId: student.id,
         studentName: student.name,
         packageId: selectedPackage.id,
@@ -66,60 +145,39 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
         amount: finalPrice
       });
 
-      // Call Stripe edge function to create payment link
-      const { data, error } = await supabase.functions.invoke('create-payment-link', {
-        body: {
-          student_ids: [student.id],
-          package_id: selectedPackage.id,
-          currency: selectedCurrency.code,
-          amount: finalPrice,
-          payment_type: 'single_student',
-          metadata: {
-            system_name: 'AyatWBian',
-            student_unique_id: student.uniqueId,
-            payment_type: 'single_student',
-            package_session_count: selectedPackage.session_count.toString()
-          }
-        }
-      });
+      // Step 1: Create Stripe payment link
+      const stripeData = await createStripePaymentLink(finalPrice);
 
-      if (error) {
-        console.error('❌ Edge function error:', error);
-        throw error;
-      }
+      // Step 2: Update student status
+      await updateStudentStatus();
 
-      console.log('✅ Payment link created successfully:', data);
-
-      // Update student status to awaiting payment
-      const { error: updateError } = await supabase
-        .from('students')
-        .update({ status: 'awaiting-payment' })
-        .eq('id', student.id);
-
-      if (updateError) {
-        console.error('❌ Error updating student status:', updateError);
-        throw updateError;
-      }
-
-      console.log('✅ Student status updated to awaiting-payment');
-
-      // Copy payment link to clipboard
-      if (data?.url) {
-        await navigator.clipboard.writeText(data.url);
+      // Step 3: Copy to clipboard and notify success
+      if (stripeData?.url) {
+        await navigator.clipboard.writeText(stripeData.url);
         toast.success('Payment link created and copied to clipboard!');
+      } else {
+        toast.success('Payment link created successfully!');
       }
 
+      console.log('🎉 Payment link creation completed successfully');
       onSuccess();
-    } catch (error) {
-      console.error('❌ Error creating payment link:', error);
+
+    } catch (error: any) {
+      console.error('❌ Payment link creation failed:', error);
       
-      // Provide more specific error messages
-      if (error?.message?.includes('status_check')) {
+      // Provide user-friendly error messages based on error type
+      const errorMessage = error?.message || 'Unknown error occurred';
+      
+      if (errorMessage.includes('Database constraint error')) {
         toast.error('Status update failed - database constraint error. Please contact support.');
-      } else if (error?.message?.includes('stripe')) {
-        toast.error('Stripe configuration error. Please check payment settings.');
+      } else if (errorMessage.includes('Stripe API error')) {
+        toast.error('Payment system error. Please check Stripe configuration.');
+      } else if (errorMessage.includes('STRIPE_SECRET_KEY')) {
+        toast.error('Stripe not configured. Please contact administrator.');
+      } else if (errorMessage.includes('Authentication')) {
+        toast.error('Authentication error. Please refresh and try again.');
       } else {
-        toast.error(`Failed to create payment link: ${error?.message || 'Unknown error'}`);
+        toast.error(`Failed to create payment link: ${errorMessage}`);
       }
     } finally {
       setIsCreating(false);
@@ -144,6 +202,9 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
               <div><span className="font-medium">Age:</span> {student.age}</div>
               <div><span className="font-medium">Phone:</span> {student.phone}</div>
               <div><span className="font-medium">Country:</span> {student.country}</div>
+              <div><span className="font-medium">Status:</span> 
+                <Badge variant="outline" className="ml-2">{student.status}</Badge>
+              </div>
             </div>
           </div>
 
@@ -204,7 +265,7 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
               disabled={!selectedPackage || !selectedCurrency || isCreating}
               className="flex-1"
             >
-              {isCreating ? 'Creating...' : 'Create Payment Link'}
+              {isCreating ? 'Creating Payment Link...' : 'Create Payment Link'}
             </Button>
           </div>
         </div>

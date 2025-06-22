@@ -14,10 +14,25 @@ export const useStudentStatusManagement = () => {
   const userRole = user?.role || 'teacher';
   const { validateTransition, requiresConfirmation } = useStatusValidation(userRole);
 
+  const validateStatusConstraint = async (newStatus: string) => {
+    // Check if the status is valid according to database constraints
+    const validStatuses = [
+      'pending', 'confirmed', 'trial-completed', 'trial-ghosted', 
+      'awaiting-payment', 'paid', 'active', 'expired', 'cancelled', 'dropped'
+    ];
+    
+    if (!validStatuses.includes(newStatus)) {
+      throw new Error(`Invalid status: ${newStatus}. Must be one of: ${validStatuses.join(', ')}`);
+    }
+  };
+
   const updateStudentStatus = async (studentId: string, newStatus: string, currentStatus?: string) => {
     setLoading(true);
     try {
       console.log('🔄 Updating student status:', { studentId, from: currentStatus, to: newStatus });
+
+      // Validate status constraint
+      await validateStatusConstraint(newStatus);
 
       // Validate transition if current status is provided
       if (currentStatus && !validateTransition(currentStatus as any, newStatus as any)) {
@@ -34,6 +49,21 @@ export const useStudentStatusManagement = () => {
           }
         }
       }
+
+      // Verify student exists and get current status
+      const { data: studentData, error: fetchError } = await supabase
+        .from('students')
+        .select('status, name')
+        .eq('id', studentId)
+        .single();
+
+      if (fetchError) {
+        console.error('❌ Error fetching student:', fetchError);
+        toast.error('Student not found');
+        return false;
+      }
+
+      console.log('📋 Current student status:', studentData.status, 'Target:', newStatus);
       
       const { error } = await supabase
         .from('students')
@@ -45,7 +75,15 @@ export const useStudentStatusManagement = () => {
 
       if (error) {
         console.error('❌ Error updating student status:', error);
-        toast.error('Failed to update student status');
+        
+        // Handle specific database constraint errors
+        if (error.message?.includes('students_status_check')) {
+          toast.error(`Status '${newStatus}' is not allowed. Database constraint error.`);
+        } else if (error.message?.includes('violates check constraint')) {
+          toast.error('Invalid status transition. Please check business rules.');
+        } else {
+          toast.error('Failed to update student status');
+        }
         return false;
       }
 
@@ -58,14 +96,16 @@ export const useStudentStatusManagement = () => {
         'paid': 'paid',
         'active': 'active',
         'cancelled': 'cancelled',
-        'dropped': 'dropped'
+        'dropped': 'dropped',
+        'expired': 'expired'
       };
 
+      console.log('✅ Student status updated successfully');
       toast.success(`Student status updated to ${statusLabels[newStatus] || newStatus}`);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error in updateStudentStatus:', error);
-      toast.error('Failed to update student status');
+      toast.error(error.message || 'Failed to update student status');
       return false;
     } finally {
       setLoading(false);
@@ -250,6 +290,9 @@ export const useStudentStatusManagement = () => {
     try {
       console.log('🔄 Bulk updating student statuses:', { studentIds, newStatus });
       
+      // Validate status constraint
+      await validateStatusConstraint(newStatus);
+      
       const { error } = await supabase
         .from('students')
         .update({ 
@@ -260,15 +303,20 @@ export const useStudentStatusManagement = () => {
 
       if (error) {
         console.error('❌ Error bulk updating student statuses:', error);
-        toast.error('Failed to update student statuses');
+        
+        if (error.message?.includes('students_status_check')) {
+          toast.error(`Status '${newStatus}' is not allowed. Database constraint error.`);
+        } else {
+          toast.error('Failed to update student statuses');
+        }
         return false;
       }
 
       toast.success(`Updated ${studentIds.length} students to ${newStatus}`);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error in bulkStatusUpdate:', error);
-      toast.error('Failed to update student statuses');
+      toast.error(error.message || 'Failed to update student statuses');
       return false;
     } finally {
       setLoading(false);

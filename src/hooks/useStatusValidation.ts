@@ -21,12 +21,17 @@ const statusTransitions: StatusTransition[] = [
   // Sales transitions (post-trial)
   { from: 'trial-completed', to: 'awaiting-payment', allowedRoles: ['sales', 'admin'] },
   { from: 'trial-completed', to: 'dropped', allowedRoles: ['sales', 'admin'] },
+  { from: 'trial-ghosted', to: 'awaiting-payment', allowedRoles: ['sales', 'admin'] },
+  { from: 'trial-ghosted', to: 'dropped', allowedRoles: ['sales', 'admin'] },
   { from: 'awaiting-payment', to: 'paid', allowedRoles: ['sales', 'admin'] },
+  { from: 'awaiting-payment', to: 'dropped', allowedRoles: ['sales', 'admin'] },
   { from: 'paid', to: 'active', allowedRoles: ['sales', 'admin'] },
   
-  // Admin can do everything
+  // Admin can do additional transitions
   { from: 'pending', to: 'cancelled', allowedRoles: ['admin'] },
   { from: 'confirmed', to: 'cancelled', allowedRoles: ['admin'] },
+  { from: 'active', to: 'expired', allowedRoles: ['admin'] },
+  { from: 'active', to: 'cancelled', allowedRoles: ['admin'] },
 ];
 
 export const useStatusValidation = (userRole: string) => {
@@ -84,11 +89,20 @@ export const useStatusValidation = (userRole: string) => {
     };
   };
 
+  const isValidStatus = (status: string): status is StudentStatus => {
+    const validStatuses: StudentStatus[] = [
+      'pending', 'confirmed', 'trial-completed', 'trial-ghosted', 
+      'awaiting-payment', 'paid', 'active', 'expired', 'cancelled', 'dropped'
+    ];
+    return validStatuses.includes(status as StudentStatus);
+  };
+
   return {
     loading,
     validateTransition,
     getAvailableTransitions,
     getStatusLabel,
-    requiresConfirmation
+    requiresConfirmation,
+    isValidStatus
   };
 };
