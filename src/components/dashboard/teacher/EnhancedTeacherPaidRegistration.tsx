@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { DateFilter, DateRange } from '@/components/teacher/DateFilter';
 import PaidStudentsSection from '@/components/teacher/PaidStudentsSection';
@@ -16,8 +17,8 @@ const EnhancedTeacherPaidRegistration: React.FC = () => {
         <DateFilter value={dateRange} onChange={setDateRange} />
       </div>
 
-      {/* Existing Paid Students Section */}
-      <PaidStudentsSection />
+      {/* Paid Students Section with Date Filter */}
+      <PaidStudentsSection dateRange={dateRange} />
     </div>
   );
 };

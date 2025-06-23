@@ -7,12 +7,50 @@ import { useTeacherPaidStudents } from '@/hooks/useTeacherPaidStudents';
 import { useWhatsAppContact } from '@/hooks/useWhatsAppContact';
 import { CompleteRegistrationModal } from './CompleteRegistrationModal';
 import { LoadingSpinner } from './LoadingSpinner';
+import { DateRange } from '@/components/teacher/DateFilter';
 import { Calendar, Clock, DollarSign, Phone, User } from 'lucide-react';
 
-const PaidStudentsSection: React.FC = () => {
+interface PaidStudentsSectionProps {
+  dateRange?: DateRange;
+}
+
+const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = 'today' }) => {
   const { paidStudents, loading, refreshPaidStudents } = useTeacherPaidStudents();
   const { openWhatsApp, logContact } = useWhatsAppContact();
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
+
+  // Filter students based on date range
+  const filteredStudents = React.useMemo(() => {
+    if (!dateRange || dateRange === 'all') return paidStudents;
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    return paidStudents.filter(student => {
+      if (!student.paymentDate) return false;
+      
+      const paymentDate = new Date(student.paymentDate);
+      const paymentDay = new Date(paymentDate.getFullYear(), paymentDate.getMonth(), paymentDate.getDate());
+      
+      switch (dateRange) {
+        case 'today':
+          return paymentDay.getTime() === today.getTime();
+        case 'week': {
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - today.getDay());
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+          return paymentDay >= weekStart && paymentDay <= weekEnd;
+        }
+        case 'month': {
+          return paymentDay.getMonth() === today.getMonth() && 
+                 paymentDay.getFullYear() === today.getFullYear();
+        }
+        default:
+          return true;
+      }
+    });
+  }, [paidStudents, dateRange]);
 
   const handleContactStudent = async (studentId: string, phone: string) => {
     try {
@@ -59,22 +97,44 @@ const PaidStudentsSection: React.FC = () => {
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-green-600" />
             Paid Students Requiring Registration
+            {dateRange && dateRange !== 'all' && (
+              <Badge variant="outline" className="ml-2">
+                {dateRange === 'today' ? 'Today' : 
+                 dateRange === 'week' ? 'This Week' : 
+                 dateRange === 'month' ? 'This Month' : 'All Time'}
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>
             Students who have paid and need their complete session schedule set up
+            {filteredStudents.length !== paidStudents.length && (
+              <span className="block mt-1">
+                Showing {filteredStudents.length} of {paidStudents.length} paid students
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {paidStudents.length === 0 ? (
+          {filteredStudents.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-muted-foreground text-lg font-medium">No paid students requiring registration</p>
+              <p className="text-muted-foreground text-lg font-medium">
+                {paidStudents.length === 0 
+                  ? "No paid students requiring registration" 
+                  : `No paid students found for ${dateRange === 'today' ? 'today' : 
+                      dateRange === 'week' ? 'this week' : 
+                      dateRange === 'month' ? 'this month' : 'selected period'}`
+                }
+              </p>
               <p className="text-sm text-muted-foreground mt-2">
-                Students will appear here after payment confirmation
+                {paidStudents.length === 0 
+                  ? "Students will appear here after payment confirmation"
+                  : "Try adjusting the date filter to see more students"
+                }
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {paidStudents.map((student) => (
+              {filteredStudents.map((student) => (
                 <div key={student.id} className="p-4 border border-border rounded-lg bg-green-50 dark:bg-green-900/20">
                   <div className="flex items-start justify-between">
                     <div className="space-y-3 flex-1">
@@ -82,6 +142,11 @@ const PaidStudentsSection: React.FC = () => {
                         <User className="h-4 w-4 text-muted-foreground" />
                         <h4 className="font-medium text-lg">{student.name}</h4>
                         <Badge className="bg-green-100 text-green-800 border-green-200">PAID</Badge>
+                        {student.paymentDate && (
+                          <Badge variant="outline" className="text-xs">
+                            Paid: {new Date(student.paymentDate).toLocaleDateString()}
+                          </Badge>
+                        )}
                       </div>
                       
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">

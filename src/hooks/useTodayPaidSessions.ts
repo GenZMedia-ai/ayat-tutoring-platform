@@ -111,6 +111,46 @@ export const useTodayPaidSessions = () => {
     fetchTodaySessions();
   }, [user]);
 
+  // Set up real-time updates
+  useEffect(() => {
+    if (!user) return;
+
+    console.log('🔄 Setting up real-time updates for today\'s sessions');
+    
+    const channel = supabase
+      .channel('teacher-today-sessions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sessions'
+        },
+        (payload) => {
+          console.log('🔄 Session update received:', payload);
+          fetchTodaySessions();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'session_students'
+        },
+        (payload) => {
+          console.log('🔄 Session students update received:', payload);
+          fetchTodaySessions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔄 Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   return {
     sessions,
     loading,
