@@ -68,7 +68,7 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
       // Fetch trial statistics from students table
       const { data: trialStats, error: trialError } = await supabase
         .from('students')
-        .select('status, trial_date')
+        .select('id, status, trial_date')
         .eq('assigned_teacher_id', user.id)
         .gte('trial_date', start)
         .lte('trial_date', end);
