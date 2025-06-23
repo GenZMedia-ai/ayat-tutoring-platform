@@ -24,7 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialSessions';
+import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialData';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { supabase } from '@/integrations/supabase/client';
@@ -154,15 +154,15 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
         return 'Invalid format';
       }
       
-      const utcDateTimeString = `${date}T${time}Z`;
-      const utcDateTime = new Date(utcDateTimeString);
+      // FIXED: Remove UTC conversion, treat as Egypt time directly
+      const egyptDateTimeString = `${date}T${time}`;
+      const egyptDateTime = new Date(egyptDateTimeString);
       
-      if (isNaN(utcDateTime.getTime())) {
-        console.error('❌ Invalid date object:', utcDateTimeString);
+      if (isNaN(egyptDateTime.getTime())) {
+        console.error('❌ Invalid date object:', egyptDateTimeString);
         return 'Invalid date';
       }
       
-      const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
       const formattedDateTime = format(egyptDateTime, 'dd/MM/yyyy \'at\' h:mm a');
       
       return formattedDateTime;
@@ -180,14 +180,14 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
         return '';
       }
       
-      const utcDateTimeString = `${date}T${time}Z`;
-      const utcDateTime = new Date(utcDateTimeString);
+      // FIXED: Remove UTC conversion, treat as Egypt time directly
+      const egyptDateTimeString = `${date}T${time}`;
+      const egyptDateTime = new Date(egyptDateTimeString);
       
-      if (isNaN(utcDateTime.getTime())) {
+      if (isNaN(egyptDateTime.getTime())) {
         return '';
       }
       
-      const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
       const formattedDateTime = format(egyptDateTime, 'dd/MM \'at\' h:mm a');
       
       return formattedDateTime;
@@ -204,7 +204,18 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
       options.push(
         { label: `Contact ${isFamily ? 'Family' : 'Student'}`, action: () => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name), icon: MessageCircle },
         { label: 'Confirm Trial', action: () => onConfirm(item), icon: CheckCircle },
-        { label: 'Reschedule', action: () => onReschedule(item), icon: RotateCcw }
+        { 
+          label: 'Reschedule', 
+          action: () => {
+            if (isFamily) {
+              console.warn('⚠️ Family reschedule temporarily disabled');
+              // TODO: Implement family reschedule flow
+            } else {
+              onReschedule(item);
+            }
+          }, 
+          icon: RotateCcw 
+        }
       );
     } else if (data.status === 'confirmed') {
       const canMarkOutcome = !!data.sessionId || isFamily; // Families can always mark outcomes
@@ -219,7 +230,18 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
       }
       
       options.push(
-        { label: 'Reschedule', action: () => onReschedule(item), icon: RotateCcw },
+        { 
+          label: 'Reschedule', 
+          action: () => {
+            if (isFamily) {
+              console.warn('⚠️ Family reschedule temporarily disabled');
+              // TODO: Implement family reschedule flow
+            } else {
+              onReschedule(item);
+            }
+          }, 
+          icon: RotateCcw 
+        },
         { label: `Contact ${isFamily ? 'Family' : 'Student'}`, action: () => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name), icon: MessageCircle }
       );
     } else {

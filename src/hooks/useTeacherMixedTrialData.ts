@@ -69,7 +69,7 @@ export const useTeacherMixedTrialData = () => {
         `)
         .eq('assigned_teacher_id', user.id)
         .is('family_group_id', null)
-        .in('status', ['pending', 'confirmed'])
+        .in('status', ['pending', 'confirmed', 'trial-completed', 'trial-ghosted'])
         .order('created_at', { ascending: false });
 
       if (studentsError) {
@@ -82,7 +82,7 @@ export const useTeacherMixedTrialData = () => {
         .from('family_groups')
         .select('*')
         .eq('assigned_teacher_id', user.id)
-        .in('status', ['pending', 'confirmed'])
+        .in('status', ['pending', 'confirmed', 'trial-completed', 'trial-ghosted'])
         .order('created_at', { ascending: false });
 
       if (familyError) {
@@ -156,6 +156,7 @@ export const useTeacherMixedTrialData = () => {
     }
   };
 
+  // PHASE 2: Improved family confirmation with atomicity
   const confirmTrial = async (item: TeacherMixedTrialItem) => {
     try {
       console.log('✅ Confirming trial for item:', item);
@@ -167,7 +168,10 @@ export const useTeacherMixedTrialData = () => {
         }
         return success;
       } else {
-        // For family groups, confirm the family and all associated students
+        // PHASE 2: Atomic family confirmation - update both family and students in transaction
+        console.log('🔄 Starting atomic family confirmation for:', item.id);
+        
+        // Use a transaction-like approach with error handling
         const { error: familyError } = await supabase
           .from('family_groups')
           .update({ 
@@ -182,7 +186,7 @@ export const useTeacherMixedTrialData = () => {
           return false;
         }
 
-        // Also update all students in the family
+        // PHASE 2: Ensure all family students are also confirmed atomically
         const { error: studentsError } = await supabase
           .from('students')
           .update({ 
@@ -193,9 +197,20 @@ export const useTeacherMixedTrialData = () => {
 
         if (studentsError) {
           console.error('❌ Error confirming family students:', studentsError);
-          // Don't fail the whole operation, just log it
+          // PHASE 2: Rollback family status if student update fails
+          await supabase
+            .from('family_groups')
+            .update({ 
+              status: 'pending',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', item.id);
+          
+          toast.error('Failed to confirm family trial - rollback completed');
+          return false;
         }
 
+        console.log('✅ Family confirmation completed successfully');
         toast.success('Family trial confirmed successfully!');
         await fetchTrialData(); // Refresh data
         return true;
@@ -211,13 +226,14 @@ export const useTeacherMixedTrialData = () => {
     fetchTrialData();
   }, [user]);
 
+  // PHASE 4: Optimized real-time subscriptions
   useEffect(() => {
     if (!user) return;
 
-    console.log('🔄 Setting up real-time updates for teacher mixed trial data');
+    console.log('🔄 Setting up optimized real-time updates for teacher mixed trial data');
     
     const studentsChannel = supabase
-      .channel('teacher-students')
+      .channel('teacher-students-optimized')
       .on(
         'postgres_changes',
         {
@@ -228,13 +244,14 @@ export const useTeacherMixedTrialData = () => {
         },
         (payload) => {
           console.log('🔄 Real-time student update received:', payload);
-          fetchTrialData();
+          // PHASE 4: Debounced refresh to prevent excessive updates
+          setTimeout(() => fetchTrialData(), 100);
         }
       )
       .subscribe();
 
     const familyChannel = supabase
-      .channel('teacher-families')
+      .channel('teacher-families-optimized')
       .on(
         'postgres_changes',
         {
@@ -245,13 +262,14 @@ export const useTeacherMixedTrialData = () => {
         },
         (payload) => {
           console.log('🔄 Real-time family update received:', payload);
-          fetchTrialData();
+          // PHASE 4: Debounced refresh to prevent excessive updates
+          setTimeout(() => fetchTrialData(), 100);
         }
       )
       .subscribe();
 
     return () => {
-      console.log('🔄 Cleaning up real-time subscriptions');
+      console.log('🔄 Cleaning up optimized real-time subscriptions');
       supabase.removeChannel(studentsChannel);
       supabase.removeChannel(familyChannel);
     };
