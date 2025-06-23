@@ -54,9 +54,17 @@ export const useTrialOutcomes = () => {
 
       console.log('✅ Trial outcome submitted successfully:', data);
 
+      // Enhanced success message for family trials
+      const isFamily = data?.family_group_id;
+      const studentsUpdated = data?.students_updated || 1;
+      
+      const successMessage = isFamily 
+        ? `Family trial marked as ${outcome}. ${studentsUpdated} students updated. Control returned to Sales team.`
+        : `Trial marked as ${outcome}. Control returned to Sales team.`;
+
       toast({
         title: "Trial Outcome Submitted",
-        description: `Trial marked as ${outcome}. Control returned to Sales team.`,
+        description: successMessage,
       });
 
       return data;
@@ -66,7 +74,9 @@ export const useTrialOutcomes = () => {
       // Provide user-friendly error messages
       let errorMessage = "Failed to submit trial outcome";
       
-      if (error.message?.includes('Invalid session ID format')) {
+      if (error.message?.includes('Session not found or not linked to student')) {
+        errorMessage = "Session data is not properly linked. This may be a family trial issue. Please contact support.";
+      } else if (error.message?.includes('Invalid session ID format')) {
         errorMessage = "Session data is invalid. Please refresh and try again.";
       } else if (error.message?.includes('required')) {
         errorMessage = "Missing required information. Please refresh and try again.";
@@ -85,8 +95,41 @@ export const useTrialOutcomes = () => {
     }
   };
 
+  const repairFamilySessionLinks = async () => {
+    try {
+      console.log('🔧 Repairing family session links...');
+      
+      const { data, error } = await supabase.rpc('ensure_family_session_links');
+      
+      if (error) {
+        console.error('❌ Error repairing family session links:', error);
+        throw error;
+      }
+      
+      console.log('✅ Family session links repaired:', data);
+      
+      if (data?.links_created > 0) {
+        toast({
+          title: "Session Links Repaired",
+          description: `Created ${data.links_created} missing session links for family trials.`,
+        });
+      }
+      
+      return data;
+    } catch (error: any) {
+      console.error('❌ Failed to repair family session links:', error);
+      toast({
+        title: "Error",
+        description: "Failed to repair session links. Please contact support.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   return {
     submitTrialOutcome,
+    repairFamilySessionLinks,
     isSubmitting
   };
 };

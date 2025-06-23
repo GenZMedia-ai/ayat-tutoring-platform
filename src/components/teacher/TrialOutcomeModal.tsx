@@ -12,6 +12,7 @@ import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { LoadingSpinner } from './LoadingSpinner';
+import { useTrialOutcomes } from '@/hooks/useTrialOutcomes';
 
 interface TrialOutcomeModalProps {
   student: TrialStudent | null;
@@ -32,6 +33,7 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
 }) => {
   const [actualStudent, setActualStudent] = useState<TrialStudent | null>(student);
   const [loading, setLoading] = useState(false);
+  const { repairFamilySessionLinks } = useTrialOutcomes();
 
   // CRITICAL FIX: Create student object from mixed trial data when needed
   useEffect(() => {
@@ -80,30 +82,68 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
 
           if (error || !firstStudent) {
             console.error('❌ CRITICAL FIX: Failed to fetch first student from family for trial outcome:', error);
-            toast.error('Failed to load family student data. Please refresh and try again.');
-            onClose();
-            return;
+            
+            // Try to repair session links first
+            console.log('🔧 Attempting to repair family session links...');
+            try {
+              await repairFamilySessionLinks();
+              
+              // Retry fetching the student
+              const { data: retryStudent, error: retryError } = await supabase
+                .from('students')
+                .select('id, name, age, phone, country, trial_date, trial_time, unique_id, parent_name, notes, status')
+                .eq('family_group_id', studentData.id)
+                .limit(1)
+                .single();
+                
+              if (retryError || !retryStudent) {
+                toast.error('Failed to load family student data after repair attempt. Please refresh and try again.');
+                onClose();
+                return;
+              }
+              
+              // Use repaired data
+              setActualStudent({
+                id: retryStudent.id,
+                name: familyData.parentName,
+                age: 0,
+                phone: familyData.phone,
+                country: familyData.country,
+                trialDate: familyData.trialDate,
+                trialTime: familyData.trialTime,
+                uniqueId: familyData.uniqueId,
+                parentName: familyData.parentName,
+                notes: familyData.notes,
+                status: familyData.status,
+                sessionId: familyData.sessionId,
+              });
+            } catch (repairError) {
+              console.error('❌ Failed to repair family session links:', repairError);
+              toast.error('Failed to load family student data. Please refresh and try again.');
+              onClose();
+              return;
+            }
+          } else {
+            console.log('✅ CRITICAL FIX: Successfully fetched first student from family for trial outcome:', {
+              studentId: firstStudent.id,
+              familyGroupId: studentData.id
+            });
+
+            setActualStudent({
+              id: firstStudent.id, // CRITICAL FIX: Use actual student ID, not family group ID
+              name: familyData.parentName,
+              age: 0, // Not applicable for family
+              phone: familyData.phone,
+              country: familyData.country,
+              trialDate: familyData.trialDate,
+              trialTime: familyData.trialTime,
+              uniqueId: familyData.uniqueId,
+              parentName: familyData.parentName,
+              notes: familyData.notes,
+              status: familyData.status,
+              sessionId: familyData.sessionId,
+            });
           }
-
-          console.log('✅ CRITICAL FIX: Successfully fetched first student from family for trial outcome:', {
-            studentId: firstStudent.id,
-            familyGroupId: studentData.id
-          });
-
-          setActualStudent({
-            id: firstStudent.id, // CRITICAL FIX: Use actual student ID, not family group ID
-            name: familyData.parentName,
-            age: 0, // Not applicable for family
-            phone: familyData.phone,
-            country: familyData.country,
-            trialDate: familyData.trialDate,
-            trialTime: familyData.trialTime,
-            uniqueId: familyData.uniqueId,
-            parentName: familyData.parentName,
-            notes: familyData.notes,
-            status: familyData.status,
-            sessionId: familyData.sessionId,
-          });
         }
       } catch (error) {
         console.error('❌ CRITICAL FIX: Error creating student object for trial outcome:', error);
@@ -117,7 +157,7 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
     if (open) {
       createStudentFromData();
     }
-  }, [open, student, studentData, onClose]);
+  }, [open, student, studentData, onClose, repairFamilySessionLinks]);
 
   // PHASE 3 FIX: Enhanced session ID validation with family support
   useEffect(() => {

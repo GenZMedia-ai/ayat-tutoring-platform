@@ -640,6 +640,10 @@ export type Database = {
         Args: { p_student_id: string }
         Returns: Json
       }
+      ensure_family_session_links: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       generate_family_unique_id: {
         Args: Record<PropertyKey, never>
         Returns: string
