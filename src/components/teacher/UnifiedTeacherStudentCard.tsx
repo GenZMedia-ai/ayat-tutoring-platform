@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -153,7 +152,6 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
         return 'Invalid format';
       }
       
-      // Handle both HH:MM and HH:MM:SS formats
       const normalizedTime = time.length === 5 ? `${time}:00` : time;
       const egyptDateTimeString = `${date}T${normalizedTime}`;
       const egyptDateTime = new Date(egyptDateTimeString);
@@ -180,7 +178,6 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
         return '';
       }
       
-      // Handle both HH:MM and HH:MM:SS formats
       const normalizedTime = time.length === 5 ? `${time}:00` : time;
       const egyptDateTimeString = `${date}T${normalizedTime}`;
       const egyptDateTime = new Date(egyptDateTimeString);
@@ -208,15 +205,15 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
         { 
           label: 'Reschedule', 
           action: () => {
-            // PHASE 2 FIX: Enable family reschedule functionality
-            console.log(`🔄 PHASE 2: ${isFamily ? 'Family' : 'Individual'} reschedule enabled`);
+            // CRITICAL FIX: Enable reschedule for both individual and family
+            console.log(`🔄 CRITICAL FIX: ${isFamily ? 'Family' : 'Individual'} reschedule enabled`);
             onReschedule(item);
           }, 
           icon: RotateCcw 
         }
       );
     } else if (data.status === 'confirmed') {
-      const canMarkOutcome = !!data.sessionId || isFamily; // Families can always mark outcomes
+      const canMarkOutcome = !!data.sessionId || isFamily;
       
       if (canMarkOutcome) {
         options.push(
@@ -231,8 +228,8 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
         { 
           label: 'Reschedule', 
           action: () => {
-            // PHASE 2 FIX: Enable family reschedule functionality
-            console.log(`🔄 PHASE 2: ${isFamily ? 'Family' : 'Individual'} reschedule enabled`);
+            // CRITICAL FIX: Enable reschedule for both individual and family
+            console.log(`🔄 CRITICAL FIX: ${isFamily ? 'Family' : 'Individual'} reschedule enabled`);
             onReschedule(item);
           }, 
           icon: RotateCcw 

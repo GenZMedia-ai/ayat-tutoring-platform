@@ -12,6 +12,7 @@ import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '
 import { Badge } from '@/components/ui/badge';
 import { Filter } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'trial-completed' | 'trial-ghosted' | 'rescheduled';
 
@@ -28,7 +29,6 @@ const EnhancedTeacherTrials: React.FC = () => {
   // PHASE 1: Improved filtering with better status handling
   const filteredItems = trialItems.filter(item => {
     const statusMatch = statusFilter === 'all' || item.data.status === statusFilter;
-    // PHASE 4: Enhanced date filtering can be added here
     return statusMatch;
   });
 
@@ -116,7 +116,7 @@ const EnhancedTeacherTrials: React.FC = () => {
 
   // PHASE 4 FIX: Enhanced reschedule handling with better family support
   const handleReschedule = (item: TeacherMixedTrialItem) => {
-    console.log('🔄 PHASE 4: Enhanced reschedule for item:', {
+    console.log('🔄 CRITICAL FIX: Enhanced reschedule for item:', {
       type: item.type,
       id: item.id,
       hasTrialDate: !!item.data.trialDate,
@@ -124,21 +124,21 @@ const EnhancedTeacherTrials: React.FC = () => {
     });
     
     if (item.type === 'family') {
-      console.log('👨‍👩‍👧‍👦 PHASE 4: Family reschedule - now fully supported');
+      console.log('👨‍👩‍👧‍👦 CRITICAL FIX: Family reschedule - now fully supported with proper student ID handling');
     }
     
     setRescheduleItem(item);
   };
 
   const handleRescheduleSuccess = () => {
-    console.log('✅ PHASE 4: Enhanced reschedule completed successfully');
+    console.log('✅ CRITICAL FIX: Enhanced reschedule completed successfully');
     setRescheduleItem(null);
     refreshTrialData();
   };
 
-  // PHASE 3 FIX: Enhanced student creation with better validation
-  const createStudentForModal = (item: TeacherMixedTrialItem) => {
-    console.log('🔧 PHASE 3: Creating student object for modal:', {
+  // CRITICAL FIX: Enhanced student creation with proper family handling
+  const createStudentForModal = async (item: TeacherMixedTrialItem) => {
+    console.log('🔧 CRITICAL FIX: Creating student object for modal:', {
       type: item.type,
       id: item.id,
       hasSessionId: !!item.data.sessionId
@@ -158,25 +158,51 @@ const EnhancedTeacherTrials: React.FC = () => {
         parentName: studentData.parentName,
         notes: studentData.notes,
         status: studentData.status,
-        sessionId: studentData.sessionId, // PHASE 3 FIX: Now properly available
+        sessionId: studentData.sessionId,
       };
     } else {
-      // PHASE 3 FIX: Enhanced family to student conversion
+      // CRITICAL FIX: For family trials, fetch the first student ID from the family group
       const familyData = item.data as TeacherTrialFamily;
-      return {
-        id: familyData.id,
-        name: familyData.parentName,
-        age: 0, // Not applicable for family
-        phone: familyData.phone,
-        country: familyData.country,
-        trialDate: familyData.trialDate,
-        trialTime: familyData.trialTime,
-        uniqueId: familyData.uniqueId,
-        parentName: familyData.parentName,
-        notes: familyData.notes,
-        status: familyData.status,
-        sessionId: familyData.sessionId, // PHASE 3 FIX: Now properly fetched
-      };
+      
+      console.log('🔍 CRITICAL FIX: Fetching first student from family group:', item.id);
+      
+      try {
+        const { data: firstStudent, error } = await supabase
+          .from('students')
+          .select('id, name, age, phone, country, trial_date, trial_time, unique_id, parent_name, notes, status, assigned_teacher_id, family_group_id')
+          .eq('family_group_id', item.id)
+          .limit(1)
+          .single();
+
+        if (error || !firstStudent) {
+          console.error('❌ CRITICAL FIX: Failed to fetch first student from family:', error);
+          toast.error('Failed to load family student data. Please refresh and try again.');
+          throw new Error('Family student not found');
+        }
+
+        console.log('✅ CRITICAL FIX: Successfully fetched first student from family:', {
+          studentId: firstStudent.id,
+          familyGroupId: firstStudent.family_group_id
+        });
+
+        return {
+          id: firstStudent.id, // CRITICAL FIX: Use actual student ID, not family group ID
+          name: familyData.parentName,
+          age: 0, // Not applicable for family
+          phone: familyData.phone,
+          country: familyData.country,
+          trialDate: familyData.trialDate,
+          trialTime: familyData.trialTime,
+          uniqueId: familyData.uniqueId,
+          parentName: familyData.parentName,
+          notes: familyData.notes,
+          status: familyData.status,
+          sessionId: familyData.sessionId,
+        };
+      } catch (error) {
+        console.error('❌ CRITICAL FIX: Error in family student creation:', error);
+        throw error;
+      }
     }
   };
 
@@ -296,10 +322,11 @@ const EnhancedTeacherTrials: React.FC = () => {
         </>
       )}
 
-      {/* PHASE 3&4 FIX: Enhanced Modals with better error handling and validation */}
+      {/* CRITICAL FIX: Enhanced Modals with async student creation */}
       {rescheduleItem && (
         <RescheduleModal
-          student={createStudentForModal(rescheduleItem)}
+          student={null} // Will be loaded async inside the modal
+          studentData={rescheduleItem} // Pass the item data instead
           open={!!rescheduleItem}
           onClose={() => setRescheduleItem(null)}
           onSuccess={handleRescheduleSuccess}
@@ -308,7 +335,8 @@ const EnhancedTeacherTrials: React.FC = () => {
 
       {trialOutcomeItem && (
         <TrialOutcomeModal
-          student={createStudentForModal(trialOutcomeItem)}
+          student={null} // Will be loaded async inside the modal
+          studentData={trialOutcomeItem} // Pass the item data instead
           outcome={trialOutcomeType}
           open={!!trialOutcomeItem}
           onClose={() => setTrialOutcomeItem(null)}

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -14,21 +13,25 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
+import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialData';
 import { useStudentStatusManagement } from '@/hooks/useStudentStatusManagement';
 import { useTeacherAvailability } from '@/hooks/useTeacherAvailability';
 import { LoadingSpinner } from './LoadingSpinner';
 import { format } from 'date-fns';
 import { Lock } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface RescheduleModalProps {
   student: TrialStudent | null;
+  studentData?: TeacherMixedTrialItem; // CRITICAL FIX: Accept item data for async loading
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
 
 export const RescheduleModal: React.FC<RescheduleModalProps> = ({
-  student,
+  student: propStudent,
+  studentData,
   open,
   onClose,
   onSuccess
@@ -36,8 +39,89 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
   const [rescheduleReason, setRescheduleReason] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
+  const [student, setStudent] = useState<TrialStudent | null>(propStudent);
+  const [loadingStudent, setLoadingStudent] = useState(false);
+  
   const { rescheduleStudent, loading: rescheduleLoading } = useStudentStatusManagement();
   const { timeSlots, loading: availabilityLoading, refreshAvailability } = useTeacherAvailability(selectedDate);
+
+  // CRITICAL FIX: Load student data when modal opens with studentData
+  useEffect(() => {
+    const loadStudentData = async () => {
+      if (!open || !studentData || propStudent) return;
+      
+      setLoadingStudent(true);
+      console.log('🔄 CRITICAL FIX: Loading student data for modal:', {
+        type: studentData.type,
+        id: studentData.id
+      });
+
+      try {
+        if (studentData.type === 'individual') {
+          const individualData = studentData.data as TeacherTrialStudent;
+          setStudent({
+            id: individualData.id,
+            name: individualData.name,
+            age: individualData.age,
+            phone: individualData.phone,
+            country: individualData.country,
+            trialDate: individualData.trialDate,
+            trialTime: individualData.trialTime,
+            uniqueId: individualData.uniqueId,
+            parentName: individualData.parentName,
+            notes: individualData.notes,
+            status: individualData.status,
+            sessionId: individualData.sessionId,
+          });
+        } else {
+          // CRITICAL FIX: For family trials, fetch the first student ID
+          const familyData = studentData.data as TeacherTrialFamily;
+          
+          const { data: firstStudent, error } = await supabase
+            .from('students')
+            .select('id, name, age, phone, country, trial_date, trial_time, unique_id, parent_name, notes, status, assigned_teacher_id, family_group_id')
+            .eq('family_group_id', studentData.id)
+            .limit(1)
+            .single();
+
+          if (error || !firstStudent) {
+            console.error('❌ CRITICAL FIX: Failed to fetch family student for modal:', error);
+            toast.error('Failed to load family student data');
+            onClose();
+            return;
+          }
+
+          console.log('✅ CRITICAL FIX: Successfully loaded family student for modal:', {
+            studentId: firstStudent.id,
+            familyGroupId: firstStudent.family_group_id
+          });
+
+          setStudent({
+            id: firstStudent.id, // CRITICAL FIX: Use actual student ID
+            name: familyData.parentName,
+            age: firstStudent.age,
+            phone: familyData.phone,
+            country: familyData.country,
+            trialDate: familyData.trialDate,
+            trialTime: familyData.trialTime,
+            uniqueId: familyData.uniqueId,
+            parentName: familyData.parentName,
+            notes: familyData.notes,
+            status: familyData.status,
+            sessionId: familyData.sessionId,
+          });
+        }
+      } catch (error) {
+        console.error('❌ CRITICAL FIX: Error loading student data for modal:', error);
+        toast.error('Failed to load student data');
+        onClose();
+      } finally {
+        setLoadingStudent(false);
+      }
+    };
+
+    loadStudentData();
+  }, [open, studentData, propStudent, onClose]);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -45,8 +129,11 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
       setRescheduleReason('');
       setSelectedDate(undefined);
       setSelectedTimeSlot('');
+      if (propStudent) {
+        setStudent(propStudent);
+      }
     }
-  }, [open]);
+  }, [open, propStudent]);
 
   // Refresh availability when date changes
   useEffect(() => {
@@ -61,7 +148,7 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
       return;
     }
 
-    console.log('🔄 Rescheduling student:', {
+    console.log('🔄 CRITICAL FIX: Rescheduling student with proper validation:', {
       studentId: student.id,
       reason: rescheduleReason,
       newDate: selectedDate,
@@ -89,12 +176,33 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
     setRescheduleReason('');
     setSelectedDate(undefined);
     setSelectedTimeSlot('');
+    setStudent(null);
   };
 
   const handleClose = () => {
     resetForm();
     onClose();
   };
+
+  // CRITICAL FIX: Show loading state while student data is being fetched
+  if (loadingStudent) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Loading Student Data</DialogTitle>
+            <DialogDescription>
+              Please wait while we load the student information...
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <LoadingSpinner size="md" />
+            <span className="ml-2 text-sm text-muted-foreground">Loading student data...</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   if (!student) return null;
 

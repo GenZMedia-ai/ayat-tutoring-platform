@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -25,9 +24,9 @@ export const useStudentStatusManagement = () => {
     }
   };
 
-  // PHASE 1 FIX: Standardize time format to HH:MM:SS for database compatibility
+  // CRITICAL FIX: Robust time format standardization
   const formatTimeForDB = (time: string): string => {
-    console.log('🕐 PHASE 1: Formatting time for database:', time);
+    console.log('🕐 CRITICAL FIX: Formatting time for database:', time);
     
     if (!time) {
       throw new Error('Time is required');
@@ -42,11 +41,19 @@ export const useStudentStatusManagement = () => {
     // If time is in HH:MM format, add :00 seconds
     if (time.match(/^\d{2}:\d{2}$/)) {
       const formattedTime = `${time}:00`;
-      console.log('✅ PHASE 1: Converted HH:MM to HH:MM:SS:', { input: time, output: formattedTime });
+      console.log('✅ CRITICAL FIX: Converted HH:MM to HH:MM:SS:', { input: time, output: formattedTime });
       return formattedTime;
     }
     
     throw new Error(`Invalid time format: ${time}. Expected HH:MM or HH:MM:SS`);
+  };
+
+  // CRITICAL FIX: Check if a date is today in Egypt timezone
+  const isDateToday = (dateString: string): boolean => {
+    const today = new Date();
+    const egyptToday = new Date(today.toLocaleString("en-US", {timeZone: "Africa/Cairo"}));
+    const egyptTodayString = format(egyptToday, 'yyyy-MM-dd');
+    return dateString === egyptTodayString;
   };
 
   const updateStudentStatus = async (studentId: string, newStatus: string, currentStatus?: string) => {
@@ -54,15 +61,12 @@ export const useStudentStatusManagement = () => {
     try {
       console.log('🔄 Updating student status:', { studentId, from: currentStatus, to: newStatus });
 
-      // Validate status constraint
       await validateStatusConstraint(newStatus);
 
-      // Validate transition if current status is provided
       if (currentStatus && !validateTransition(currentStatus as any, newStatus as any)) {
         return false;
       }
 
-      // Check if confirmation is required
       if (currentStatus) {
         const { required, message } = requiresConfirmation(currentStatus as any, newStatus as any);
         if (required && message) {
@@ -73,7 +77,6 @@ export const useStudentStatusManagement = () => {
         }
       }
 
-      // Verify student exists and get current status
       const { data: studentData, error: fetchError } = await supabase
         .from('students')
         .select('status, name')
@@ -137,16 +140,16 @@ export const useStudentStatusManagement = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('🔄 PHASE 1-3: Starting enhanced reschedule with time standardization:', { 
+      console.log('🔄 CRITICAL FIX: Starting enhanced reschedule with constraint handling:', { 
         studentId, newDate, newTime, reason, currentDate, currentTime 
       });
       
-      // PHASE 1 FIX: Standardize time format for database operations
+      // CRITICAL FIX: Standardize time format for database operations
       const dateString = format(newDate, 'yyyy-MM-dd');
       const dbFormattedNewTime = formatTimeForDB(newTime);
       const dbFormattedOldTime = currentTime ? formatTimeForDB(currentTime) : null;
 
-      console.log('🕐 PHASE 1: Time standardization complete:', {
+      console.log('🕐 CRITICAL FIX: Time standardization complete:', {
         originalNewTime: newTime,
         dbFormattedNewTime: dbFormattedNewTime,
         originalOldTime: currentTime,
@@ -185,8 +188,8 @@ export const useStudentStatusManagement = () => {
         return false;
       }
 
-      // PHASE 3 FIX: Enhanced availability check with proper time format
-      console.log('🔍 PHASE 3: Checking availability with standardized time format:', {
+      // CRITICAL FIX: Enhanced availability check with proper time format
+      console.log('🔍 CRITICAL FIX: Checking availability with standardized time format:', {
         teacherId,
         dateString,
         dbFormattedNewTime
@@ -203,7 +206,7 @@ export const useStudentStatusManagement = () => {
         .single();
 
       if (availabilityError || !availabilityCheck) {
-        console.error('❌ PHASE 3: Slot not available:', {
+        console.error('❌ CRITICAL FIX: Slot not available:', {
           error: availabilityError,
           query: { teacherId, dateString, time_slot: dbFormattedNewTime }
         });
@@ -211,43 +214,51 @@ export const useStudentStatusManagement = () => {
         return false;
       }
 
-      console.log('✅ PHASE 3: New slot confirmed available:', availabilityCheck.id);
+      console.log('✅ CRITICAL FIX: New slot confirmed available:', availabilityCheck.id);
 
-      // PHASE 4 FIX: Enhanced old slot freeing with proper error handling
-      if (oldDate && oldTime) {
-        const formattedOldTime = formatTimeForDB(oldTime);
-        console.log('🔓 PHASE 4: Freeing old slot with enhanced error handling:', { 
+      // CRITICAL FIX: Handle old slot freeing with constraint awareness
+      if (oldDate && oldTime && dbFormattedOldTime) {
+        console.log('🔓 CRITICAL FIX: Attempting to free old slot with constraint handling:', { 
           oldDate, 
           originalOldTime: oldTime,
-          formattedOldTime: formattedOldTime 
+          formattedOldTime: dbFormattedOldTime,
+          isToday: isDateToday(oldDate)
         });
 
-        const { data: oldSlotData, error: oldSlotError } = await supabase
-          .from('teacher_availability')
-          .update({ 
-            is_booked: false,
-            student_id: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('teacher_id', teacherId)
-          .eq('date', oldDate)
-          .eq('time_slot', formattedOldTime)
-          .select();
+        // CRITICAL FIX: Check if trying to modify today's availability
+        if (isDateToday(oldDate)) {
+          console.log('⚠️ CRITICAL FIX: Cannot modify today\'s availability - skipping old slot freeing');
+          toast.warning('Note: Cannot free today\'s time slot due to system constraints. The new slot will still be booked.');
+        } else {
+          const { data: oldSlotData, error: oldSlotError } = await supabase
+            .from('teacher_availability')
+            .update({ 
+              is_booked: false,
+              student_id: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('teacher_id', teacherId)
+            .eq('date', oldDate)
+            .eq('time_slot', dbFormattedOldTime)
+            .select();
 
-        if (oldSlotError) {
-          console.error('❌ PHASE 4: Error freeing old slot:', {
-            error: oldSlotError,
-            query: { teacherId, oldDate, time_slot: formattedOldTime }
-          });
-          toast.error('Failed to free old time slot');
-          return false;
+          if (oldSlotError) {
+            console.error('❌ CRITICAL FIX: Error freeing old slot:', {
+              error: oldSlotError,
+              query: { teacherId, oldDate, time_slot: dbFormattedOldTime }
+            });
+            
+            // CRITICAL FIX: Don't fail the entire operation if old slot can't be freed
+            console.log('⚠️ CRITICAL FIX: Continuing with reschedule despite old slot freeing failure');
+            toast.warning('Note: Could not free the old time slot, but the new slot will still be booked.');
+          } else {
+            console.log('✅ CRITICAL FIX: Old slot freed successfully:', oldSlotData);
+          }
         }
-
-        console.log('✅ PHASE 4: Old slot freed successfully:', oldSlotData);
       }
 
-      // PHASE 3 FIX: Book new slot with standardized time
-      console.log('🔒 PHASE 3: Booking new slot with standardized time:', { 
+      // CRITICAL FIX: Book new slot with standardized time
+      console.log('🔒 CRITICAL FIX: Booking new slot with standardized time:', { 
         availabilityId: availabilityCheck.id, 
         studentId,
         dbFormattedNewTime 
@@ -268,9 +279,9 @@ export const useStudentStatusManagement = () => {
         return false;
       }
 
-      // PHASE 2 & 5 FIX: Update student/family with enhanced handling
+      // CRITICAL FIX: Update student/family with enhanced handling
       if (familyGroupId) {
-        console.log('👨‍👩‍👧‍👦 PHASE 2: Updating family group with new schedule');
+        console.log('👨‍👩‍👧‍👦 CRITICAL FIX: Updating family group with new schedule');
         // Update family group
         const { error: familyUpdateError } = await supabase
           .from('family_groups')
@@ -303,9 +314,9 @@ export const useStudentStatusManagement = () => {
           return false;
         }
 
-        console.log('✅ PHASE 2: Family group and all students updated successfully');
+        console.log('✅ CRITICAL FIX: Family group and all students updated successfully');
       } else {
-        console.log('👤 PHASE 2: Updating individual student');
+        console.log('👤 CRITICAL FIX: Updating individual student');
         // Update individual student
         const { error: studentUpdateError } = await supabase
           .from('students')
@@ -322,10 +333,10 @@ export const useStudentStatusManagement = () => {
           return false;
         }
 
-        console.log('✅ PHASE 2: Individual student updated successfully');
+        console.log('✅ CRITICAL FIX: Individual student updated successfully');
       }
 
-      // PHASE 5 FIX: Enhanced session update with better error handling
+      // CRITICAL FIX: Enhanced session update with better error handling
       const { data: sessionStudents, error: sessionStudentsError } = await supabase
         .from('session_students')
         .select('session_id')
@@ -365,12 +376,12 @@ export const useStudentStatusManagement = () => {
             console.error('❌ Error updating session:', sessionUpdateError);
             // Don't fail the operation for this
           } else {
-            console.log('✅ PHASE 5: Session updated with reschedule information');
+            console.log('✅ CRITICAL FIX: Session updated with reschedule information');
           }
         }
       }
 
-      console.log('✅ PHASE 1-5: Student rescheduled successfully with all enhancements');
+      console.log('✅ CRITICAL FIX: Student rescheduled successfully with all enhancements');
       toast.success(`${familyGroupId ? 'Family' : 'Student'} trial session rescheduled successfully`);
       return true;
     } catch (error: any) {
@@ -387,7 +398,6 @@ export const useStudentStatusManagement = () => {
     try {
       console.log('🔄 Bulk updating student statuses:', { studentIds, newStatus });
       
-      // Validate status constraint
       await validateStatusConstraint(newStatus);
       
       const { error } = await supabase
