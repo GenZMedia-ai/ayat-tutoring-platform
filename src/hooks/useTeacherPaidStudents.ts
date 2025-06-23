@@ -18,6 +18,7 @@ export interface PaidStudent {
   paymentCurrency: string;
   paymentDate: string;
   notes?: string;
+  hasCompletedRegistration?: boolean;
 }
 
 export const useTeacherPaidStudents = () => {
@@ -32,35 +33,52 @@ export const useTeacherPaidStudents = () => {
     try {
       console.log('🔍 Fetching paid students for teacher:', user.id);
       
-      const { data, error } = await supabase.rpc('get_teacher_paid_students', {
-        p_teacher_id: user.id
+      // Use the enhanced edge function for better family payment handling
+      const { data, error } = await supabase.functions.invoke('get-teacher-paid-students-enhanced', {
+        headers: {
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
       });
 
       if (error) {
         console.error('❌ Error fetching paid students:', error);
-        toast.error('Failed to fetch paid students');
+        
+        // Fallback to the original RPC function
+        console.log('🔄 Falling back to original RPC function');
+        const { data: fallbackData, error: fallbackError } = await supabase.rpc('get_teacher_paid_students', {
+          p_teacher_id: user.id
+        });
+
+        if (fallbackError) {
+          console.error('❌ Fallback also failed:', fallbackError);
+          toast.error('Failed to fetch paid students');
+          return;
+        }
+
+        const mappedStudents: PaidStudent[] = fallbackData?.map(student => ({
+          id: student.id,
+          uniqueId: student.unique_id,
+          name: student.name,
+          age: student.age,
+          phone: student.phone,
+          country: student.country,
+          platform: student.platform,
+          parentName: student.parent_name,
+          packageSessionCount: student.package_session_count || 8,
+          paymentAmount: student.payment_amount || 0,
+          paymentCurrency: student.payment_currency || 'USD',
+          paymentDate: student.payment_date || new Date().toISOString(),
+          notes: student.notes,
+          hasCompletedRegistration: false
+        })) || [];
+
+        setPaidStudents(mappedStudents);
         return;
       }
 
-      console.log('📋 Fetched paid students:', data);
-
-      const mappedStudents: PaidStudent[] = data?.map(student => ({
-        id: student.id,
-        uniqueId: student.unique_id,
-        name: student.name,
-        age: student.age,
-        phone: student.phone,
-        country: student.country,
-        platform: student.platform,
-        parentName: student.parent_name,
-        packageSessionCount: student.package_session_count,
-        paymentAmount: student.payment_amount,
-        paymentCurrency: student.payment_currency,
-        paymentDate: student.payment_date,
-        notes: student.notes,
-      })) || [];
-
-      setPaidStudents(mappedStudents);
+      console.log('📋 Fetched paid students via enhanced function:', data);
+      setPaidStudents(data || []);
+      
     } catch (error) {
       console.error('❌ Error in fetchPaidStudents:', error);
       toast.error('Failed to load paid students');
@@ -91,6 +109,30 @@ export const useTeacherPaidStudents = () => {
         },
         (payload) => {
           console.log('🔄 Real-time update received:', payload);
+          fetchPaidStudents();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'payment_links'
+        },
+        (payload) => {
+          console.log('🔄 Payment link update received:', payload);
+          fetchPaidStudents();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'family_package_selections'
+        },
+        (payload) => {
+          console.log('🔄 Family package selection update received:', payload);
           fetchPaidStudents();
         }
       )

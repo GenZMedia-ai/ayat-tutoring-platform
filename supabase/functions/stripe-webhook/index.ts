@@ -53,14 +53,54 @@ serve(async (req) => {
         throw new Error("No metadata found in session");
       }
 
-      const studentIds = metadata.student_ids?.split(',') || [];
-      const packageSessionCount = parseInt(metadata.package_session_count || '0');
+      // Check if this is a family payment
+      const isFamily = metadata.payment_type === 'family_group';
+      let studentIds: string[] = [];
       
-      logStep("Session metadata", { 
-        studentIds, 
-        packageSessionCount,
-        paymentType: metadata.payment_type 
-      });
+      if (isFamily && metadata.family_group_id) {
+        logStep("Processing family payment", { familyGroupId: metadata.family_group_id });
+        
+        // Get all students in the family group
+        const { data: familyStudents, error: familyError } = await supabaseClient
+          .from('students')
+          .select('id')
+          .eq('family_group_id', metadata.family_group_id);
+
+        if (familyError) {
+          logStep("Error fetching family students", { error: familyError });
+          throw familyError;
+        }
+
+        if (familyStudents && familyStudents.length > 0) {
+          studentIds = familyStudents.map(s => s.id);
+          logStep("Found family students", { count: studentIds.length, studentIds });
+        } else {
+          logStep("No family students found", { familyGroupId: metadata.family_group_id });
+        }
+
+        // Update family group status to 'paid'
+        const { error: familyUpdateError } = await supabaseClient
+          .from('family_groups')
+          .update({ 
+            status: 'paid',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', metadata.family_group_id);
+
+        if (familyUpdateError) {
+          logStep("Error updating family group status", { error: familyUpdateError });
+        } else {
+          logStep("Family group status updated to paid");
+        }
+      } else {
+        // Single student payment
+        studentIds = metadata.student_ids?.split(',') || [];
+        logStep("Processing single student payment", { studentIds });
+      }
+
+      if (studentIds.length === 0) {
+        throw new Error("No student IDs found for payment processing");
+      }
 
       // Update payment link status
       const { error: linkUpdateError } = await supabaseClient
@@ -77,17 +117,23 @@ serve(async (req) => {
         logStep("Payment link updated to paid");
       }
 
-      // Update student statuses to 'paid'
+      // Update ALL student statuses to 'paid' (both single and family)
       const { error: studentUpdateError } = await supabaseClient
         .from('students')
-        .update({ status: 'paid' })
+        .update({ 
+          status: 'paid',
+          updated_at: new Date().toISOString()
+        })
         .in('id', studentIds);
 
       if (studentUpdateError) {
         logStep("Error updating student status", { error: studentUpdateError });
         throw studentUpdateError;
       } else {
-        logStep("Student statuses updated to paid", { count: studentIds.length });
+        logStep("Student statuses updated to paid", { 
+          count: studentIds.length, 
+          isFamily: isFamily 
+        });
       }
 
       // Prepare notification data for n8n (external webhook)
@@ -96,12 +142,15 @@ serve(async (req) => {
         student_unique_id: metadata.student_unique_id,
         payment_amount: session.amount_total ? session.amount_total / 100 : 0,
         payment_currency: session.currency?.toUpperCase(),
-        package_session_count: packageSessionCount,
+        package_session_count: parseInt(metadata.package_session_count || '0'),
         stripe_session_id: session.id,
         payment_timestamp: new Date().toISOString(),
         payment_status: 'succeeded',
         student_ids: studentIds,
-        system_name: metadata.system_name || 'AyatWBian'
+        system_name: metadata.system_name || 'AyatWBian',
+        payment_type: metadata.payment_type || 'single_student',
+        family_group_id: metadata.family_group_id || null,
+        student_count: studentIds.length.toString()
       };
 
       logStep("Prepared notification data", notificationData);
