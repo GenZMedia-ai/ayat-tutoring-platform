@@ -35,7 +35,7 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
   const [loading, setLoading] = useState(false);
   const { repairFamilySessionLinks } = useTrialOutcomes();
 
-  // CRITICAL FIX: Create student object from mixed trial data when needed
+  // Enhanced student object creation from mixed trial data
   useEffect(() => {
     const createStudentFromData = async () => {
       if (!studentData || student) {
@@ -43,7 +43,7 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
         return;
       }
 
-      console.log('🔧 CRITICAL FIX: Creating student object for trial outcome modal:', {
+      console.log('🔧 Creating student object for trial outcome modal:', {
         type: studentData.type,
         id: studentData.id,
         hasSessionId: !!studentData.data.sessionId
@@ -68,10 +68,10 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
             sessionId: individualData.sessionId,
           });
         } else {
-          // CRITICAL FIX: For family trials, fetch the first student ID from the family group
+          // Enhanced family trial handling with auto-repair
           const familyData = studentData.data as TeacherTrialFamily;
           
-          console.log('🔍 CRITICAL FIX: Fetching first student from family group for trial outcome:', studentData.id);
+          console.log('🔍 Fetching first student from family group for trial outcome:', studentData.id);
           
           const { data: firstStudent, error } = await supabase
             .from('students')
@@ -81,7 +81,7 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
             .single();
 
           if (error || !firstStudent) {
-            console.error('❌ CRITICAL FIX: Failed to fetch first student from family for trial outcome:', error);
+            console.error('❌ Failed to fetch first student from family for trial outcome:', error);
             
             // Try to repair session links first
             console.log('🔧 Attempting to repair family session links...');
@@ -124,13 +124,13 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
               return;
             }
           } else {
-            console.log('✅ CRITICAL FIX: Successfully fetched first student from family for trial outcome:', {
+            console.log('✅ Successfully fetched first student from family for trial outcome:', {
               studentId: firstStudent.id,
               familyGroupId: studentData.id
             });
 
             setActualStudent({
-              id: firstStudent.id, // CRITICAL FIX: Use actual student ID, not family group ID
+              id: firstStudent.id, // Use actual student ID, not family group ID
               name: familyData.parentName,
               age: 0, // Not applicable for family
               phone: familyData.phone,
@@ -146,7 +146,7 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
           }
         }
       } catch (error) {
-        console.error('❌ CRITICAL FIX: Error creating student object for trial outcome:', error);
+        console.error('❌ Error creating student object for trial outcome:', error);
         toast.error('Failed to prepare trial outcome data. Please try again.');
         onClose();
       } finally {
@@ -159,22 +159,22 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
     }
   }, [open, student, studentData, onClose, repairFamilySessionLinks]);
 
-  // PHASE 3 FIX: Enhanced session ID validation with family support
+  // Enhanced session ID validation with family support
   useEffect(() => {
     if (open && actualStudent && !actualStudent.sessionId) {
-      console.warn('⚠️ PHASE 3: No session ID found for student:', {
+      console.warn('⚠️ No session ID found for student:', {
         studentName: actualStudent.name,
         studentId: actualStudent.id,
         hasSessionId: !!actualStudent.sessionId
       });
       
-      // PHASE 3 FIX: Better error messaging for missing session data
-      toast.error('Session data not found. This may indicate a trial without proper session linking. Please refresh and try again.');
+      // Better error messaging for missing session data
+      toast.error('Session data not found. This may indicate a trial without proper session linking. Please use the "Repair Links" button and try again.');
       onClose();
     }
   }, [open, actualStudent, onClose]);
 
-  // PHASE 3 FIX: Don't render if no session ID (prevents flash of content)
+  // Don't render if no session ID (prevents flash of content)
   if (!actualStudent || !actualStudent.sessionId) {
     if (loading) {
       return (
@@ -189,7 +189,7 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
       );
     }
     
-    console.error('❌ PHASE 3: Cannot render TrialOutcomeModal without session ID:', {
+    console.error('❌ Cannot render TrialOutcomeModal without session ID:', {
       studentName: actualStudent?.name,
       studentId: actualStudent?.id
     });
@@ -197,7 +197,7 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
   }
 
   const handleSuccess = () => {
-    console.log('✅ PHASE 3: Trial outcome submitted successfully for:', actualStudent.name);
+    console.log('✅ Trial outcome submitted successfully for:', actualStudent.name);
     onSuccess();
     onClose();
   };
@@ -207,7 +207,7 @@ const TrialOutcomeModal: React.FC<TrialOutcomeModalProps> = ({
       <DialogContent className="max-w-2xl">
         <TrialOutcomeForm
           student={actualStudent}
-          sessionId={actualStudent.sessionId} // PHASE 3 FIX: Now guaranteed to exist
+          sessionId={actualStudent.sessionId} // Now guaranteed to exist
           initialOutcome={outcome}
           onSuccess={handleSuccess}
           onCancel={onClose}

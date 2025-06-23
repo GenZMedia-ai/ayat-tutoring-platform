@@ -8,12 +8,14 @@ interface TrialOutcomeResponse {
   outcome_id: string;
   family_group_id?: string;
   students_updated: number;
+  is_family_trial?: boolean;
   message: string;
 }
 
 interface FamilySessionLinksResponse {
   success: boolean;
   links_created: number;
+  families_repaired: number;
   message: string;
 }
 
@@ -32,6 +34,7 @@ const isFamilySessionLinksResponse = (data: any): data is FamilySessionLinksResp
     typeof data === 'object' && 
     typeof data.success === 'boolean' &&
     typeof data.links_created === 'number' &&
+    typeof data.families_repaired === 'number' &&
     typeof data.message === 'string';
 };
 
@@ -112,7 +115,16 @@ export const useTrialOutcomes = () => {
       let errorMessage = "Failed to submit trial outcome";
       
       if (error.message?.includes('Session not found or not linked to student')) {
-        errorMessage = "Session data is not properly linked. This may be a family trial issue. Please contact support.";
+        errorMessage = "Session data is not properly linked. This may be a family trial issue. Attempting auto-repair...";
+        
+        // Try to repair session links and retry
+        try {
+          await repairFamilySessionLinks();
+          // Note: The database function now auto-retries after repair, so we don't need to retry here
+          errorMessage = "Session linking repaired, but trial outcome submission still failed. Please try again.";
+        } catch (repairError) {
+          errorMessage = "Session data is not properly linked and auto-repair failed. Please contact support.";
+        }
       } else if (error.message?.includes('Invalid session ID format')) {
         errorMessage = "Session data is invalid. Please refresh and try again.";
       } else if (error.message?.includes('required')) {
@@ -153,7 +165,12 @@ export const useTrialOutcomes = () => {
       if (data.links_created > 0) {
         toast({
           title: "Session Links Repaired",
-          description: `Created ${data.links_created} missing session links for family trials.`,
+          description: `Created ${data.links_created} missing session links for ${data.families_repaired} family trials.`,
+        });
+      } else {
+        toast({
+          title: "Session Links Verified",
+          description: "All family session links are properly configured.",
         });
       }
       
