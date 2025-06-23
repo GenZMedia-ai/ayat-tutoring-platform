@@ -11,7 +11,7 @@ import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
 import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialData';
 import { Badge } from '@/components/ui/badge';
 import { Filter } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'trial-completed' | 'trial-ghosted' | 'rescheduled';
 
