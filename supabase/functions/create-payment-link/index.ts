@@ -43,31 +43,22 @@ serve(async (req) => {
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     const body = await req.json();
-    const { student_ids, package_id, currency, amount, payment_type, metadata } = body;
+    const { 
+      student_ids, 
+      package_id, 
+      currency, 
+      amount, 
+      payment_type = 'single_student',
+      family_group_id,
+      package_selections,
+      total_amount,
+      individual_amounts,
+      metadata = {} 
+    } = body;
     
-    logStep("Request data", { student_ids, package_id, currency, amount, payment_type });
+    logStep("Request data", { payment_type, family_group_id, student_ids, total_amount });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-
-    // Get package details
-    const { data: packageData, error: packageError } = await supabaseClient
-      .from('packages')
-      .select('*')
-      .eq('id', package_id)
-      .single();
-
-    if (packageError) throw new Error(`Package not found: ${packageError.message}`);
-    logStep("Package retrieved", { packageName: packageData.name });
-
-    // Get first student details for customer info
-    const { data: studentData, error: studentError } = await supabaseClient
-      .from('students')
-      .select('*')
-      .eq('id', student_ids[0])
-      .single();
-
-    if (studentError) throw new Error(`Student not found: ${studentError.message}`);
-    logStep("Student retrieved", { studentName: studentData.name });
 
     // Check if customer exists
     const customers = await stripe.customers.list({ 
@@ -80,40 +71,132 @@ serve(async (req) => {
       customerId = customers.data[0].id;
       logStep("Existing customer found", { customerId });
     } else {
+      // For new customers, get customer details from first student
+      let customerName = '';
+      let customerPhone = '';
+
+      if (payment_type === 'family_group' && family_group_id) {
+        const { data: familyData } = await supabaseClient
+          .from('family_groups')
+          .select('parent_name, phone')
+          .eq('id', family_group_id)
+          .single();
+        
+        customerName = familyData?.parent_name || '';
+        customerPhone = familyData?.phone || '';
+      } else if (student_ids?.length > 0) {
+        const { data: studentData } = await supabaseClient
+          .from('students')
+          .select('name, phone')
+          .eq('id', student_ids[0])
+          .single();
+        
+        customerName = studentData?.name || '';
+        customerPhone = studentData?.phone || '';
+      }
+
       const customer = await stripe.customers.create({
         email: user.email,
-        name: studentData.name,
-        phone: studentData.phone
+        name: customerName,
+        phone: customerPhone
       });
       customerId = customer.id;
       logStep("New customer created", { customerId });
     }
 
+    let lineItems = [];
+    let finalAmount = amount;
+    let finalCurrency = currency;
+    let sessionMetadata = { ...metadata, created_by: user.id };
+
+    // Handle different payment types
+    if (payment_type === 'family_group' && family_group_id) {
+      logStep("Processing family group payment");
+      
+      // Get family package selections data
+      const { data: familyPaymentData, error: familyError } = await supabaseClient
+        .rpc('calculate_family_payment_total', { p_family_group_id: family_group_id });
+
+      if (familyError) throw new Error(`Failed to calculate family payment: ${familyError.message}`);
+      
+      finalAmount = familyPaymentData.total_amount;
+      finalCurrency = familyPaymentData.currency;
+      
+      // Create line items for each student's package
+      const selections = familyPaymentData.package_selections || [];
+      lineItems = selections.map((selection: any) => ({
+        price_data: {
+          currency: finalCurrency.toLowerCase(),
+          product_data: {
+            name: `${selection.package_name} (${selection.session_count} sessions) - ${selection.student_name}`,
+            description: `${selection.package_name} - ${selection.session_count} sessions for ${selection.student_name}`,
+          },
+          unit_amount: selection.price * 100, // Convert to cents
+        },
+        quantity: 1,
+      }));
+
+      sessionMetadata = {
+        ...sessionMetadata,
+        payment_type: 'family_group',
+        family_group_id: family_group_id,
+        total_students: selections.length.toString(),
+        system_name: 'AyatWBian'
+      };
+
+      logStep("Family line items created", { count: lineItems.length, total: finalAmount });
+
+    } else {
+      logStep("Processing single student payment");
+      
+      // Single student payment (backward compatibility)
+      const { data: packageData, error: packageError } = await supabaseClient
+        .from('packages')
+        .select('*')
+        .eq('id', package_id)
+        .single();
+
+      if (packageError) throw new Error(`Package not found: ${packageError.message}`);
+
+      const { data: studentData, error: studentError } = await supabaseClient
+        .from('students')
+        .select('*')
+        .eq('id', student_ids[0])
+        .single();
+
+      if (studentError) throw new Error(`Student not found: ${studentError.message}`);
+
+      lineItems = [{
+        price_data: {
+          currency: finalCurrency.toLowerCase(),
+          product_data: {
+            name: `${packageData.name} - ${studentData.name}`,
+            description: `${packageData.description} (${packageData.session_count} sessions)`,
+          },
+          unit_amount: finalAmount * 100, // Convert to cents
+        },
+        quantity: 1,
+      }];
+
+      sessionMetadata = {
+        ...sessionMetadata,
+        student_ids: student_ids.join(','),
+        package_id: package_id,
+        system_name: 'AyatWBian',
+        payment_type: 'single_student',
+        package_session_count: packageData.session_count.toString(),
+        student_count: '1'
+      };
+    }
+
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      line_items: [
-        {
-          price_data: {
-            currency: currency.toLowerCase(),
-            product_data: {
-              name: `${packageData.name} - ${studentData.name}`,
-              description: `${packageData.description} (${packageData.session_count} sessions)`,
-            },
-            unit_amount: amount * 100, // Convert to cents
-          },
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       mode: "payment",
       success_url: `${req.headers.get("origin")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get("origin")}/payment-canceled`,
-      metadata: {
-        ...metadata,
-        student_ids: student_ids.join(','),
-        package_id: package_id,
-        created_by: user.id
-      }
+      metadata: sessionMetadata
     });
 
     logStep("Checkout session created", { sessionId: session.id });
@@ -122,28 +205,38 @@ serve(async (req) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
 
+    const paymentLinkData = {
+      student_ids: student_ids || [],
+      package_id: package_id || null,
+      currency: finalCurrency,
+      amount: finalAmount,
+      stripe_session_id: session.id,
+      created_by: user.id,
+      expires_at: expiresAt.toISOString(),
+      status: 'pending',
+      payment_type: payment_type,
+      family_group_id: family_group_id || null,
+      package_selections: payment_type === 'family_group' ? package_selections : null,
+      total_amount: payment_type === 'family_group' ? finalAmount : null,
+      individual_amounts: payment_type === 'family_group' ? individual_amounts : null
+    };
+
     const { data: paymentLink, error: linkError } = await supabaseClient
       .from('payment_links')
-      .insert({
-        student_ids: student_ids,
-        package_id: package_id,
-        currency: currency,
-        amount: amount,
-        stripe_session_id: session.id,
-        created_by: user.id,
-        expires_at: expiresAt.toISOString(),
-        status: 'pending'
-      })
+      .insert(paymentLinkData)
       .select()
       .single();
 
     if (linkError) throw new Error(`Failed to store payment link: ${linkError.message}`);
-    logStep("Payment link stored", { linkId: paymentLink.id });
+    logStep("Payment link stored", { linkId: paymentLink.id, paymentType: payment_type });
 
     return new Response(JSON.stringify({ 
       url: session.url,
       session_id: session.id,
-      payment_link_id: paymentLink.id
+      payment_link_id: paymentLink.id,
+      payment_type: payment_type,
+      total_amount: finalAmount,
+      currency: finalCurrency
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
