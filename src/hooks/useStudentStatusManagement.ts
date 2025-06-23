@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -140,7 +141,7 @@ export const useStudentStatusManagement = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('🔄 CRITICAL FIX: Starting enhanced reschedule with constraint handling:', { 
+      console.log('🔄 CRITICAL FIX: Starting enhanced reschedule with family support:', { 
         studentId, newDate, newTime, reason, currentDate, currentTime 
       });
       
@@ -157,34 +158,47 @@ export const useStudentStatusManagement = () => {
         dateString: dateString
       });
 
-      // Get student's current assignment details
-      const { data: studentData, error: studentError } = await supabase
+      // FAMILY RESCHEDULE FIX: Determine if this is a student ID or family group ID
+      const { data: studentCheck, error: studentCheckError } = await supabase
         .from('students')
-        .select('assigned_teacher_id, trial_date, trial_time, family_group_id')
+        .select('id, assigned_teacher_id, trial_date, trial_time, family_group_id')
         .eq('id', studentId)
         .single();
 
-      if (studentError) {
-        console.error('❌ Error fetching student data:', studentError);
-        toast.error('Failed to fetch student details');
-        return false;
+      let teacherId, oldDate, oldTime, familyGroupId, isFamily = false;
+
+      if (studentCheck && !studentCheckError) {
+        // This is an individual student ID
+        teacherId = studentCheck.assigned_teacher_id;
+        oldDate = studentCheck.trial_date;
+        oldTime = studentCheck.trial_time;
+        familyGroupId = studentCheck.family_group_id;
+        isFamily = !!familyGroupId;
+        console.log('👤 FAMILY FIX: Processing individual student:', { studentId, isFamily });
+      } else {
+        // This might be a family group ID, check family_groups table
+        const { data: familyCheck, error: familyCheckError } = await supabase
+          .from('family_groups')
+          .select('assigned_teacher_id, trial_date, trial_time')
+          .eq('id', studentId)
+          .single();
+
+        if (familyCheck && !familyCheckError) {
+          teacherId = familyCheck.assigned_teacher_id;
+          oldDate = familyCheck.trial_date;
+          oldTime = familyCheck.trial_time;
+          familyGroupId = studentId; // This IS the family group ID
+          isFamily = true;
+          console.log('👨‍👩‍👧‍👦 FAMILY FIX: Processing family group:', { familyGroupId });
+        } else {
+          console.error('❌ FAMILY FIX: Neither student nor family found:', studentId);
+          toast.error('Student or family not found');
+          return false;
+        }
       }
 
-      const teacherId = studentData.assigned_teacher_id;
-      const oldDate = studentData.trial_date;
-      const oldTime = studentData.trial_time;
-      const familyGroupId = studentData.family_group_id;
-
-      console.log('📋 Student data retrieved:', {
-        teacherId,
-        oldDate,
-        oldTime,
-        familyGroupId,
-        isFamily: !!familyGroupId
-      });
-
       if (!teacherId) {
-        toast.error('No teacher assigned to this student');
+        toast.error('No teacher assigned to this student/family');
         return false;
       }
 
@@ -268,7 +282,7 @@ export const useStudentStatusManagement = () => {
         .from('teacher_availability')
         .update({
           is_booked: true,
-          student_id: studentId,
+          student_id: isFamily ? null : studentId, // Don't link family group ID to availability
           updated_at: new Date().toISOString()
         })
         .eq('id', availabilityCheck.id);
@@ -280,8 +294,8 @@ export const useStudentStatusManagement = () => {
       }
 
       // CRITICAL FIX: Update student/family with enhanced handling
-      if (familyGroupId) {
-        console.log('👨‍👩‍👧‍👦 CRITICAL FIX: Updating family group with new schedule');
+      if (isFamily) {
+        console.log('👨‍👩‍👧‍👦 FAMILY FIX: Updating family group with new schedule');
         // Update family group
         const { error: familyUpdateError } = await supabase
           .from('family_groups')
@@ -314,9 +328,9 @@ export const useStudentStatusManagement = () => {
           return false;
         }
 
-        console.log('✅ CRITICAL FIX: Family group and all students updated successfully');
+        console.log('✅ FAMILY FIX: Family group and all students updated successfully');
       } else {
-        console.log('👤 CRITICAL FIX: Updating individual student');
+        console.log('👤 FAMILY FIX: Updating individual student');
         // Update individual student
         const { error: studentUpdateError } = await supabase
           .from('students')
@@ -333,56 +347,80 @@ export const useStudentStatusManagement = () => {
           return false;
         }
 
-        console.log('✅ CRITICAL FIX: Individual student updated successfully');
+        console.log('✅ FAMILY FIX: Individual student updated successfully');
       }
 
-      // CRITICAL FIX: Enhanced session update with better error handling
-      const { data: sessionStudents, error: sessionStudentsError } = await supabase
-        .from('session_students')
-        .select('session_id')
-        .eq('student_id', studentId);
+      // FAMILY RESCHEDULE FIX: Enhanced session update with family support
+      let sessionStudentIds: string[] = [];
 
-      if (sessionStudentsError) {
-        console.error('❌ Error fetching session students:', sessionStudentsError);
-        // Don't fail the operation for this
-      } else if (sessionStudents && sessionStudents.length > 0) {
-        // Get the most recent session for this student
-        const sessionIds = sessionStudents.map(ss => ss.session_id);
-        const { data: sessionData, error: sessionFetchError } = await supabase
-          .from('sessions')
-          .select('id, reschedule_count, original_date, original_time, scheduled_date, scheduled_time')
-          .in('id', sessionIds)
-          .eq('scheduled_date', oldDate || dateString)
-          .eq('scheduled_time', dbFormattedOldTime || dbFormattedNewTime)
-          .order('created_at', { ascending: false })
-          .limit(1);
+      if (isFamily) {
+        // For family trials, get all student IDs in the family group
+        const { data: familyStudents, error: familyStudentsError } = await supabase
+          .from('students')
+          .select('id')
+          .eq('family_group_id', familyGroupId);
 
-        if (sessionData && sessionData.length > 0) {
-          const session = sessionData[0];
-          const { error: sessionUpdateError } = await supabase
+        if (familyStudentsError) {
+          console.error('❌ FAMILY FIX: Error fetching family students for session update:', familyStudentsError);
+        } else if (familyStudents && familyStudents.length > 0) {
+          sessionStudentIds = familyStudents.map(student => student.id);
+          console.log('👨‍👩‍👧‍👦 FAMILY FIX: Found family student IDs for session update:', sessionStudentIds);
+        }
+      } else {
+        // For individual trials, use the student ID directly
+        sessionStudentIds = [studentId];
+        console.log('👤 FAMILY FIX: Using individual student ID for session update:', sessionStudentIds);
+      }
+
+      // Update sessions for all relevant student IDs
+      if (sessionStudentIds.length > 0) {
+        const { data: sessionStudents, error: sessionStudentsError } = await supabase
+          .from('session_students')
+          .select('session_id')
+          .in('student_id', sessionStudentIds);
+
+        if (sessionStudentsError) {
+          console.error('❌ FAMILY FIX: Error fetching session students:', sessionStudentsError);
+        } else if (sessionStudents && sessionStudents.length > 0) {
+          // Get the most recent session for these students
+          const sessionIds = sessionStudents.map(ss => ss.session_id);
+          const { data: sessionData, error: sessionFetchError } = await supabase
             .from('sessions')
-            .update({
-              scheduled_date: dateString,
-              scheduled_time: dbFormattedNewTime,
-              reschedule_count: (session.reschedule_count || 0) + 1,
-              reschedule_reason: reason,
-              original_date: session.original_date || oldDate,
-              original_time: session.original_time || oldTime,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', session.id);
+            .select('id, reschedule_count, original_date, original_time, scheduled_date, scheduled_time')
+            .in('id', sessionIds)
+            .eq('scheduled_date', oldDate || dateString)
+            .eq('scheduled_time', dbFormattedOldTime || dbFormattedNewTime)
+            .order('created_at', { ascending: false })
+            .limit(1);
 
-          if (sessionUpdateError) {
-            console.error('❌ Error updating session:', sessionUpdateError);
-            // Don't fail the operation for this
+          if (sessionData && sessionData.length > 0) {
+            const session = sessionData[0];
+            const { error: sessionUpdateError } = await supabase
+              .from('sessions')
+              .update({
+                scheduled_date: dateString,
+                scheduled_time: dbFormattedNewTime,
+                reschedule_count: (session.reschedule_count || 0) + 1,
+                reschedule_reason: reason,
+                original_date: session.original_date || oldDate,
+                original_time: session.original_time || oldTime,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', session.id);
+
+            if (sessionUpdateError) {
+              console.error('❌ FAMILY FIX: Error updating session:', sessionUpdateError);
+            } else {
+              console.log('✅ FAMILY FIX: Session updated with reschedule information for', isFamily ? 'family' : 'individual');
+            }
           } else {
-            console.log('✅ CRITICAL FIX: Session updated with reschedule information');
+            console.log('⚠️ FAMILY FIX: No matching session found for reschedule count update');
           }
         }
       }
 
-      console.log('✅ CRITICAL FIX: Student rescheduled successfully with all enhancements');
-      toast.success(`${familyGroupId ? 'Family' : 'Student'} trial session rescheduled successfully`);
+      console.log('✅ FAMILY FIX: Student/family rescheduled successfully with enhanced family support');
+      toast.success(`${isFamily ? 'Family' : 'Student'} trial session rescheduled successfully`);
       return true;
     } catch (error: any) {
       console.error('❌ Error in rescheduleStudent:', error);
