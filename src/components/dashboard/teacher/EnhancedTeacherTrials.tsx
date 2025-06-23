@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -87,6 +88,38 @@ const EnhancedTeacherTrials: React.FC = () => {
     console.log('✅ Reschedule completed successfully');
     setRescheduleItem(null);
     refreshTrialData();
+  };
+
+  // Helper function to create a compatible student object for modals
+  const createStudentForModal = (item: TeacherMixedTrialItem) => {
+    if (item.type === 'individual') {
+      return {
+        id: item.data.id,
+        name: item.data.name,
+        age: item.data.age,
+        phone: item.data.phone,
+        country: item.data.country,
+        trialDate: item.data.trialDate,
+        trialTime: item.data.trialTime,
+        uniqueId: item.data.uniqueId,
+        parentName: item.data.parentName,
+        notes: item.data.notes,
+      };
+    } else {
+      // For family, create a representative student object
+      return {
+        id: item.data.id,
+        name: item.data.parentName,
+        age: 0, // Not applicable for family
+        phone: item.data.phone,
+        country: item.data.country,
+        trialDate: item.data.trialDate,
+        trialTime: item.data.trialTime,
+        uniqueId: item.data.uniqueId,
+        parentName: item.data.parentName,
+        notes: item.data.notes,
+      };
+    }
   };
 
   return (
@@ -208,11 +241,7 @@ const EnhancedTeacherTrials: React.FC = () => {
       {/* Modals */}
       {rescheduleItem && (
         <RescheduleModal
-          student={rescheduleItem.type === 'individual' ? {
-            id: rescheduleItem.data.id,
-            name: rescheduleItem.type === 'individual' ? rescheduleItem.data.name : rescheduleItem.data.parentName,
-            // ... other properties would need to be mapped
-          } : null}
+          student={createStudentForModal(rescheduleItem)}
           open={!!rescheduleItem}
           onClose={() => setRescheduleItem(null)}
           onSuccess={handleRescheduleSuccess}
@@ -221,11 +250,7 @@ const EnhancedTeacherTrials: React.FC = () => {
 
       {trialOutcomeItem && (
         <TrialOutcomeModal
-          student={trialOutcomeItem.type === 'individual' ? {
-            id: trialOutcomeItem.data.id,
-            name: trialOutcomeItem.type === 'individual' ? trialOutcomeItem.data.name : trialOutcomeItem.data.parentName,
-            // ... other properties would need to be mapped
-          } : null}
+          student={createStudentForModal(trialOutcomeItem)}
           outcome={trialOutcomeType}
           open={!!trialOutcomeItem}
           onClose={() => setTrialOutcomeItem(null)}
