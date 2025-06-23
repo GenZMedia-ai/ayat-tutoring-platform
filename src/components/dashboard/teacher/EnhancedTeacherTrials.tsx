@@ -93,31 +93,35 @@ const EnhancedTeacherTrials: React.FC = () => {
   // Helper function to create a compatible student object for modals
   const createStudentForModal = (item: TeacherMixedTrialItem) => {
     if (item.type === 'individual') {
+      const studentData = item.data;
       return {
-        id: item.data.id,
-        name: item.data.name,
-        age: item.data.age,
-        phone: item.data.phone,
-        country: item.data.country,
-        trialDate: item.data.trialDate,
-        trialTime: item.data.trialTime,
-        uniqueId: item.data.uniqueId,
-        parentName: item.data.parentName,
-        notes: item.data.notes,
+        id: studentData.id,
+        name: studentData.name,
+        age: studentData.age,
+        phone: studentData.phone,
+        country: studentData.country,
+        trialDate: studentData.trialDate,
+        trialTime: studentData.trialTime,
+        uniqueId: studentData.uniqueId,
+        parentName: studentData.parentName,
+        notes: studentData.notes,
+        status: studentData.status,
       };
     } else {
       // For family, create a representative student object
+      const familyData = item.data;
       return {
-        id: item.data.id,
-        name: item.data.parentName,
+        id: familyData.id,
+        name: familyData.parentName,
         age: 0, // Not applicable for family
-        phone: item.data.phone,
-        country: item.data.country,
-        trialDate: item.data.trialDate,
-        trialTime: item.data.trialTime,
-        uniqueId: item.data.uniqueId,
-        parentName: item.data.parentName,
-        notes: item.data.notes,
+        phone: familyData.phone,
+        country: familyData.country,
+        trialDate: familyData.trialDate,
+        trialTime: familyData.trialTime,
+        uniqueId: familyData.uniqueId,
+        parentName: familyData.parentName,
+        notes: familyData.notes,
+        status: familyData.status,
       };
     }
   };
