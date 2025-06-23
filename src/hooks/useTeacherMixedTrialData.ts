@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -239,6 +238,65 @@ export const useTeacherMixedTrialData = () => {
     }
   };
 
+  const confirmTrial = async (item: TeacherMixedTrialItem): Promise<boolean> => {
+    try {
+      console.log('✅ Confirming trial for item:', item.type, item.id);
+      
+      if (item.type === 'individual') {
+        const studentData = item.data as TeacherTrialStudent;
+        
+        const { data, error } = await supabase.rpc('confirm_trial', {
+          p_student_id: studentData.id
+        });
+        
+        if (error) {
+          console.error('❌ Error confirming individual trial:', error);
+          toast.error('Failed to confirm trial: ' + error.message);
+          return false;
+        }
+        
+        console.log('✅ Individual trial confirmed:', data);
+        toast.success('Trial confirmed successfully');
+        
+      } else {
+        // For family trials, confirm using the first student from the family
+        const { data: familyStudents, error: fetchError } = await supabase
+          .from('students')
+          .select('id')
+          .eq('family_group_id', item.id)
+          .limit(1);
+          
+        if (fetchError || !familyStudents || familyStudents.length === 0) {
+          console.error('❌ Error fetching family student for confirmation:', fetchError);
+          toast.error('Failed to find family student data');
+          return false;
+        }
+        
+        const { data, error } = await supabase.rpc('confirm_trial', {
+          p_student_id: familyStudents[0].id
+        });
+        
+        if (error) {
+          console.error('❌ Error confirming family trial:', error);
+          toast.error('Failed to confirm family trial: ' + error.message);
+          return false;
+        }
+        
+        console.log('✅ Family trial confirmed:', data);
+        toast.success('Family trial confirmed successfully');
+      }
+      
+      // Refresh the data after successful confirmation
+      await fetchMixedTrialData();
+      return true;
+      
+    } catch (error: any) {
+      console.error('❌ Error in confirmTrial:', error);
+      toast.error('Failed to confirm trial: ' + error.message);
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchMixedTrialData();
   }, [user]);
@@ -301,5 +359,6 @@ export const useTeacherMixedTrialData = () => {
     trialData,
     loading,
     refreshTrialData: fetchMixedTrialData,
+    confirmTrial
   };
 };

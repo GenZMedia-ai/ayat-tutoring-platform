@@ -3,6 +3,20 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface TrialOutcomeResponse {
+  success: boolean;
+  outcome_id: string;
+  family_group_id?: string;
+  students_updated: number;
+  message: string;
+}
+
+interface FamilySessionLinksResponse {
+  success: boolean;
+  links_created: number;
+  message: string;
+}
+
 export const useTrialOutcomes = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -54,9 +68,12 @@ export const useTrialOutcomes = () => {
 
       console.log('✅ Trial outcome submitted successfully:', data);
 
+      // Type the response properly
+      const response = data as TrialOutcomeResponse;
+      
       // Enhanced success message for family trials
-      const isFamily = data?.family_group_id;
-      const studentsUpdated = data?.students_updated || 1;
+      const isFamily = response?.family_group_id;
+      const studentsUpdated = response?.students_updated || 1;
       
       const successMessage = isFamily 
         ? `Family trial marked as ${outcome}. ${studentsUpdated} students updated. Control returned to Sales team.`
@@ -108,10 +125,13 @@ export const useTrialOutcomes = () => {
       
       console.log('✅ Family session links repaired:', data);
       
-      if (data?.links_created > 0) {
+      // Type the response properly
+      const response = data as FamilySessionLinksResponse;
+      
+      if (response?.links_created > 0) {
         toast({
           title: "Session Links Repaired",
-          description: `Created ${data.links_created} missing session links for family trials.`,
+          description: `Created ${response.links_created} missing session links for family trials.`,
         });
       }
       

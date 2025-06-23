@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -23,11 +24,11 @@ const EnhancedTeacherTrials: React.FC = () => {
   const [trialOutcomeItem, setTrialOutcomeItem] = useState<TeacherMixedTrialItem | null>(null);
   const [trialOutcomeType, setTrialOutcomeType] = useState<'completed' | 'ghosted'>('completed');
   
-  const { trialItems, loading: trialsLoading, confirmTrial, refreshTrialData } = useTeacherMixedTrialData();
+  const { trialData, loading: trialsLoading, confirmTrial, refreshTrialData } = useTeacherMixedTrialData();
   const { logContact, openWhatsApp } = useWhatsAppContact();
 
   // PHASE 1: Improved filtering with better status handling
-  const filteredItems = trialItems.filter(item => {
+  const filteredItems = trialData.filter(item => {
     const statusMatch = statusFilter === 'all' || item.data.status === statusFilter;
     return statusMatch;
   });
