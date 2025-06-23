@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { DateRange } from '@/components/teacher/DateFilter';
 
-interface TeacherStats {
+interface TeacherStatistics {
   currentCapacity: number;
   pendingTrials: number;
   confirmedTrials: number;
@@ -13,118 +13,156 @@ interface TeacherStats {
   ghostedTrials: number;
 }
 
+const getDateRangeFilter = (dateRange: DateRange): { startDate: string; endDate: string } => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  switch (dateRange) {
+    case 'today':
+      return {
+        startDate: today.toISOString().split('T')[0],
+        endDate: today.toISOString().split('T')[0]
+      };
+    case 'yesterday':
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return {
+        startDate: yesterday.toISOString().split('T')[0],
+        endDate: yesterday.toISOString().split('T')[0]
+      };
+    case 'last-7-days':
+      const lastWeek = new Date(today);
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      return {
+        startDate: lastWeek.toISOString().split('T')[0],
+        endDate: today.toISOString().split('T')[0]
+      };
+    case 'this-month':
+      const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return {
+        startDate: firstDayThisMonth.toISOString().split('T')[0],
+        endDate: today.toISOString().split('T')[0]
+      };
+    case 'last-month':
+      const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      return {
+        startDate: firstDayLastMonth.toISOString().split('T')[0],
+        endDate: lastDayLastMonth.toISOString().split('T')[0]
+      };
+    case 'all-time':
+    default:
+      return {
+        startDate: '2020-01-01',
+        endDate: '2030-12-31'
+      };
+  }
+};
+
 export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
   const { user } = useAuth();
-  const [stats, setStats] = useState<TeacherStats>({
+  const [stats, setStats] = useState<TeacherStatistics>({
     currentCapacity: 0,
     pendingTrials: 0,
     confirmedTrials: 0,
     completedTrials: 0,
     rescheduledTrials: 0,
-    ghostedTrials: 0
+    ghostedTrials: 0,
   });
   const [loading, setLoading] = useState(false);
-
-  const getDateFilter = (range: DateRange) => {
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    
-    switch (range) {
-      case 'today':
-        return { start: today, end: today };
-      case 'yesterday':
-        const yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-        return { start: yesterdayStr, end: yesterdayStr };
-      case 'last-7-days':
-        const week = new Date(now);
-        week.setDate(week.getDate() - 7);
-        return { start: week.toISOString().split('T')[0], end: today };
-      case 'this-month':
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        return { start: monthStart.toISOString().split('T')[0], end: today };
-      case 'last-month':
-        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-        return { 
-          start: lastMonthStart.toISOString().split('T')[0], 
-          end: lastMonthEnd.toISOString().split('T')[0] 
-        };
-      default:
-        return { start: '1970-01-01', end: today };
-    }
-  };
 
   const fetchStatistics = async () => {
     if (!user) return;
 
     setLoading(true);
     try {
-      const { start, end } = getDateFilter(dateRange);
-      
-      console.log('🔍 Fetching teacher statistics:', { teacherId: user.id, dateRange, start, end });
+      console.log('📊 PHASE 3: Fetching teacher statistics with date filter:', { teacherId: user.id, dateRange });
 
-      // Fetch trial statistics from students table
-      const { data: trialStats, error: trialError } = await supabase
-        .from('students')
-        .select('id, status, trial_date')
-        .eq('assigned_teacher_id', user.id)
-        .gte('trial_date', start)
-        .lte('trial_date', end);
+      const { startDate, endDate } = getDateRangeFilter(dateRange);
+      console.log('📅 PHASE 3: Date range filter:', { startDate, endDate });
 
-      if (trialError) {
-        console.error('❌ Error fetching trial stats:', trialError);
-        return;
-      }
-
-      // Fetch current capacity (active students)
-      const { data: capacityData, error: capacityError } = await supabase
+      // Current capacity (all active students)
+      const { data: activeStudents, error: activeError } = await supabase
         .from('students')
         .select('id')
         .eq('assigned_teacher_id', user.id)
         .eq('status', 'active');
 
-      if (capacityError) {
-        console.error('❌ Error fetching capacity:', capacityError);
-        return;
+      if (activeError) {
+        console.error('❌ PHASE 3: Error fetching active students:', activeError);
+        throw activeError;
       }
 
-      // Fetch reschedule statistics from sessions table
-      const { data: rescheduledSessions, error: rescheduledError } = await supabase
-        .from('sessions')
-        .select('id, reschedule_count, session_students!inner(student_id)')
-        .gte('scheduled_date', start)
-        .lte('scheduled_date', end)
-        .gt('reschedule_count', 0);
+      console.log('✅ PHASE 3: Active students found:', activeStudents?.length || 0);
 
-      if (rescheduledError) {
-        console.error('❌ Error fetching rescheduled sessions:', rescheduledError);
+      // Individual students statistics with date filter
+      const { data: individualStudents, error: individualsError } = await supabase
+        .from('students')
+        .select('id, status, trial_date')
+        .eq('assigned_teacher_id', user.id)
+        .is('family_group_id', null)
+        .gte('trial_date', startDate)
+        .lte('trial_date', endDate);
+
+      if (individualsError) {
+        console.error('❌ PHASE 3: Error fetching individual students:', individualsError);
+        throw individualsError;
       }
 
-      // Filter rescheduled sessions for this teacher's students
-      let rescheduledCount = 0;
-      if (rescheduledSessions) {
-        const teacherStudentIds = trialStats?.map(s => s.id) || [];
-        rescheduledCount = rescheduledSessions.filter(session => 
-          session.session_students.some(ss => teacherStudentIds.includes(ss.student_id))
-        ).length;
+      console.log('✅ PHASE 3: Individual students in date range:', individualStudents?.length || 0);
+
+      // Family groups statistics with date filter
+      const { data: familyGroups, error: familyError } = await supabase
+        .from('family_groups')
+        .select('id, status, trial_date, student_count')
+        .eq('assigned_teacher_id', user.id)
+        .gte('trial_date', startDate)
+        .lte('trial_date', endDate);
+
+      if (familyError) {
+        console.error('❌ PHASE 3: Error fetching family groups:', familyError);
+        throw familyError;
       }
+
+      console.log('✅ PHASE 3: Family groups in date range:', familyGroups?.length || 0);
 
       // Calculate statistics
-      const newStats: TeacherStats = {
-        currentCapacity: capacityData?.length || 0,
-        pendingTrials: trialStats?.filter(s => s.status === 'pending').length || 0,
-        confirmedTrials: trialStats?.filter(s => s.status === 'confirmed').length || 0,
-        completedTrials: trialStats?.filter(s => s.status === 'trial-completed').length || 0,
-        rescheduledTrials: rescheduledCount,
-        ghostedTrials: trialStats?.filter(s => s.status === 'trial-ghosted').length || 0
+      const individualsByStatus = {
+        pending: individualStudents?.filter(s => s.status === 'pending').length || 0,
+        confirmed: individualStudents?.filter(s => s.status === 'confirmed').length || 0,
+        completed: individualStudents?.filter(s => s.status === 'trial-completed').length || 0,
+        ghosted: individualStudents?.filter(s => s.status === 'trial-ghosted').length || 0,
+        rescheduled: individualStudents?.filter(s => s.status === 'rescheduled').length || 0,
       };
 
-      console.log('📊 Teacher statistics:', newStats);
+      // Family groups count as single units for statistics
+      const familiesByStatus = {
+        pending: familyGroups?.filter(f => f.status === 'pending').length || 0,
+        confirmed: familyGroups?.filter(f => f.status === 'confirmed').length || 0,
+        completed: familyGroups?.filter(f => f.status === 'trial-completed').length || 0,
+        ghosted: familyGroups?.filter(f => f.status === 'trial-ghosted').length || 0,
+        rescheduled: familyGroups?.filter(f => f.status === 'rescheduled').length || 0,
+      };
+
+      const newStats = {
+        currentCapacity: activeStudents?.length || 0,
+        pendingTrials: individualsByStatus.pending + familiesByStatus.pending,
+        confirmedTrials: individualsByStatus.confirmed + familiesByStatus.confirmed,
+        completedTrials: individualsByStatus.completed + familiesByStatus.completed,
+        rescheduledTrials: individualsByStatus.rescheduled + familiesByStatus.rescheduled,
+        ghostedTrials: individualsByStatus.ghosted + familiesByStatus.ghosted,
+      };
+
+      console.log('📊 PHASE 3: Calculated statistics:', {
+        dateRange,
+        individualsByStatus,
+        familiesByStatus,
+        finalStats: newStats
+      });
+
       setStats(newStats);
     } catch (error) {
-      console.error('❌ Error in fetchStatistics:', error);
+      console.error('❌ PHASE 3: Error fetching teacher statistics:', error);
     } finally {
       setLoading(false);
     }
@@ -134,9 +172,5 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
     fetchStatistics();
   }, [user, dateRange]);
 
-  return {
-    stats,
-    loading,
-    refreshStats: fetchStatistics
-  };
+  return { stats, loading, refreshStats: fetchStatistics };
 };

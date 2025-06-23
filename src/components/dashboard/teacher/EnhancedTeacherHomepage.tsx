@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,9 +27,20 @@ const EGYPT_TIMEZONE = 'Africa/Cairo';
 
 const EnhancedTeacherHomepage: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange>('today');
-  const { stats, loading: statsLoading } = useTeacherStatistics(dateRange);
+  
+  // PHASE 3 FIX: Use improved statistics hook
+  const { stats, loading: statsLoading, refreshStats } = useTeacherStatistics(dateRange);
   const { sessions, loading: sessionsLoading, refreshSessions } = useTodayPaidSessions();
   const { completeSession, loading: completingSession } = useSessionCompletion();
+
+  // PHASE 3: Add debugging for data display
+  useEffect(() => {
+    console.log('🏠 HOMEPAGE: Stats updated:', { dateRange, stats, loading: statsLoading });
+  }, [stats, statsLoading, dateRange]);
+
+  useEffect(() => {
+    console.log('🏠 HOMEPAGE: Sessions updated:', { sessions, loading: sessionsLoading });
+  }, [sessions, sessionsLoading]);
 
   const formatTime = (timeStr: string) => {
     try {
@@ -39,6 +50,7 @@ const EnhancedTeacherHomepage: React.FC = () => {
       const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
       return format(egyptDateTime, 'h:mm a');
     } catch (error) {
+      console.error('❌ Error formatting time:', error);
       return timeStr;
     }
   };
@@ -125,8 +137,19 @@ const EnhancedTeacherHomepage: React.FC = () => {
           <h1 className="text-2xl font-bold text-primary">Teacher Dashboard</h1>
           <p className="text-muted-foreground">Overview of your teaching activities</p>
         </div>
+        {/* PHASE 3 FIX: Date filter properly connected */}
         <DateFilter value={dateRange} onChange={setDateRange} />
       </div>
+
+      {/* PHASE 3: Enhanced debugging display */}
+      {dateRange !== 'today' && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p className="text-sm text-blue-800">
+            📅 Showing data for: <strong>{dateRange.replace('-', ' ').toUpperCase()}</strong>
+            {statsLoading && ' (Loading...)'}
+          </p>
+        </div>
+      )}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -136,7 +159,14 @@ const EnhancedTeacherHomepage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                  <p className="text-2xl font-bold">{statsLoading ? '-' : stat.value}</p>
+                  {/* PHASE 3 FIX: Better loading state display */}
+                  <p className="text-2xl font-bold">
+                    {statsLoading ? (
+                      <span className="text-muted-foreground">...</span>
+                    ) : (
+                      stat.value
+                    )}
+                  </p>
                 </div>
                 <div className={`p-2 rounded-full ${stat.bg}`}>
                   <stat.icon className={`h-4 w-4 ${stat.color}`} />
@@ -169,6 +199,9 @@ const EnhancedTeacherHomepage: React.FC = () => {
             ) : sessions.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">No paid sessions scheduled for today</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Check the Paid Registration tab for students ready to schedule
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -241,6 +274,29 @@ const EnhancedTeacherHomepage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* PHASE 3: Debug information (can be removed in production) */}
+      {process.env.NODE_ENV === 'development' && (
+        <Card className="bg-gray-50 border-dashed">
+          <CardHeader>
+            <CardTitle className="text-sm">Debug Information</CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <strong>Statistics Loading:</strong> {statsLoading ? 'Yes' : 'No'}<br/>
+                <strong>Sessions Loading:</strong> {sessionsLoading ? 'Yes' : 'No'}<br/>
+                <strong>Date Range:</strong> {dateRange}
+              </div>
+              <div>
+                <strong>Total Stats:</strong> {Object.values(stats).reduce((a, b) => a + b, 0)}<br/>
+                <strong>Sessions Count:</strong> {sessions.length}<br/>
+                <strong>Current Time:</strong> {new Date().toLocaleTimeString()}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

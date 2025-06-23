@@ -3,13 +3,13 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateFilter, DateRange } from '@/components/teacher/DateFilter';
-import { useTeacherMixedTrialData } from '@/hooks/useTeacherMixedTrialData';
+import { useTeacherMixedTrialDataWithDateFilter } from '@/hooks/useTeacherMixedTrialDataWithDateFilter';
 import { useWhatsAppContact } from '@/hooks/useWhatsAppContact';
 import { UnifiedTeacherStudentCard } from '@/components/teacher/UnifiedTeacherStudentCard';
 import { RescheduleModal } from '@/components/teacher/RescheduleModal';
 import TrialOutcomeModal from '@/components/teacher/TrialOutcomeModal';
 import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
-import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialData';
+import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialDataWithDateFilter';
 import { Badge } from '@/components/ui/badge';
 import { Filter } from 'lucide-react';
 import { toast } from 'sonner';
@@ -24,16 +24,17 @@ const EnhancedTeacherTrials: React.FC = () => {
   const [trialOutcomeItem, setTrialOutcomeItem] = useState<TeacherMixedTrialItem | null>(null);
   const [trialOutcomeType, setTrialOutcomeType] = useState<'completed' | 'ghosted'>('completed');
   
-  const { trialData, loading: trialsLoading, confirmTrial, refreshTrialData } = useTeacherMixedTrialData();
+  // PHASE 2 FIX: Use the new date-filtered hook
+  const { trialData, loading: trialsLoading, confirmTrial, refreshTrialData } = useTeacherMixedTrialDataWithDateFilter(dateRange);
   const { logContact, openWhatsApp } = useWhatsAppContact();
 
-  // PHASE 1: Improved filtering with better status handling
+  // PHASE 2: Improved filtering with better status handling and date filtering
   const filteredItems = trialData.filter(item => {
     const statusMatch = statusFilter === 'all' || item.data.status === statusFilter;
     return statusMatch;
   });
 
-  // PHASE 2: Better item categorization with consistent status handling
+  // Better item categorization with consistent status handling
   const pendingConfirmedItems = filteredItems.filter(item => 
     item.data.status === 'pending' || item.data.status === 'confirmed'
   );
@@ -42,47 +43,47 @@ const EnhancedTeacherTrials: React.FC = () => {
     item.data.status === 'trial-completed' || item.data.status === 'trial-ghosted'
   );
 
-  // PHASE 4 FIX: Enhanced contact handling with family support
+  // Enhanced contact handling with family support
   const handleContactItem = async (phone: string, name: string) => {
     try {
-      console.log('📞 PHASE 4: Enhanced contact handling:', { phone, name });
+      console.log('📞 Enhanced contact handling:', { phone, name });
       openWhatsApp(phone);
       
-      // PHASE 4 FIX: Optimized refresh timing
+      // Optimized refresh timing
       setTimeout(() => refreshTrialData(), 300);
     } catch (error) {
       console.error('❌ Error handling contact:', error);
     }
   };
 
-  // PHASE 4 FIX: Enhanced trial confirmation with better family handling
+  // Enhanced trial confirmation with better family handling
   const handleConfirmTrial = async (item: TeacherMixedTrialItem) => {
-    console.log('✅ PHASE 4: Enhanced trial confirmation for:', item.type, item.id);
+    console.log('✅ Enhanced trial confirmation for:', item.type, item.id);
     
     try {
       const success = await confirmTrial(item);
       if (success) {
-        console.log('✅ PHASE 4: Trial confirmed successfully for item:', item.id);
+        console.log('✅ Trial confirmed successfully for item:', item.id);
         if (item.type === 'family') {
-          console.log('👨‍👩‍👧‍👦 PHASE 4: Family trial confirmed - all students updated atomically');
+          console.log('👨‍👩‍👧‍👦 Family trial confirmed - all students updated atomically');
         }
       }
     } catch (error) {
-      console.error('❌ PHASE 4: Error in handleConfirmTrial:', error);
+      console.error('❌ Error in handleConfirmTrial:', error);
     }
   };
 
-  // PHASE 3 FIX: Enhanced outcome handling with session validation
+  // Enhanced outcome handling with session validation
   const handleMarkCompleted = (item: TeacherMixedTrialItem) => {
-    console.log('🎯 PHASE 3: Enhanced completed trial outcome for item:', {
+    console.log('🎯 Enhanced completed trial outcome for item:', {
       type: item.type,
       id: item.id,
       hasSessionId: !!item.data.sessionId
     });
     
-    // PHASE 3 FIX: Validate session data before opening modal
+    // Validate session data before opening modal
     if (!item.data.sessionId) {
-      console.error('❌ PHASE 3: Cannot mark as completed - no session ID for:', item.type, item.id);
+      console.error('❌ Cannot mark as completed - no session ID for:', item.type, item.id);
       toast.error(`Cannot mark ${item.type} trial as completed - session data not found. Please refresh and try again.`);
       return;
     }
@@ -92,15 +93,15 @@ const EnhancedTeacherTrials: React.FC = () => {
   };
 
   const handleMarkGhosted = (item: TeacherMixedTrialItem) => {
-    console.log('👻 PHASE 3: Enhanced ghosted trial outcome for item:', {
+    console.log('👻 Enhanced ghosted trial outcome for item:', {
       type: item.type,
       id: item.id,
       hasSessionId: !!item.data.sessionId
     });
     
-    // PHASE 3 FIX: Validate session data before opening modal
+    // Validate session data before opening modal
     if (!item.data.sessionId) {
-      console.error('❌ PHASE 3: Cannot mark as ghosted - no session ID for:', item.type, item.id);
+      console.error('❌ Cannot mark as ghosted - no session ID for:', item.type, item.id);
       toast.error(`Cannot mark ${item.type} trial as ghosted - session data not found. Please refresh and try again.`);
       return;
     }
@@ -110,14 +111,14 @@ const EnhancedTeacherTrials: React.FC = () => {
   };
 
   const handleTrialOutcomeSuccess = () => {
-    console.log('✅ PHASE 3: Enhanced trial outcome submitted successfully');
+    console.log('✅ Enhanced trial outcome submitted successfully');
     setTrialOutcomeItem(null);
     refreshTrialData();
   };
 
-  // PHASE 4 FIX: Enhanced reschedule handling with better family support
+  // Enhanced reschedule handling with better family support
   const handleReschedule = (item: TeacherMixedTrialItem) => {
-    console.log('🔄 CRITICAL FIX: Enhanced reschedule for item:', {
+    console.log('🔄 Enhanced reschedule for item:', {
       type: item.type,
       id: item.id,
       hasTrialDate: !!item.data.trialDate,
@@ -125,86 +126,16 @@ const EnhancedTeacherTrials: React.FC = () => {
     });
     
     if (item.type === 'family') {
-      console.log('👨‍👩‍👧‍👦 CRITICAL FIX: Family reschedule - now fully supported with proper student ID handling');
+      console.log('👨‍👩‍👧‍👦 Family reschedule - now fully supported with proper student ID handling');
     }
     
     setRescheduleItem(item);
   };
 
   const handleRescheduleSuccess = () => {
-    console.log('✅ CRITICAL FIX: Enhanced reschedule completed successfully');
+    console.log('✅ Enhanced reschedule completed successfully');
     setRescheduleItem(null);
     refreshTrialData();
-  };
-
-  // CRITICAL FIX: Enhanced student creation with proper family handling
-  const createStudentForModal = async (item: TeacherMixedTrialItem) => {
-    console.log('🔧 CRITICAL FIX: Creating student object for modal:', {
-      type: item.type,
-      id: item.id,
-      hasSessionId: !!item.data.sessionId
-    });
-
-    if (item.type === 'individual') {
-      const studentData = item.data as TeacherTrialStudent;
-      return {
-        id: studentData.id,
-        name: studentData.name,
-        age: studentData.age,
-        phone: studentData.phone,
-        country: studentData.country,
-        trialDate: studentData.trialDate,
-        trialTime: studentData.trialTime,
-        uniqueId: studentData.uniqueId,
-        parentName: studentData.parentName,
-        notes: studentData.notes,
-        status: studentData.status,
-        sessionId: studentData.sessionId,
-      };
-    } else {
-      // CRITICAL FIX: For family trials, fetch the first student ID from the family group
-      const familyData = item.data as TeacherTrialFamily;
-      
-      console.log('🔍 CRITICAL FIX: Fetching first student from family group:', item.id);
-      
-      try {
-        const { data: firstStudent, error } = await supabase
-          .from('students')
-          .select('id, name, age, phone, country, trial_date, trial_time, unique_id, parent_name, notes, status, assigned_teacher_id, family_group_id')
-          .eq('family_group_id', item.id)
-          .limit(1)
-          .single();
-
-        if (error || !firstStudent) {
-          console.error('❌ CRITICAL FIX: Failed to fetch first student from family:', error);
-          toast.error('Failed to load family student data. Please refresh and try again.');
-          throw new Error('Family student not found');
-        }
-
-        console.log('✅ CRITICAL FIX: Successfully fetched first student from family:', {
-          studentId: firstStudent.id,
-          familyGroupId: firstStudent.family_group_id
-        });
-
-        return {
-          id: firstStudent.id, // CRITICAL FIX: Use actual student ID, not family group ID
-          name: familyData.parentName,
-          age: 0, // Not applicable for family
-          phone: familyData.phone,
-          country: familyData.country,
-          trialDate: familyData.trialDate,
-          trialTime: familyData.trialTime,
-          uniqueId: familyData.uniqueId,
-          parentName: familyData.parentName,
-          notes: familyData.notes,
-          status: familyData.status,
-          sessionId: familyData.sessionId,
-        };
-      } catch (error) {
-        console.error('❌ CRITICAL FIX: Error in family student creation:', error);
-        throw error;
-      }
-    }
   };
 
   return (
@@ -232,6 +163,7 @@ const EnhancedTeacherTrials: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
+          {/* PHASE 2 FIX: Date filter now properly connected */}
           <DateFilter value={dateRange} onChange={setDateRange} />
         </div>
       </div>
@@ -323,11 +255,11 @@ const EnhancedTeacherTrials: React.FC = () => {
         </>
       )}
 
-      {/* CRITICAL FIX: Enhanced Modals with async student creation */}
+      {/* Enhanced Modals */}
       {rescheduleItem && (
         <RescheduleModal
-          student={null} // Will be loaded async inside the modal
-          studentData={rescheduleItem} // Pass the item data instead
+          student={null}
+          studentData={rescheduleItem}
           open={!!rescheduleItem}
           onClose={() => setRescheduleItem(null)}
           onSuccess={handleRescheduleSuccess}
@@ -336,8 +268,8 @@ const EnhancedTeacherTrials: React.FC = () => {
 
       {trialOutcomeItem && (
         <TrialOutcomeModal
-          student={null} // Will be loaded async inside the modal
-          studentData={trialOutcomeItem} // Pass the item data instead
+          student={null}
+          studentData={trialOutcomeItem}
           outcome={trialOutcomeType}
           open={!!trialOutcomeItem}
           onClose={() => setTrialOutcomeItem(null)}
