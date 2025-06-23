@@ -13,38 +13,6 @@ export const useStudentStatusManagement = () => {
   const userRole = user?.role || 'teacher';
   const { validateTransition, requiresConfirmation } = useStatusValidation(userRole);
 
-  // PHASE 1&2 FIX: Helper function to convert Egypt time to UTC with seconds format
-  const egyptTimeToUTCWithSeconds = (date: Date, egyptTime: string): string => {
-    console.log('🔄 PHASE 1&2: Egypt time to UTC conversion:', { date: date.toDateString(), egyptTime });
-    
-    const [hours, minutes] = egyptTime.split(':').map(Number);
-    console.log('📅 Egypt time components:', { hours, minutes });
-    
-    // Egypt is UTC+2, so to convert FROM Egypt TO UTC, we SUBTRACT 2 hours
-    const EGYPT_UTC_OFFSET = 2;
-    let utcHour = hours - EGYPT_UTC_OFFSET;
-    
-    // Handle day boundary crossings properly
-    if (utcHour < 0) {
-      utcHour += 24;
-      console.log('⚠️ UTC hour crossed to previous day:', utcHour);
-    } else if (utcHour >= 24) {
-      utcHour -= 24;
-      console.log('⚠️ UTC hour crossed to next day:', utcHour);
-    }
-    
-    const utcTime = `${String(utcHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
-    
-    console.log('✅ PHASE 1&2: Egypt to UTC conversion result:', {
-      egyptTime: egyptTime,
-      utcTime: utcTime,
-      offsetSubtracted: EGYPT_UTC_OFFSET,
-      utcHour: utcHour
-    });
-    
-    return utcTime;
-  };
-
   const validateStatusConstraint = async (newStatus: string) => {
     const validStatuses = [
       'pending', 'confirmed', 'trial-completed', 'trial-ghosted', 
@@ -134,7 +102,6 @@ export const useStudentStatusManagement = () => {
     }
   };
 
-  // PHASE 1&2 FIX: Comprehensive reschedule function with proper time handling and atomic operations
   const rescheduleStudent = async (
     studentId: string, 
     newDate: Date, 
@@ -145,23 +112,24 @@ export const useStudentStatusManagement = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('🔄 PHASE 1&2: Starting comprehensive reschedule with atomic operations:', { 
+      console.log('🔄 PHASE 2 FIX: Starting reschedule with correct time handling:', { 
         studentId, newDate, newTime, reason, currentDate, currentTime 
       });
       
+      // PHASE 2 FIX: Remove UTC conversion completely - use times as stored in DB
       const dateString = format(newDate, 'yyyy-MM-dd');
-      const utcTimeWithSeconds = egyptTimeToUTCWithSeconds(newDate, newTime);
+      const directTime = newTime; // Use time directly without conversion
 
-      console.log('🕐 PHASE 1&2: Time handling with proper format:', {
-        selectedEgyptTime: newTime,
-        utcTimeWithSeconds: utcTimeWithSeconds,
+      console.log('🕐 PHASE 2 FIX: Direct time handling (no UTC conversion):', {
+        selectedTime: newTime,
+        directTime: directTime,
         newDate: dateString
       });
 
-      // PHASE 2 FIX: Get comprehensive student data including current slot information
+      // Get student's current assignment details
       const { data: studentData, error: studentError } = await supabase
         .from('students')
-        .select('assigned_teacher_id, trial_date, trial_time, family_group_id, name')
+        .select('assigned_teacher_id, trial_date, trial_time')
         .eq('id', studentId)
         .single();
 
@@ -180,104 +148,46 @@ export const useStudentStatusManagement = () => {
         return false;
       }
 
-      console.log('📋 PHASE 2: Student data retrieved:', {
-        teacherId,
-        oldDate,
-        oldTime,
-        familyGroupId: studentData.family_group_id,
-        studentName: studentData.name
-      });
-
-      // PHASE 2 FIX: Check new slot availability with exact time format matching
+      // PHASE 2 FIX: Check availability using direct time format
       const { data: availabilityCheck, error: availabilityError } = await supabase
         .from('teacher_availability')
         .select('*')
         .eq('teacher_id', teacherId)
         .eq('date', dateString)
-        .eq('time_slot', utcTimeWithSeconds)
+        .eq('time_slot', directTime) // PHASE 2 FIX: Use direct time
         .eq('is_available', true)
         .eq('is_booked', false)
         .single();
 
       if (availabilityError || !availabilityCheck) {
-        console.error('❌ PHASE 2: New slot not available:', availabilityError);
+        console.error('❌ Slot not available:', availabilityError);
         toast.error('Selected time slot is no longer available');
         return false;
       }
 
-      console.log('✅ PHASE 2: New slot verified as available:', {
-        slotId: availabilityCheck.id,
-        teacherId: teacherId,
-        date: dateString,
-        time: utcTimeWithSeconds
-      });
-
-      // PHASE 2 FIX: Free up old slot with exact time format matching if it exists
+      // PHASE 2 FIX: Free up old slot using correct time format
       if (oldDate && oldTime) {
-        console.log('🔓 PHASE 2: Attempting to free old slot:', { oldDate, oldTime });
-        
-        // Convert old time to ensure proper format (handle both HH:mm and HH:mm:ss)
-        const oldTimeFormatted = oldTime.includes(':') && oldTime.split(':').length === 2 
-          ? `${oldTime}:00` 
-          : oldTime;
-
-        console.log('🔍 PHASE 2: Old time format check:', {
-          originalOldTime: oldTime,
-          formattedOldTime: oldTimeFormatted
-        });
-
-        const { data: oldSlotData, error: oldSlotFetchError } = await supabase
+        console.log('🔓 PHASE 2 FIX: Freeing old slot with correct time:', { oldDate, oldTime });
+        const { error: oldSlotError } = await supabase
           .from('teacher_availability')
-          .select('*')
+          .update({ 
+            is_booked: false,
+            student_id: null,
+            updated_at: new Date().toISOString()
+          })
           .eq('teacher_id', teacherId)
           .eq('date', oldDate)
-          .eq('time_slot', oldTimeFormatted);
+          .eq('time_slot', oldTime); // PHASE 2 FIX: Use stored time directly
 
-        if (oldSlotFetchError) {
-          console.error('❌ PHASE 2: Error fetching old slot:', oldSlotFetchError);
-          toast.error('Failed to locate old time slot');
+        if (oldSlotError) {
+          console.error('❌ Error freeing old slot:', oldSlotError);
+          toast.error('Failed to free old time slot');
           return false;
-        }
-
-        console.log('📋 PHASE 2: Old slot lookup result:', oldSlotData);
-
-        if (oldSlotData && oldSlotData.length > 0) {
-          // Find the slot that was booked by this student or is booked
-          const oldSlot = oldSlotData.find(slot => 
-            slot.student_id === studentId || slot.is_booked === true
-          );
-
-          if (oldSlot) {
-            console.log('🔓 PHASE 2: Freeing old slot:', oldSlot.id);
-            const { error: oldSlotError } = await supabase
-              .from('teacher_availability')
-              .update({ 
-                is_booked: false,
-                student_id: null,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', oldSlot.id);
-
-            if (oldSlotError) {
-              console.error('❌ PHASE 2: Error freeing old slot:', oldSlotError);
-              toast.error('Failed to free old time slot');
-              return false;
-            }
-            console.log('✅ PHASE 2: Old slot freed successfully');
-          } else {
-            console.log('ℹ️ PHASE 2: No old slot found to free (may have been manually freed)');
-          }
-        } else {
-          console.log('ℹ️ PHASE 2: No old slot data found (may have been deleted)');
         }
       }
 
-      // PHASE 2 FIX: Book new slot atomically
-      console.log('🔒 PHASE 2: Booking new slot atomically:', {
-        slotId: availabilityCheck.id,
-        studentId: studentId
-      });
-      
+      // PHASE 2 FIX: Book new slot using direct time
+      console.log('🔒 PHASE 2 FIX: Booking new slot with direct time:', { teacherId, dateString, directTime });
       const { error: newSlotError } = await supabase
         .from('teacher_availability')
         .update({
@@ -288,116 +198,56 @@ export const useStudentStatusManagement = () => {
         .eq('id', availabilityCheck.id);
 
       if (newSlotError) {
-        console.error('❌ PHASE 2: Error booking new slot:', newSlotError);
+        console.error('❌ Error booking new slot:', newSlotError);
         toast.error('Failed to book new time slot');
         return false;
       }
 
-      console.log('✅ PHASE 2: New slot booked successfully');
-
-      // PHASE 2&3 FIX: Update student record with proper time format
-      console.log('📝 PHASE 2&3: Updating student record:', { studentId, dateString, newTime });
+      // PHASE 2 FIX: Update student with direct time
+      console.log('📝 PHASE 2 FIX: Updating student record with direct time:', { studentId, dateString, directTime });
       const { error: studentUpdateError } = await supabase
         .from('students')
         .update({ 
           trial_date: dateString,
-          trial_time: newTime, // Keep as HH:mm format for student record
+          trial_time: directTime, // PHASE 2 FIX: Use direct time
           updated_at: new Date().toISOString()
         })
         .eq('id', studentId);
 
       if (studentUpdateError) {
-        console.error('❌ PHASE 2&3: Error updating student:', studentUpdateError);
+        console.error('❌ Error updating student:', studentUpdateError);
         toast.error('Failed to update student details');
-        
-        // PHASE 2 FIX: Rollback - free the newly booked slot
-        await supabase
-          .from('teacher_availability')
-          .update({
-            is_booked: false,
-            student_id: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', availabilityCheck.id);
-        
         return false;
       }
 
-      // PHASE 3 FIX: If this is a family student, also update the family group
-      if (studentData.family_group_id) {
-        console.log('👨‍👩‍👧‍👦 PHASE 3: Updating family group for student:', studentData.family_group_id);
-        
-        const { error: familyUpdateError } = await supabase
-          .from('family_groups')
-          .update({
-            trial_date: dateString,
-            trial_time: newTime,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', studentData.family_group_id);
-
-        if (familyUpdateError) {
-          console.error('❌ PHASE 3: Error updating family group:', familyUpdateError);
-          // Don't fail the operation, but log it
-        } else {
-          console.log('✅ PHASE 3: Family group updated successfully');
-        }
-
-        // PHASE 3 FIX: Update all other students in the family
-        const { error: familyStudentsError } = await supabase
-          .from('students')
-          .update({
-            trial_date: dateString,
-            trial_time: newTime,
-            updated_at: new Date().toISOString()
-          })
-          .eq('family_group_id', studentData.family_group_id)
-          .neq('id', studentId); // Don't update the current student again
-
-        if (familyStudentsError) {
-          console.error('❌ PHASE 3: Error updating family students:', familyStudentsError);
-          // Don't fail the operation, but log it
-        } else {
-          console.log('✅ PHASE 3: All family students updated successfully');
-        }
-      }
-
-      // PHASE 4 FIX: Update session with reschedule information
+      // Update session with reschedule info
       const { data: sessionStudents, error: sessionStudentsError } = await supabase
         .from('session_students')
         .select('session_id')
         .eq('student_id', studentId);
 
       if (sessionStudentsError) {
-        console.error('❌ PHASE 4: Error fetching session students:', sessionStudentsError);
+        console.error('❌ Error fetching session students:', sessionStudentsError);
         // Don't fail the operation for this
       } else if (sessionStudents && sessionStudents.length > 0) {
         // Get the most recent session for this student
         const sessionIds = sessionStudents.map(ss => ss.session_id);
-        
         const { data: sessionData, error: sessionFetchError } = await supabase
           .from('sessions')
           .select('id, reschedule_count, original_date, original_time, scheduled_date, scheduled_time')
           .in('id', sessionIds)
           .eq('scheduled_date', oldDate || dateString)
+          .eq('scheduled_time', oldTime || directTime) // PHASE 2 FIX: Use direct time
           .order('created_at', { ascending: false })
           .limit(1);
 
         if (sessionData && sessionData.length > 0) {
           const session = sessionData[0];
-          
-          console.log('📝 PHASE 4: Updating session with reschedule info:', {
-            sessionId: session.id,
-            newDate: dateString,
-            newTime: utcTimeWithSeconds,
-            reason: reason
-          });
-          
           const { error: sessionUpdateError } = await supabase
             .from('sessions')
             .update({
               scheduled_date: dateString,
-              scheduled_time: utcTimeWithSeconds,
+              scheduled_time: directTime, // PHASE 2 FIX: Use direct time
               reschedule_count: (session.reschedule_count || 0) + 1,
               reschedule_reason: reason,
               original_date: session.original_date || oldDate,
@@ -407,16 +257,14 @@ export const useStudentStatusManagement = () => {
             .eq('id', session.id);
 
           if (sessionUpdateError) {
-            console.error('❌ PHASE 4: Error updating session:', sessionUpdateError);
+            console.error('❌ Error updating session:', sessionUpdateError);
             // Don't fail the operation for this
-          } else {
-            console.log('✅ PHASE 4: Session updated with reschedule information');
           }
         }
       }
 
-      console.log('✅ PHASE 1-4: Student rescheduled successfully with comprehensive fixes');
-      toast.success(`${studentData.family_group_id ? 'Family' : 'Student'} trial session rescheduled successfully`);
+      console.log('✅ PHASE 2 FIX: Student rescheduled successfully with direct time handling');
+      toast.success('Student trial session rescheduled successfully');
       return true;
     } catch (error) {
       console.error('❌ Error in rescheduleStudent:', error);
@@ -427,7 +275,6 @@ export const useStudentStatusManagement = () => {
     }
   };
 
-  // ... keep existing code (bulkStatusUpdate function)
   const bulkStatusUpdate = async (studentIds: string[], newStatus: string) => {
     setLoading(true);
     try {
