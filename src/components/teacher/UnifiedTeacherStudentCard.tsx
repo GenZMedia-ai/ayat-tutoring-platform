@@ -1,11 +1,10 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, User, Users, Phone, Globe, MessageSquare, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialData';
-import { WhatsAppContactButton } from './WhatsAppContactButton';
+import WhatsAppContactButton from './WhatsAppContactButton';
 
 interface UnifiedTeacherStudentCardProps {
   item: TeacherMixedTrialItem;
