@@ -17,6 +17,24 @@ interface FamilySessionLinksResponse {
   message: string;
 }
 
+// Type guard functions for safe type conversion
+const isTrialOutcomeResponse = (data: any): data is TrialOutcomeResponse => {
+  return data && 
+    typeof data === 'object' && 
+    typeof data.success === 'boolean' &&
+    typeof data.outcome_id === 'string' &&
+    typeof data.students_updated === 'number' &&
+    typeof data.message === 'string';
+};
+
+const isFamilySessionLinksResponse = (data: any): data is FamilySessionLinksResponse => {
+  return data && 
+    typeof data === 'object' && 
+    typeof data.success === 'boolean' &&
+    typeof data.links_created === 'number' &&
+    typeof data.message === 'string';
+};
+
 export const useTrialOutcomes = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -68,12 +86,14 @@ export const useTrialOutcomes = () => {
 
       console.log('✅ Trial outcome submitted successfully:', data);
 
-      // Type the response properly
-      const response = data as TrialOutcomeResponse;
+      // Safe type conversion with validation
+      if (!isTrialOutcomeResponse(data)) {
+        throw new Error('Invalid response format from database');
+      }
       
       // Enhanced success message for family trials
-      const isFamily = response?.family_group_id;
-      const studentsUpdated = response?.students_updated || 1;
+      const isFamily = data.family_group_id;
+      const studentsUpdated = data.students_updated || 1;
       
       const successMessage = isFamily 
         ? `Family trial marked as ${outcome}. ${studentsUpdated} students updated. Control returned to Sales team.`
@@ -125,13 +145,15 @@ export const useTrialOutcomes = () => {
       
       console.log('✅ Family session links repaired:', data);
       
-      // Type the response properly
-      const response = data as FamilySessionLinksResponse;
+      // Safe type conversion with validation
+      if (!isFamilySessionLinksResponse(data)) {
+        throw new Error('Invalid response format from repair function');
+      }
       
-      if (response?.links_created > 0) {
+      if (data.links_created > 0) {
         toast({
           title: "Session Links Repaired",
-          description: `Created ${response.links_created} missing session links for family trials.`,
+          description: `Created ${data.links_created} missing session links for family trials.`,
         });
       }
       
