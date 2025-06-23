@@ -507,7 +507,11 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          package_name: string | null
+          package_session_count: number | null
           parent_name: string | null
+          payment_amount: number | null
+          payment_currency: string | null
           phone: string
           platform: string
           status: string
@@ -528,7 +532,11 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          package_name?: string | null
+          package_session_count?: number | null
           parent_name?: string | null
+          payment_amount?: number | null
+          payment_currency?: string | null
           phone: string
           platform: string
           status?: string
@@ -549,7 +557,11 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          package_name?: string | null
+          package_session_count?: number | null
           parent_name?: string | null
+          payment_amount?: number | null
+          payment_currency?: string | null
           phone?: string
           platform?: string
           status?: string

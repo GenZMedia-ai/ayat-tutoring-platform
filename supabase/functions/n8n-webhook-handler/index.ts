@@ -45,7 +45,8 @@ serve(async (req) => {
       individual_student_data,
       package_session_count,
       total_amount,
-      currency
+      currency,
+      individual_amounts
     } = webhookData;
 
     // CRITICAL: Filter only AyatWBian payments
@@ -76,7 +77,7 @@ serve(async (req) => {
     let studentsToUpdate = [];
 
     // Handle different payment types
-    if (payment_type === 'family_group' && family_group_id) {
+    if (payment_type === 'family_group') {
       logStep("Processing family group payment");
 
       // Find family group by unique_id
@@ -119,7 +120,7 @@ serve(async (req) => {
         logStep("Family group status updated to paid");
       }
 
-      // If individual student data is provided, update each student with their package info
+      // ENHANCED: Process individual student data with specific package info
       if (individual_student_data) {
         try {
           const studentData = JSON.parse(individual_student_data);
@@ -131,7 +132,7 @@ serve(async (req) => {
               .update({
                 package_session_count: studentInfo.session_count,
                 package_name: studentInfo.package_name,
-                package_amount: studentInfo.amount,
+                payment_amount: studentInfo.amount,
                 payment_currency: currency,
                 updated_at: new Date().toISOString()
               })
@@ -142,10 +143,46 @@ serve(async (req) => {
                 studentId: studentInfo.student_id, 
                 error: studentPackageError 
               });
+            } else {
+              logStep("Updated student package info", {
+                studentId: studentInfo.student_id,
+                sessionCount: studentInfo.session_count,
+                packageName: studentInfo.package_name,
+                amount: studentInfo.amount
+              });
             }
           }
         } catch (parseError) {
           logStep("Error parsing individual student data", { error: parseError });
+          
+          // FALLBACK: If individual_amounts is available, use it
+          if (individual_amounts) {
+            try {
+              const amounts = JSON.parse(individual_amounts);
+              logStep("Using individual_amounts fallback", amounts);
+              
+              for (const student of studentsToUpdate) {
+                const studentAmount = amounts[student.id];
+                if (studentAmount) {
+                  const { error: fallbackError } = await supabaseClient
+                    .from('students')
+                    .update({
+                      payment_amount: studentAmount,
+                      payment_currency: currency,
+                      package_session_count: parseInt(package_session_count || '8'),
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('id', student.id);
+
+                  if (fallbackError) {
+                    logStep("Fallback update error", { studentId: student.id, error: fallbackError });
+                  }
+                }
+              }
+            } catch (fallbackParseError) {
+              logStep("Fallback parsing also failed", { error: fallbackParseError });
+            }
+          }
         }
       }
 

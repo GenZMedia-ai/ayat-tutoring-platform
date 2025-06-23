@@ -8,7 +8,7 @@ import { useWhatsAppContact } from '@/hooks/useWhatsAppContact';
 import { CompleteRegistrationModal } from './CompleteRegistrationModal';
 import { LoadingSpinner } from './LoadingSpinner';
 import { DateRange } from '@/components/teacher/DateFilter';
-import { Calendar, Clock, DollarSign, Phone, User } from 'lucide-react';
+import { Calendar, Clock, DollarSign, Phone, User, Package } from 'lucide-react';
 
 interface PaidStudentsSectionProps {
   dateRange?: DateRange;
@@ -71,7 +71,11 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
   };
 
   const handleCompleteRegistration = (student: any) => {
-    console.log('🎯 Opening registration modal for student:', student.name);
+    console.log('🎯 Opening registration modal for student:', {
+      name: student.name,
+      sessionCount: student.packageSessionCount,
+      isFamilyMember: student.isFamilyMember
+    });
     setSelectedStudent(student);
   };
 
@@ -159,6 +163,9 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
                         <User className="h-4 w-4 text-muted-foreground" />
                         <h4 className="font-medium text-lg">{student.name}</h4>
                         <Badge className="bg-green-100 text-green-800 border-green-200">PAID</Badge>
+                        {student.isFamilyMember && (
+                          <Badge variant="outline" className="text-xs">Family Member</Badge>
+                        )}
                         {student.paymentDate && (
                           <Badge variant="outline" className="text-xs">
                             Paid: {new Date(student.paymentDate).toLocaleDateString()}
@@ -173,7 +180,9 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3 text-muted-foreground" />
-                          <span className="font-medium">{student.packageSessionCount} sessions</span>
+                          <span className="font-medium text-primary">
+                            {student.packageSessionCount} sessions
+                          </span>
                         </div>
                         <div className="flex items-center gap-1">
                           <DollarSign className="h-3 w-3 text-muted-foreground" />
@@ -186,6 +195,14 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
                           <span className="font-medium capitalize">{student.platform}</span>
                         </div>
                       </div>
+
+                      {student.packageName && (
+                        <div className="flex items-center gap-1 text-sm">
+                          <Package className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-muted-foreground">Package:</span>
+                          <span className="font-medium">{student.packageName}</span>
+                        </div>
+                      )}
                       
                       {student.parentName && (
                         <div className="flex items-center gap-1 text-sm">

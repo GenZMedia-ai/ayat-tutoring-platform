@@ -25,10 +25,16 @@ export const CompleteRegistrationModal: React.FC<CompleteRegistrationModalProps>
   const { completeRegistration, loading } = useCompleteRegistration();
   const [sessions, setSessions] = useState<SessionData[]>([]);
 
-  // Initialize sessions when student changes
+  // Initialize sessions when student changes - use individual package session count
   React.useEffect(() => {
     if (student) {
       const sessionCount = student.packageSessionCount || 8;
+      console.log('🎯 Initializing sessions for student:', {
+        name: student.name,
+        sessionCount: sessionCount,
+        isFamilyMember: student.isFamilyMember
+      });
+      
       const initialSessions: SessionData[] = Array.from(
         { length: sessionCount },
         (_, index) => ({
@@ -79,7 +85,7 @@ export const CompleteRegistrationModal: React.FC<CompleteRegistrationModalProps>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Enhanced Student Summary */}
+          {/* Enhanced Student Summary with Individual Package Data */}
           <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
             <div className="flex items-center gap-2 mb-3">
               <Badge className="bg-green-100 text-green-800 border-green-200">PAID</Badge>
@@ -101,11 +107,13 @@ export const CompleteRegistrationModal: React.FC<CompleteRegistrationModalProps>
               </div>
               <div className="flex items-center gap-1">
                 <Package className="h-3 w-3" />
-                <span>{student.packageName || 'Standard Package'}</span>
+                <span>{student.packageName || 'Custom Package'}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                <span>{student.packageSessionCount} sessions</span>
+                <span className="font-semibold text-primary">
+                  {student.packageSessionCount} sessions
+                </span>
               </div>
               <div className="flex items-center gap-1">
                 <span>Platform: {student.platform}</span>

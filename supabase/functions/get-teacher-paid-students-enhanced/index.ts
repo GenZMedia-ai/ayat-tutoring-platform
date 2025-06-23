@@ -40,7 +40,7 @@ serve(async (req) => {
     
     logStep("User authenticated", { userId: user.id });
 
-    // Get paid students for this teacher
+    // Get paid students for this teacher with enhanced package data
     const { data: paidStudents, error: studentsError } = await supabaseClient
       .from('students')
       .select(`
@@ -71,7 +71,7 @@ serve(async (req) => {
 
     logStep("Found paid students", { count: paidStudents?.length || 0 });
 
-    // Transform data for frontend
+    // Transform data for frontend with individual package data
     const transformedStudents = (paidStudents || []).map(student => {
       // Check if student has completed registration (has active sessions)
       const hasCompletedRegistration = false; // We'll check this separately if needed
@@ -103,7 +103,8 @@ serve(async (req) => {
 
     logStep("Completed processing", { 
       totalPaidStudents: transformedStudents.length,
-      needingRegistration: studentsNeedingRegistration.length
+      needingRegistration: studentsNeedingRegistration.length,
+      familyMembers: transformedStudents.filter(s => s.isFamilyMember).length
     });
 
     return new Response(JSON.stringify(studentsNeedingRegistration), {
