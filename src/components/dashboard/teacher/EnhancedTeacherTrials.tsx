@@ -9,7 +9,7 @@ import { UnifiedTeacherStudentCard } from '@/components/teacher/UnifiedTeacherSt
 import { RescheduleModal } from '@/components/teacher/RescheduleModal';
 import TrialOutcomeModal from '@/components/teacher/TrialOutcomeModal';
 import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
-import { TeacherMixedTrialItem } from '@/hooks/useTeacherMixedTrialData';
+import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialData';
 import { Badge } from '@/components/ui/badge';
 import { Filter } from 'lucide-react';
 
@@ -93,7 +93,7 @@ const EnhancedTeacherTrials: React.FC = () => {
   // Helper function to create a compatible student object for modals
   const createStudentForModal = (item: TeacherMixedTrialItem) => {
     if (item.type === 'individual') {
-      const studentData = item.data;
+      const studentData = item.data as TeacherTrialStudent;
       return {
         id: studentData.id,
         name: studentData.name,
@@ -109,7 +109,7 @@ const EnhancedTeacherTrials: React.FC = () => {
       };
     } else {
       // For family, create a representative student object
-      const familyData = item.data;
+      const familyData = item.data as TeacherTrialFamily;
       return {
         id: familyData.id,
         name: familyData.parentName,
