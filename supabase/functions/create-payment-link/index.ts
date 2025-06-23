@@ -78,7 +78,7 @@ serve(async (req) => {
       if (payment_type === 'family_group' && family_group_id) {
         const { data: familyData } = await supabaseClient
           .from('family_groups')
-          .select('parent_name, phone')
+          .select('parent_name, phone, unique_id')
           .eq('id', family_group_id)
           .single();
         
@@ -87,7 +87,7 @@ serve(async (req) => {
       } else if (student_ids?.length > 0) {
         const { data: studentData } = await supabaseClient
           .from('students')
-          .select('name, phone')
+          .select('name, phone, unique_id')
           .eq('id', student_ids[0])
           .single();
         
@@ -113,11 +113,20 @@ serve(async (req) => {
     if (payment_type === 'family_group' && family_group_id) {
       logStep("Processing family group payment");
       
+      // Get family data with unique_id
+      const { data: familyData, error: familyError } = await supabaseClient
+        .from('family_groups')
+        .select('unique_id, parent_name')
+        .eq('id', family_group_id)
+        .single();
+
+      if (familyError) throw new Error(`Failed to get family data: ${familyError.message}`);
+
       // Get family package selections data
-      const { data: familyPaymentData, error: familyError } = await supabaseClient
+      const { data: familyPaymentData, error: familyPaymentError } = await supabaseClient
         .rpc('calculate_family_payment_total', { p_family_group_id: family_group_id });
 
-      if (familyError) throw new Error(`Failed to calculate family payment: ${familyError.message}`);
+      if (familyPaymentError) throw new Error(`Failed to calculate family payment: ${familyPaymentError.message}`);
       
       finalAmount = familyPaymentData.total_amount;
       finalCurrency = familyPaymentData.currency;
@@ -136,19 +145,44 @@ serve(async (req) => {
         quantity: 1,
       }));
 
+      // CRITICAL FIX: Complete metadata for family payments
       sessionMetadata = {
         ...sessionMetadata,
+        system_name: 'AyatWBian',
+        student_unique_id: familyData.unique_id,
         payment_type: 'family_group',
         family_group_id: family_group_id,
         total_students: selections.length.toString(),
-        system_name: 'AyatWBian'
+        student_count: selections.length.toString(),
+        // Individual student data for n8n processing
+        student_ids: selections.map((sel: any) => sel.student_id).join(','),
+        individual_student_data: JSON.stringify(selections.map((sel: any) => ({
+          student_id: sel.student_id,
+          student_name: sel.student_name,
+          package_id: sel.package_id,
+          package_name: sel.package_name,
+          session_count: sel.session_count,
+          amount: sel.price
+        }))),
+        // Family payment summary
+        total_amount: finalAmount.toString(),
+        currency: finalCurrency
       };
 
-      logStep("Family line items created", { count: lineItems.length, total: finalAmount });
+      logStep("Family line items created", { count: lineItems.length, total: finalAmount, metadata: sessionMetadata });
 
     } else {
       logStep("Processing single student payment");
       
+      // Get student data with unique_id
+      const { data: studentData, error: studentError } = await supabaseClient
+        .from('students')
+        .select('unique_id, name')
+        .eq('id', student_ids[0])
+        .single();
+
+      if (studentError) throw new Error(`Student not found: ${studentError.message}`);
+
       // Single student payment (backward compatibility)
       const { data: packageData, error: packageError } = await supabaseClient
         .from('packages')
@@ -157,14 +191,6 @@ serve(async (req) => {
         .single();
 
       if (packageError) throw new Error(`Package not found: ${packageError.message}`);
-
-      const { data: studentData, error: studentError } = await supabaseClient
-        .from('students')
-        .select('*')
-        .eq('id', student_ids[0])
-        .single();
-
-      if (studentError) throw new Error(`Student not found: ${studentError.message}`);
 
       lineItems = [{
         price_data: {
@@ -178,14 +204,20 @@ serve(async (req) => {
         quantity: 1,
       }];
 
+      // CRITICAL FIX: Complete metadata for single student payments
       sessionMetadata = {
         ...sessionMetadata,
+        system_name: 'AyatWBian',
+        student_unique_id: studentData.unique_id,
+        payment_type: 'single_student',
         student_ids: student_ids.join(','),
         package_id: package_id,
-        system_name: 'AyatWBian',
-        payment_type: 'single_student',
         package_session_count: packageData.session_count.toString(),
-        student_count: '1'
+        student_count: '1',
+        student_name: studentData.name,
+        package_name: packageData.name,
+        total_amount: finalAmount.toString(),
+        currency: finalCurrency
       };
     }
 
@@ -199,7 +231,7 @@ serve(async (req) => {
       metadata: sessionMetadata
     });
 
-    logStep("Checkout session created", { sessionId: session.id });
+    logStep("Checkout session created", { sessionId: session.id, metadata: sessionMetadata });
 
     // Store payment link in database
     const expiresAt = new Date();
@@ -218,7 +250,9 @@ serve(async (req) => {
       family_group_id: family_group_id || null,
       package_selections: payment_type === 'family_group' ? package_selections : null,
       total_amount: payment_type === 'family_group' ? finalAmount : null,
-      individual_amounts: payment_type === 'family_group' ? individual_amounts : null
+      individual_amounts: payment_type === 'family_group' ? individual_amounts : null,
+      package_session_count: payment_type === 'single_student' ? 
+        sessionMetadata.package_session_count : null
     };
 
     const { data: paymentLink, error: linkError } = await supabaseClient

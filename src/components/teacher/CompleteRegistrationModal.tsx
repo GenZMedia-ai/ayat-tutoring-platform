@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useCompleteRegistration, SessionData } from '@/hooks/useCompleteRegistration';
-import { Calendar, Clock, User, DollarSign } from 'lucide-react';
+import { Calendar, Clock, User, DollarSign, Package } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface CompleteRegistrationModalProps {
@@ -28,8 +28,9 @@ export const CompleteRegistrationModal: React.FC<CompleteRegistrationModalProps>
   // Initialize sessions when student changes
   React.useEffect(() => {
     if (student) {
+      const sessionCount = student.packageSessionCount || 8;
       const initialSessions: SessionData[] = Array.from(
-        { length: student.packageSessionCount },
+        { length: sessionCount },
         (_, index) => ({
           sessionNumber: index + 1,
           date: '',
@@ -78,18 +79,29 @@ export const CompleteRegistrationModal: React.FC<CompleteRegistrationModalProps>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Student Summary */}
+          {/* Enhanced Student Summary */}
           <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-3">
               <Badge className="bg-green-100 text-green-800 border-green-200">PAID</Badge>
               <span className="font-medium">{student.name}</span>
               <span className="text-muted-foreground">•</span>
               <span className="text-muted-foreground">Age {student.age}</span>
+              {student.isFamilyMember && (
+                <>
+                  <span className="text-muted-foreground">•</span>
+                  <Badge variant="outline">Family Member</Badge>
+                </>
+              )}
             </div>
-            <div className="flex items-center gap-4 text-sm">
+            
+            <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="flex items-center gap-1">
                 <DollarSign className="h-3 w-3" />
-                <span>{student.paymentAmount} {student.paymentCurrency?.toUpperCase()}</span>
+                <span>{student.paymentAmount} {student.paymentCurrency}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Package className="h-3 w-3" />
+                <span>{student.packageName || 'Standard Package'}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
@@ -99,17 +111,24 @@ export const CompleteRegistrationModal: React.FC<CompleteRegistrationModalProps>
                 <span>Platform: {student.platform}</span>
               </div>
             </div>
+            
             {student.parentName && (
-              <div className="text-sm text-muted-foreground mt-1">
+              <div className="text-sm text-muted-foreground mt-2">
                 Parent: {student.parentName}
               </div>
             )}
+            
+            <div className="text-xs text-muted-foreground mt-2">
+              Payment ID: {student.uniqueId}
+            </div>
           </div>
 
           {/* Session Scheduling Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Schedule All Sessions</h3>
+              <h3 className="text-lg font-medium">
+                Schedule All {student.packageSessionCount} Sessions
+              </h3>
               <div className="grid gap-4">
                 {sessions.map((session, index) => (
                   <div key={index} className="flex items-center gap-4 p-3 border rounded-lg">

@@ -14,11 +14,13 @@ export interface PaidStudent {
   platform: string;
   parentName?: string;
   packageSessionCount: number;
+  packageName: string;
   paymentAmount: number;
   paymentCurrency: string;
   paymentDate: string;
   notes?: string;
   hasCompletedRegistration?: boolean;
+  isFamilyMember?: boolean;
 }
 
 export const useTeacherPaidStudents = () => {
@@ -65,11 +67,13 @@ export const useTeacherPaidStudents = () => {
           platform: student.platform,
           parentName: student.parent_name,
           packageSessionCount: student.package_session_count || 8,
+          packageName: 'Standard Package',
           paymentAmount: student.payment_amount || 0,
           paymentCurrency: student.payment_currency || 'USD',
           paymentDate: student.payment_date || new Date().toISOString(),
           notes: student.notes,
-          hasCompletedRegistration: false
+          hasCompletedRegistration: false,
+          isFamilyMember: false
         })) || [];
 
         setPaidStudents(mappedStudents);

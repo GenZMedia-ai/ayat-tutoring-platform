@@ -34,176 +34,185 @@ serve(async (req) => {
     const webhookData = await req.json();
     logStep("Webhook data received", webhookData);
 
-    // Validate required fields
+    // Extract payment data from n8n webhook
     const { 
-      event_type, 
-      student_unique_id, 
-      stripe_session_id, 
-      processing_status,
-      sessions_created,
-      teacher_assignment,
-      notifications_sent,
-      next_steps 
+      system_name,
+      student_unique_id,
+      payment_type,
+      stripe_session_id,
+      student_ids,
+      family_group_id,
+      individual_student_data,
+      package_session_count,
+      total_amount,
+      currency
     } = webhookData;
 
-    if (!event_type || !student_unique_id || !stripe_session_id || !processing_status) {
-      throw new Error("Missing required fields in webhook data");
+    // CRITICAL: Filter only AyatWBian payments
+    if (system_name !== 'AyatWBian') {
+      logStep("Ignoring payment - not for AyatWBian system", { system_name });
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Payment ignored - not for AyatWBian system' 
+      }), {
+        headers: { 
+          "Content-Type": "application/json",
+          ...corsHeaders
+        },
+        status: 200,
+      });
     }
 
-    logStep("Processing payment completion", { 
+    if (!student_unique_id || !stripe_session_id) {
+      throw new Error("Missing required payment data");
+    }
+
+    logStep("Processing AyatWBian payment", { 
       student_unique_id, 
-      stripe_session_id, 
-      processing_status 
+      payment_type,
+      stripe_session_id 
     });
 
-    // Step 1: Find the student(s) by unique_id
-    const { data: students, error: studentError } = await supabaseClient
-      .from('students')
-      .select('id, name, family_group_id')
-      .eq('unique_id', student_unique_id);
+    let studentsToUpdate = [];
 
-    if (studentError) {
-      throw new Error(`Error finding student: ${studentError.message}`);
-    }
+    // Handle different payment types
+    if (payment_type === 'family_group' && family_group_id) {
+      logStep("Processing family group payment");
 
-    if (!students || students.length === 0) {
-      // Try family groups if no individual student found
-      const { data: familyGroups, error: familyError } = await supabaseClient
+      // Find family group by unique_id
+      const { data: familyGroup, error: familyError } = await supabaseClient
         .from('family_groups')
-        .select('id, parent_name, student_count')
-        .eq('unique_id', student_unique_id);
+        .select('id, parent_name')
+        .eq('unique_id', student_unique_id)
+        .single();
 
-      if (familyError || !familyGroups || familyGroups.length === 0) {
-        throw new Error(`No student or family found with unique_id: ${student_unique_id}`);
+      if (familyError || !familyGroup) {
+        throw new Error(`Family group not found with unique_id: ${student_unique_id}`);
       }
 
-      logStep("Found family group", { familyId: familyGroups[0].id });
-    } else {
-      logStep("Found student(s)", { count: students.length, studentIds: students.map(s => s.id) });
-    }
+      logStep("Found family group", { familyId: familyGroup.id });
 
-    // Step 2: Update teacher assignment if provided
-    if (teacher_assignment && teacher_assignment.teacher_id) {
-      logStep("Updating teacher assignment", teacher_assignment);
+      // Get all students in family
+      const { data: familyStudents, error: studentsError } = await supabaseClient
+        .from('students')
+        .select('*')
+        .eq('family_group_id', familyGroup.id);
 
-      const studentIds = students ? students.map(s => s.id) : [];
-      
-      if (studentIds.length > 0) {
-        const { error: teacherUpdateError } = await supabaseClient
-          .from('students')
-          .update({ 
-            assigned_teacher_id: teacher_assignment.teacher_id,
-            updated_at: new Date().toISOString()
-          })
-          .in('id', studentIds);
-
-        if (teacherUpdateError) {
-          logStep("Error updating teacher assignment", { error: teacherUpdateError });
-        } else {
-          logStep("Teacher assignment updated successfully");
-        }
+      if (studentsError) {
+        throw new Error(`Failed to fetch family students: ${studentsError.message}`);
       }
 
-      // Also update family group if applicable
-      if (!students || students.length === 0) {
-        const { error: familyTeacherError } = await supabaseClient
-          .from('family_groups')
-          .update({ 
-            assigned_teacher_id: teacher_assignment.teacher_id,
-            updated_at: new Date().toISOString()
-          })
-          .eq('unique_id', student_unique_id);
+      studentsToUpdate = familyStudents || [];
 
-        if (familyTeacherError) {
-          logStep("Error updating family teacher assignment", { error: familyTeacherError });
-        }
+      // Update family group status to paid
+      const { error: familyUpdateError } = await supabaseClient
+        .from('family_groups')
+        .update({ 
+          status: 'paid',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', familyGroup.id);
+
+      if (familyUpdateError) {
+        logStep("Error updating family group status", { error: familyUpdateError });
+      } else {
+        logStep("Family group status updated to paid");
       }
-    }
 
-    // Step 3: Create session records if provided
-    if (sessions_created && Array.isArray(sessions_created) && sessions_created.length > 0) {
-      logStep("Creating session records", { sessionCount: sessions_created.length });
+      // If individual student data is provided, update each student with their package info
+      if (individual_student_data) {
+        try {
+          const studentData = JSON.parse(individual_student_data);
+          logStep("Processing individual student package data", { count: studentData.length });
 
-      for (const sessionData of sessions_created) {
-        // Create session
-        const { data: newSession, error: sessionError } = await supabaseClient
-          .from('sessions')
-          .insert({
-            scheduled_date: sessionData.scheduled_date,
-            scheduled_time: sessionData.scheduled_time,
-            status: 'scheduled',
-            session_number: sessionData.session_number || 1,
-            notes: `Created via n8n processing. Calendar event: ${sessionData.calendar_event_id || 'N/A'}`
-          })
-          .select()
-          .single();
+          for (const studentInfo of studentData) {
+            const { error: studentPackageError } = await supabaseClient
+              .from('students')
+              .update({
+                package_session_count: studentInfo.session_count,
+                package_name: studentInfo.package_name,
+                package_amount: studentInfo.amount,
+                payment_currency: currency,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', studentInfo.student_id);
 
-        if (sessionError) {
-          logStep("Error creating session", { error: sessionError, sessionData });
-          continue;
-        }
-
-        // Link students to session
-        if (students && students.length > 0) {
-          for (const student of students) {
-            const { error: linkError } = await supabaseClient
-              .from('session_students')
-              .insert({
-                session_id: newSession.id,
-                student_id: student.id
+            if (studentPackageError) {
+              logStep("Error updating student package info", { 
+                studentId: studentInfo.student_id, 
+                error: studentPackageError 
               });
-
-            if (linkError) {
-              logStep("Error linking student to session", { error: linkError, studentId: student.id });
             }
           }
+        } catch (parseError) {
+          logStep("Error parsing individual student data", { error: parseError });
         }
+      }
 
-        logStep("Session created and linked", { sessionId: newSession.id });
+    } else {
+      logStep("Processing single student payment");
+      
+      // Find student by unique_id
+      const { data: student, error: studentError } = await supabaseClient
+        .from('students')
+        .select('*')
+        .eq('unique_id', student_unique_id)
+        .single();
+
+      if (studentError || !student) {
+        throw new Error(`Student not found with unique_id: ${student_unique_id}`);
+      }
+
+      studentsToUpdate = [student];
+
+      // Update student with package info
+      const { error: packageUpdateError } = await supabaseClient
+        .from('students')
+        .update({
+          package_session_count: parseInt(package_session_count || '8'),
+          payment_amount: parseInt(total_amount || '0'),
+          payment_currency: currency,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', student.id);
+
+      if (packageUpdateError) {
+        logStep("Error updating student package info", { error: packageUpdateError });
       }
     }
 
-    // Step 4: Update student status to 'active' if processing was successful
-    if (processing_status === 'success') {
-      logStep("Updating student status to active");
+    // Update all students status from awaiting-payment to paid
+    if (studentsToUpdate.length > 0) {
+      const studentIds = studentsToUpdate.map(s => s.id);
+      
+      const { data: updatedStudents, error: statusUpdateError } = await supabaseClient
+        .from('students')
+        .update({ 
+          status: 'paid',
+          updated_at: new Date().toISOString()
+        })
+        .in('id', studentIds)
+        .eq('status', 'awaiting-payment')
+        .select('id, name, status');
 
-      if (students && students.length > 0) {
-        const { error: statusUpdateError } = await supabaseClient
-          .from('students')
-          .update({ 
-            status: 'active',
-            updated_at: new Date().toISOString()
-          })
-          .in('id', students.map(s => s.id));
-
-        if (statusUpdateError) {
-          logStep("Error updating student status", { error: statusUpdateError });
-        } else {
-          logStep("Student status updated to active");
-        }
+      if (statusUpdateError) {
+        logStep("Error updating student statuses", { error: statusUpdateError });
+        throw statusUpdateError;
       }
 
-      // Update family group status if applicable
-      if (!students || students.length === 0) {
-        const { error: familyStatusError } = await supabaseClient
-          .from('family_groups')
-          .update({ 
-            status: 'active',
-            updated_at: new Date().toISOString()
-          })
-          .eq('unique_id', student_unique_id);
-
-        if (familyStatusError) {
-          logStep("Error updating family status", { error: familyStatusError });
-        }
-      }
+      logStep("Students updated to paid status", { 
+        count: updatedStudents?.length || 0,
+        students: updatedStudents?.map(s => ({ id: s.id, name: s.name, status: s.status }))
+      });
     }
 
-    // Step 5: Update payment link with processing completion
+    // Update payment link status
     const { error: paymentLinkError } = await supabaseClient
       .from('payment_links')
       .update({
-        status: processing_status === 'success' ? 'paid' : 'expired',
+        status: 'paid',
+        paid_at: new Date().toISOString(),
+        package_session_count: parseInt(package_session_count || '8'),
         updated_at: new Date().toISOString()
       })
       .eq('stripe_session_id', stripe_session_id);
@@ -211,21 +220,20 @@ serve(async (req) => {
     if (paymentLinkError) {
       logStep("Error updating payment link", { error: paymentLinkError });
     } else {
-      logStep("Payment link updated with processing status");
+      logStep("Payment link updated to paid status");
     }
 
-    // Step 6: Log the notification status and next steps
-    logStep("Processing completed", {
-      notifications_sent,
-      next_steps,
-      processing_status
+    logStep("Payment processing completed successfully", {
+      payment_type,
+      students_updated: studentsToUpdate.length,
+      family_payment: payment_type === 'family_group'
     });
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: 'Webhook processed successfully',
-      student_unique_id,
-      processing_status
+      message: 'Payment processed successfully',
+      students_updated: studentsToUpdate.length,
+      payment_type
     }), {
       headers: { 
         "Content-Type": "application/json",
