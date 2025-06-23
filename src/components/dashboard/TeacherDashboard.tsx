@@ -13,7 +13,6 @@ const TeacherDashboard: React.FC = () => {
     { value: 'paid-registration', label: 'Paid Registration', path: '/teacher/paid-registration' },
     { value: 'session-management', label: 'Session Management', path: '/teacher/session-management' },
     { value: 'students', label: 'Students', path: '/teacher/students' },
-    { value: 'sessions', label: 'Sessions', path: '/teacher/sessions' },
     { value: 'revenue', label: 'Revenue', path: '/teacher/revenue' },
   ];
 
@@ -29,7 +28,7 @@ const TeacherDashboard: React.FC = () => {
             </Badge>
           </div>
 
-          <DashboardNavigation tabs={tabs} gridCols="grid-cols-8" />
+          <DashboardNavigation tabs={tabs} gridCols="grid-cols-7" />
           
           <Outlet />
         </div>
