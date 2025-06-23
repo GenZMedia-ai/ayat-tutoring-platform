@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { DateRange } from '@/components/teacher/DateFilter';
+import { DateRange, FilterType } from '@/components/teacher/DateFilter';
 
 export interface TeacherTrialStudent {
   id: string;
@@ -61,7 +60,7 @@ const getDateRangeFilter = (dateRange: DateRange): { startDate: string; endDate:
       };
     case 'last-7-days':
       const lastWeek = new Date(today);
-      lastWeek.setDate(lastWeek.getDate() - 7);
+      lastWeek.setDate(lastWeek.getDate() - 6); // Include today
       return {
         startDate: lastWeek.toISOString().split('T')[0],
         endDate: today.toISOString().split('T')[0]
@@ -88,7 +87,10 @@ const getDateRangeFilter = (dateRange: DateRange): { startDate: string; endDate:
   }
 };
 
-export const useTeacherMixedTrialDataWithDateFilter = (dateRange: DateRange = 'today') => {
+export const useTeacherMixedTrialDataWithDateFilter = (
+  dateRange: DateRange = 'today',
+  filterType: FilterType = 'session_date'
+) => {
   const { user } = useAuth();
   const [trialData, setTrialData] = useState<TeacherMixedTrialItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,13 +100,31 @@ export const useTeacherMixedTrialDataWithDateFilter = (dateRange: DateRange = 't
 
     setLoading(true);
     try {
-      console.log('🔍 Fetching mixed trial data for teacher with date filter:', { teacherId: user.id, dateRange });
+      console.log('🔍 Fetching mixed trial data with enhanced date filter:', { 
+        teacherId: user.id, 
+        dateRange, 
+        filterType 
+      });
 
       const { startDate, endDate } = getDateRangeFilter(dateRange);
-      console.log('📅 Date range filter:', { startDate, endDate });
+      console.log('📅 Date range filter:', { startDate, endDate, filterType });
 
-      // Fetch individual students with date filter
-      const { data: individualStudents, error: studentsError } = await supabase
+      // Determine which date field to filter by
+      const dateField = filterType === 'session_date' ? 'trial_date' : 'created_at';
+      const dateFilter = filterType === 'session_date' 
+        ? { 
+            field: 'trial_date',
+            startDate,
+            endDate
+          }
+        : {
+            field: 'created_at', 
+            startDate: startDate + 'T00:00:00.000Z',
+            endDate: endDate + 'T23:59:59.999Z'
+          };
+
+      // Fetch individual students with enhanced date filtering
+      let studentsQuery = supabase
         .from('students')
         .select(`
           id,
@@ -119,21 +139,38 @@ export const useTeacherMixedTrialDataWithDateFilter = (dateRange: DateRange = 't
           trial_time,
           notes,
           status,
-          family_group_id
+          family_group_id,
+          created_at
         `)
         .eq('assigned_teacher_id', user.id)
         .in('status', ['pending', 'confirmed', 'trial-completed', 'trial-ghosted', 'rescheduled'])
-        .is('family_group_id', null)
-        .gte('trial_date', startDate)
-        .lte('trial_date', endDate);
+        .is('family_group_id', null);
+
+      // Apply date filtering based on filter type
+      if (dateRange !== 'all-time') {
+        if (filterType === 'session_date') {
+          // Filter by trial_date, handle nulls gracefully
+          studentsQuery = studentsQuery
+            .not('trial_date', 'is', null)
+            .gte('trial_date', dateFilter.startDate)
+            .lte('trial_date', dateFilter.endDate);
+        } else {
+          // Filter by created_at (booking date)
+          studentsQuery = studentsQuery
+            .gte('created_at', dateFilter.startDate)
+            .lte('created_at', dateFilter.endDate);
+        }
+      }
+
+      const { data: individualStudents, error: studentsError } = await studentsQuery;
 
       if (studentsError) {
         console.error('❌ Error fetching individual students:', studentsError);
         throw studentsError;
       }
 
-      // Fetch family groups with date filter
-      const { data: familyGroups, error: familyError } = await supabase
+      // Fetch family groups with enhanced date filtering
+      let familyQuery = supabase
         .from('family_groups')
         .select(`
           id,
@@ -146,12 +183,27 @@ export const useTeacherMixedTrialDataWithDateFilter = (dateRange: DateRange = 't
           trial_time,
           notes,
           status,
-          student_count
+          student_count,
+          created_at
         `)
         .eq('assigned_teacher_id', user.id)
-        .in('status', ['pending', 'confirmed', 'trial-completed', 'trial-ghosted', 'rescheduled'])
-        .gte('trial_date', startDate)
-        .lte('trial_date', endDate);
+        .in('status', ['pending', 'confirmed', 'trial-completed', 'trial-ghosted', 'rescheduled']);
+
+      // Apply date filtering for families
+      if (dateRange !== 'all-time') {
+        if (filterType === 'session_date') {
+          familyQuery = familyQuery
+            .not('trial_date', 'is', null)
+            .gte('trial_date', dateFilter.startDate)
+            .lte('trial_date', dateFilter.endDate);
+        } else {
+          familyQuery = familyQuery
+            .gte('created_at', dateFilter.startDate)
+            .lte('created_at', dateFilter.endDate);
+        }
+      }
+
+      const { data: familyGroups, error: familyError } = await familyQuery;
 
       if (familyError) {
         console.error('❌ Error fetching family groups:', familyError);
@@ -256,8 +308,9 @@ export const useTeacherMixedTrialDataWithDateFilter = (dateRange: DateRange = 't
         }
       }
 
-      console.log('📋 Processed mixed trial data with date filter:', {
+      console.log('📋 Processed mixed trial data with enhanced filtering:', {
         dateRange,
+        filterType,
         totalItems: processedData.length,
         individuals: processedData.filter(item => item.type === 'individual').length,
         families: processedData.filter(item => item.type === 'family').length
@@ -331,7 +384,7 @@ export const useTeacherMixedTrialDataWithDateFilter = (dateRange: DateRange = 't
 
   useEffect(() => {
     fetchMixedTrialData();
-  }, [user, dateRange]);
+  }, [user, dateRange, filterType]);
 
   // Set up real-time updates
   useEffect(() => {
@@ -385,7 +438,7 @@ export const useTeacherMixedTrialDataWithDateFilter = (dateRange: DateRange = 't
       console.log('🔄 Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
-  }, [user, dateRange]);
+  }, [user, dateRange, filterType]);
 
   return {
     trialData,

@@ -2,33 +2,33 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DateFilter, DateRange } from '@/components/teacher/DateFilter';
+import { DateFilter, DateRange, FilterType } from '@/components/teacher/DateFilter';
 import { useTeacherMixedTrialDataWithDateFilter } from '@/hooks/useTeacherMixedTrialDataWithDateFilter';
 import { useWhatsAppContact } from '@/hooks/useWhatsAppContact';
 import { UnifiedTeacherStudentCard } from '@/components/teacher/UnifiedTeacherStudentCard';
 import { RescheduleModal } from '@/components/teacher/RescheduleModal';
 import TrialOutcomeModal from '@/components/teacher/TrialOutcomeModal';
 import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
-import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialDataWithDateFilter';
+import { TeacherMixedTrialItem } from '@/hooks/useTeacherMixedTrialDataWithDateFilter';
 import { Badge } from '@/components/ui/badge';
 import { Filter } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'trial-completed' | 'trial-ghosted' | 'rescheduled';
 
 const EnhancedTeacherTrials: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [dateRange, setDateRange] = useState<DateRange>('today');
+  const [filterType, setFilterType] = useState<FilterType>('session_date');
   const [rescheduleItem, setRescheduleItem] = useState<TeacherMixedTrialItem | null>(null);
   const [trialOutcomeItem, setTrialOutcomeItem] = useState<TeacherMixedTrialItem | null>(null);
   const [trialOutcomeType, setTrialOutcomeType] = useState<'completed' | 'ghosted'>('completed');
   
-  // PHASE 2 FIX: Use the new date-filtered hook
-  const { trialData, loading: trialsLoading, confirmTrial, refreshTrialData } = useTeacherMixedTrialDataWithDateFilter(dateRange);
-  const { logContact, openWhatsApp } = useWhatsAppContact();
+  // Use the enhanced hook with dual filtering
+  const { trialData, loading: trialsLoading, confirmTrial, refreshTrialData } = useTeacherMixedTrialDataWithDateFilter(dateRange, filterType);
+  const { openWhatsApp } = useWhatsAppContact();
 
-  // PHASE 2: Improved filtering with better status handling and date filtering
+  // Enhanced filtering with better status handling and date filtering
   const filteredItems = trialData.filter(item => {
     const statusMatch = statusFilter === 'all' || item.data.status === statusFilter;
     return statusMatch;
@@ -140,13 +140,13 @@ const EnhancedTeacherTrials: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with Filters */}
+      {/* Header with Enhanced Filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-primary">Trial Session Management</h1>
           <p className="text-muted-foreground">Manage individual and family trial sessions</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
             <Select value={statusFilter} onValueChange={(value: StatusFilter) => setStatusFilter(value)}>
@@ -163,11 +163,19 @@ const EnhancedTeacherTrials: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          {/* PHASE 2 FIX: Date filter now properly connected */}
-          <DateFilter value={dateRange} onChange={setDateRange} />
+          
+          {/* Enhanced Date Filter with dual mode */}
+          <DateFilter 
+            value={dateRange} 
+            onChange={setDateRange}
+            filterType={filterType}
+            onFilterTypeChange={setFilterType}
+            resultCount={filteredItems.length}
+          />
         </div>
       </div>
 
+      {/* Loading State */}
       {trialsLoading ? (
         <Card className="dashboard-card">
           <CardContent className="py-8">
@@ -179,75 +187,96 @@ const EnhancedTeacherTrials: React.FC = () => {
         </Card>
       ) : (
         <>
-          {/* Pending and Confirmed Trials */}
-          {pendingConfirmedItems.length > 0 && (
-            <Card className="dashboard-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  Active Trials
-                  <Badge variant="outline">{pendingConfirmedItems.length}</Badge>
-                </CardTitle>
-                <CardDescription>
-                  Pending and confirmed trial sessions requiring attention
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {pendingConfirmedItems.map((item) => (
-                    <UnifiedTeacherStudentCard
-                      key={item.id}
-                      item={item}
-                      onContact={handleContactItem}
-                      onConfirm={handleConfirmTrial}
-                      onMarkCompleted={handleMarkCompleted}
-                      onMarkGhosted={handleMarkGhosted}
-                      onReschedule={handleReschedule}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+          {/* Status Summary */}
+          {filteredItems.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-600">
+                      {filteredItems.filter(item => item.data.status === 'pending').length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Pending</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {filteredItems.filter(item => item.data.status === 'confirmed').length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Confirmed</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {filteredItems.filter(item => item.data.status === 'trial-completed').length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Completed</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-600">
+                      {filteredItems.filter(item => item.data.status === 'trial-ghosted').length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Ghosted</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
-          {/* Completed, Ghosted, and Rescheduled Trials */}
-          {completedItems.length > 0 && (
-            <Card className="dashboard-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  Trial History
-                  <Badge variant="outline">{completedItems.length}</Badge>
-                </CardTitle>
-                <CardDescription>
-                  Completed, ghosted, and rescheduled trial sessions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {completedItems.map((item) => (
-                    <UnifiedTeacherStudentCard
-                      key={item.id}
-                      item={item}
-                      onContact={handleContactItem}
-                      onConfirm={handleConfirmTrial}
-                      onMarkCompleted={handleMarkCompleted}
-                      onMarkGhosted={handleMarkGhosted}
-                      onReschedule={handleReschedule}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* No Results */}
-          {filteredItems.length === 0 && (
+          {/* Trial Sessions List */}
+          {filteredItems.length === 0 ? (
             <Card className="dashboard-card">
               <CardContent className="py-8">
                 <div className="text-center">
                   <p className="text-muted-foreground text-lg font-medium">No trial sessions found</p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Try adjusting your filters or check back later
+                    Try adjusting your date range or filter type. Currently filtering by{' '}
+                    <Badge variant="outline" className="mx-1">
+                      {filterType === 'session_date' ? 'Session Date' : 'Booking Date'}
+                    </Badge>
+                    for{' '}
+                    <Badge variant="outline" className="mx-1">
+                      {dateRange.replace('-', ' ').replace('_', ' ')}
+                    </Badge>
                   </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="dashboard-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Trial Sessions
+                  <Badge variant="outline">{filteredItems.length}</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Showing trials filtered by {filterType === 'session_date' ? 'session date' : 'booking date'} 
+                  for {dateRange.replace('-', ' ').replace('_', ' ')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {filteredItems.map((item) => (
+                    <UnifiedTeacherStudentCard
+                      key={item.id}
+                      item={item}
+                      onContact={handleContactItem}
+                      onConfirm={handleConfirmTrial}
+                      onMarkCompleted={handleMarkCompleted}
+                      onMarkGhosted={handleMarkGhosted}
+                      onReschedule={handleReschedule}
+                    />
+                  ))}
                 </div>
               </CardContent>
             </Card>
