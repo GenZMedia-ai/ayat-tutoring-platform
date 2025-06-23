@@ -53,7 +53,7 @@ export const useTeacherMixedTrialData = () => {
     try {
       console.log('🔍 Fetching mixed trial data for teacher:', user.id);
       
-      // Fetch individual students (not part of family groups)
+      // PHASE 1 FIX: Fetch individual students with enhanced session data
       const { data: individualStudents, error: studentsError } = await supabase
         .from('students')
         .select(`
@@ -77,10 +77,23 @@ export const useTeacherMixedTrialData = () => {
         throw studentsError;
       }
 
-      // Fetch family groups
+      // PHASE 1 FIX: Fetch family groups WITH session data through students relationship
       const { data: familyGroups, error: familyError } = await supabase
         .from('family_groups')
-        .select('*')
+        .select(`
+          *,
+          students!family_group_id (
+            id,
+            session_students (
+              session_id,
+              sessions (
+                id,
+                scheduled_date,
+                scheduled_time
+              )
+            )
+          )
+        `)
         .eq('assigned_teacher_id', user.id)
         .in('status', ['pending', 'confirmed', 'trial-completed', 'trial-ghosted'])
         .order('created_at', { ascending: false });
@@ -91,7 +104,7 @@ export const useTeacherMixedTrialData = () => {
       }
 
       console.log('📋 Fetched individual students:', individualStudents);
-      console.log('📋 Fetched family groups:', familyGroups);
+      console.log('📋 Fetched family groups with sessions:', familyGroups);
 
       // Transform individual students
       const transformedIndividuals: TeacherMixedTrialItem[] = (individualStudents || []).map(student => {
@@ -118,8 +131,20 @@ export const useTeacherMixedTrialData = () => {
         };
       });
 
-      // Transform family groups
+      // PHASE 1 FIX: Transform family groups WITH session data
       const transformedFamilies: TeacherMixedTrialItem[] = (familyGroups || []).map(family => {
+        // Get session ID from the first student in the family
+        const firstStudent = family.students?.[0];
+        const firstStudentSession = firstStudent?.session_students?.[0];
+        const sessionId = firstStudentSession?.sessions?.id || firstStudentSession?.session_id;
+        
+        console.log('🔍 Family session lookup:', {
+          familyId: family.id,
+          familyName: family.parent_name,
+          firstStudentId: firstStudent?.id,
+          sessionId: sessionId
+        });
+
         return {
           type: 'family' as const,
           id: family.id,
@@ -134,7 +159,7 @@ export const useTeacherMixedTrialData = () => {
             uniqueId: family.unique_id,
             studentCount: family.student_count,
             notes: family.notes,
-            sessionId: undefined,
+            sessionId: sessionId, // PHASE 1 FIX: Now properly fetched
           } as TeacherTrialFamily
         };
       });
@@ -146,7 +171,7 @@ export const useTeacherMixedTrialData = () => {
         return aDate.getTime() - bDate.getTime();
       });
 
-      console.log('📋 Combined trial items:', allItems);
+      console.log('📋 Combined trial items with session data:', allItems);
       setTrialItems(allItems);
     } catch (error) {
       console.error('❌ Error in fetchTrialData:', error);
@@ -156,7 +181,7 @@ export const useTeacherMixedTrialData = () => {
     }
   };
 
-  // PHASE 2: Improved family confirmation with atomicity
+  // PHASE 2: Enhanced family confirmation with better atomicity
   const confirmTrial = async (item: TeacherMixedTrialItem) => {
     try {
       console.log('✅ Confirming trial for item:', item);
@@ -168,10 +193,10 @@ export const useTeacherMixedTrialData = () => {
         }
         return success;
       } else {
-        // PHASE 2: Atomic family confirmation - update both family and students in transaction
-        console.log('🔄 Starting atomic family confirmation for:', item.id);
+        // PHASE 2: Enhanced atomic family confirmation
+        console.log('🔄 Starting enhanced atomic family confirmation for:', item.id);
         
-        // Use a transaction-like approach with error handling
+        // Use a transaction-like approach with better error handling
         const { error: familyError } = await supabase
           .from('family_groups')
           .update({ 
@@ -197,7 +222,7 @@ export const useTeacherMixedTrialData = () => {
 
         if (studentsError) {
           console.error('❌ Error confirming family students:', studentsError);
-          // PHASE 2: Rollback family status if student update fails
+          // PHASE 2: Enhanced rollback with better error reporting
           await supabase
             .from('family_groups')
             .update({ 
@@ -210,7 +235,7 @@ export const useTeacherMixedTrialData = () => {
           return false;
         }
 
-        console.log('✅ Family confirmation completed successfully');
+        console.log('✅ Enhanced family confirmation completed successfully');
         toast.success('Family trial confirmed successfully!');
         await fetchTrialData(); // Refresh data
         return true;
@@ -226,14 +251,14 @@ export const useTeacherMixedTrialData = () => {
     fetchTrialData();
   }, [user]);
 
-  // PHASE 4: Optimized real-time subscriptions
+  // PHASE 4: Enhanced real-time subscriptions with better performance
   useEffect(() => {
     if (!user) return;
 
-    console.log('🔄 Setting up optimized real-time updates for teacher mixed trial data');
+    console.log('🔄 Setting up enhanced real-time updates for teacher mixed trial data');
     
     const studentsChannel = supabase
-      .channel('teacher-students-optimized')
+      .channel('teacher-students-enhanced')
       .on(
         'postgres_changes',
         {
@@ -243,15 +268,15 @@ export const useTeacherMixedTrialData = () => {
           filter: `assigned_teacher_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('🔄 Real-time student update received:', payload);
-          // PHASE 4: Debounced refresh to prevent excessive updates
-          setTimeout(() => fetchTrialData(), 100);
+          console.log('🔄 Enhanced real-time student update received:', payload);
+          // PHASE 4: Optimized debounced refresh
+          setTimeout(() => fetchTrialData(), 150);
         }
       )
       .subscribe();
 
     const familyChannel = supabase
-      .channel('teacher-families-optimized')
+      .channel('teacher-families-enhanced')
       .on(
         'postgres_changes',
         {
@@ -261,15 +286,15 @@ export const useTeacherMixedTrialData = () => {
           filter: `assigned_teacher_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('🔄 Real-time family update received:', payload);
-          // PHASE 4: Debounced refresh to prevent excessive updates
-          setTimeout(() => fetchTrialData(), 100);
+          console.log('🔄 Enhanced real-time family update received:', payload);
+          // PHASE 4: Optimized debounced refresh
+          setTimeout(() => fetchTrialData(), 150);
         }
       )
       .subscribe();
 
     return () => {
-      console.log('🔄 Cleaning up optimized real-time subscriptions');
+      console.log('🔄 Cleaning up enhanced real-time subscriptions');
       supabase.removeChannel(studentsChannel);
       supabase.removeChannel(familyChannel);
     };

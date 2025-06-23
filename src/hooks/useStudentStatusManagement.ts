@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { useStatusValidation } from './useStatusValidation';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
-import { fromZonedTime } from 'date-fns-tz';
 
 const EGYPT_TIMEZONE = 'Africa/Cairo';
 
@@ -113,17 +112,17 @@ export const useStudentStatusManagement = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('🔄 Rescheduling student:', { studentId, newDate, newTime, reason, currentDate, currentTime });
+      console.log('🔄 PHASE 2 FIX: Starting reschedule with correct time handling:', { 
+        studentId, newDate, newTime, reason, currentDate, currentTime 
+      });
       
-      // Convert Egypt time to UTC for database storage
+      // PHASE 2 FIX: Remove UTC conversion completely - use times as stored in DB
       const dateString = format(newDate, 'yyyy-MM-dd');
-      const egyptDateTimeString = `${dateString}T${newTime}:00`;
-      const utcDateTime = fromZonedTime(egyptDateTimeString, EGYPT_TIMEZONE);
-      const utcTime = utcDateTime.toISOString().substring(11, 19);
+      const directTime = newTime; // Use time directly without conversion
 
-      console.log('🕐 Time conversion:', {
-        egyptTime: newTime,
-        utcTime: utcTime,
+      console.log('🕐 PHASE 2 FIX: Direct time handling (no UTC conversion):', {
+        selectedTime: newTime,
+        directTime: directTime,
         newDate: dateString
       });
 
@@ -149,13 +148,13 @@ export const useStudentStatusManagement = () => {
         return false;
       }
 
-      // Check if new slot is available
+      // PHASE 2 FIX: Check availability using direct time format
       const { data: availabilityCheck, error: availabilityError } = await supabase
         .from('teacher_availability')
         .select('*')
         .eq('teacher_id', teacherId)
         .eq('date', dateString)
-        .eq('time_slot', utcTime)
+        .eq('time_slot', directTime) // PHASE 2 FIX: Use direct time
         .eq('is_available', true)
         .eq('is_booked', false)
         .single();
@@ -166,9 +165,9 @@ export const useStudentStatusManagement = () => {
         return false;
       }
 
-      // CRITICAL FIX: Free up old slot first
+      // PHASE 2 FIX: Free up old slot using correct time format
       if (oldDate && oldTime) {
-        console.log('🔓 Freeing old slot:', { oldDate, oldTime });
+        console.log('🔓 PHASE 2 FIX: Freeing old slot with correct time:', { oldDate, oldTime });
         const { error: oldSlotError } = await supabase
           .from('teacher_availability')
           .update({ 
@@ -178,7 +177,7 @@ export const useStudentStatusManagement = () => {
           })
           .eq('teacher_id', teacherId)
           .eq('date', oldDate)
-          .eq('time_slot', oldTime);
+          .eq('time_slot', oldTime); // PHASE 2 FIX: Use stored time directly
 
         if (oldSlotError) {
           console.error('❌ Error freeing old slot:', oldSlotError);
@@ -187,8 +186,8 @@ export const useStudentStatusManagement = () => {
         }
       }
 
-      // Book new slot
-      console.log('🔒 Booking new slot:', { teacherId, dateString, utcTime });
+      // PHASE 2 FIX: Book new slot using direct time
+      console.log('🔒 PHASE 2 FIX: Booking new slot with direct time:', { teacherId, dateString, directTime });
       const { error: newSlotError } = await supabase
         .from('teacher_availability')
         .update({
@@ -204,13 +203,13 @@ export const useStudentStatusManagement = () => {
         return false;
       }
 
-      // CRITICAL FIX: Update student trial date and time
-      console.log('📝 Updating student record:', { studentId, dateString, utcTime });
+      // PHASE 2 FIX: Update student with direct time
+      console.log('📝 PHASE 2 FIX: Updating student record with direct time:', { studentId, dateString, directTime });
       const { error: studentUpdateError } = await supabase
         .from('students')
         .update({ 
           trial_date: dateString,
-          trial_time: utcTime,
+          trial_time: directTime, // PHASE 2 FIX: Use direct time
           updated_at: new Date().toISOString()
         })
         .eq('id', studentId);
@@ -238,7 +237,7 @@ export const useStudentStatusManagement = () => {
           .select('id, reschedule_count, original_date, original_time, scheduled_date, scheduled_time')
           .in('id', sessionIds)
           .eq('scheduled_date', oldDate || dateString)
-          .eq('scheduled_time', oldTime || utcTime)
+          .eq('scheduled_time', oldTime || directTime) // PHASE 2 FIX: Use direct time
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -248,7 +247,7 @@ export const useStudentStatusManagement = () => {
             .from('sessions')
             .update({
               scheduled_date: dateString,
-              scheduled_time: utcTime,
+              scheduled_time: directTime, // PHASE 2 FIX: Use direct time
               reschedule_count: (session.reschedule_count || 0) + 1,
               reschedule_reason: reason,
               original_date: session.original_date || oldDate,
@@ -264,7 +263,7 @@ export const useStudentStatusManagement = () => {
         }
       }
 
-      console.log('✅ Student rescheduled successfully');
+      console.log('✅ PHASE 2 FIX: Student rescheduled successfully with direct time handling');
       toast.success('Student trial session rescheduled successfully');
       return true;
     } catch (error) {
