@@ -96,6 +96,67 @@ export type Database = {
         }
         Relationships: []
       }
+      family_package_selections: {
+        Row: {
+          created_at: string
+          currency: string
+          custom_price: number | null
+          family_group_id: string
+          id: string
+          notes: string | null
+          package_id: string
+          selected_by: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          custom_price?: number | null
+          family_group_id: string
+          id?: string
+          notes?: string | null
+          package_id: string
+          selected_by: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          custom_price?: number | null
+          family_group_id?: string
+          id?: string
+          notes?: string | null
+          package_id?: string
+          selected_by?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_package_selections_family_group_id_fkey"
+            columns: ["family_group_id"]
+            isOneToOne: false
+            referencedRelation: "family_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_package_selections_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_package_selections_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitation_codes: {
         Row: {
           code: string
@@ -176,13 +237,18 @@ export type Database = {
           created_by: string
           currency: string
           expires_at: string
+          family_group_id: string | null
           id: string
+          individual_amounts: Json | null
           package_id: string | null
+          package_selections: Json | null
           package_session_count: number | null
           paid_at: string | null
+          payment_type: string | null
           status: string
           stripe_session_id: string | null
           student_ids: string[]
+          total_amount: number | null
           updated_at: string
         }
         Insert: {
@@ -192,13 +258,18 @@ export type Database = {
           created_by: string
           currency?: string
           expires_at: string
+          family_group_id?: string | null
           id?: string
+          individual_amounts?: Json | null
           package_id?: string | null
+          package_selections?: Json | null
           package_session_count?: number | null
           paid_at?: string | null
+          payment_type?: string | null
           status?: string
           stripe_session_id?: string | null
           student_ids: string[]
+          total_amount?: number | null
           updated_at?: string
         }
         Update: {
@@ -208,16 +279,29 @@ export type Database = {
           created_by?: string
           currency?: string
           expires_at?: string
+          family_group_id?: string | null
           id?: string
+          individual_amounts?: Json | null
           package_id?: string | null
+          package_selections?: Json | null
           package_session_count?: number | null
           paid_at?: string | null
+          payment_type?: string | null
           status?: string
           stripe_session_id?: string | null
           student_ids?: string[]
+          total_amount?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "payment_links_family_group_id_fkey"
+            columns: ["family_group_id"]
+            isOneToOne: false
+            referencedRelation: "family_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -619,6 +703,10 @@ export type Database = {
         }
         Returns: Json
       }
+      calculate_family_payment_total: {
+        Args: { p_family_group_id: string }
+        Returns: Json
+      }
       check_subscription_completion: {
         Args: { p_student_id: string }
         Returns: Json
@@ -746,6 +834,21 @@ export type Database = {
           p_student_behavior?: string
           p_recommended_package?: string
         }
+        Returns: Json
+      }
+      upsert_family_package_selection: {
+        Args: {
+          p_family_group_id: string
+          p_student_id: string
+          p_package_id: string
+          p_custom_price?: number
+          p_currency?: string
+          p_notes?: string
+        }
+        Returns: Json
+      }
+      validate_family_package_selections: {
+        Args: { p_family_group_id: string }
         Returns: Json
       }
     }
