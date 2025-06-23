@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -22,6 +23,30 @@ export const useStudentStatusManagement = () => {
     if (!validStatuses.includes(newStatus)) {
       throw new Error(`Invalid status: ${newStatus}. Must be one of: ${validStatuses.join(', ')}`);
     }
+  };
+
+  // PHASE 1 FIX: Standardize time format to HH:MM:SS for database compatibility
+  const formatTimeForDB = (time: string): string => {
+    console.log('🕐 PHASE 1: Formatting time for database:', time);
+    
+    if (!time) {
+      throw new Error('Time is required');
+    }
+    
+    // If time is already in HH:MM:SS format, return as is
+    if (time.match(/^\d{2}:\d{2}:\d{2}$/)) {
+      console.log('✅ Time already in HH:MM:SS format:', time);
+      return time;
+    }
+    
+    // If time is in HH:MM format, add :00 seconds
+    if (time.match(/^\d{2}:\d{2}$/)) {
+      const formattedTime = `${time}:00`;
+      console.log('✅ PHASE 1: Converted HH:MM to HH:MM:SS:', { input: time, output: formattedTime });
+      return formattedTime;
+    }
+    
+    throw new Error(`Invalid time format: ${time}. Expected HH:MM or HH:MM:SS`);
   };
 
   const updateStudentStatus = async (studentId: string, newStatus: string, currentStatus?: string) => {
@@ -112,24 +137,27 @@ export const useStudentStatusManagement = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('🔄 PHASE 2 FIX: Starting reschedule with correct time handling:', { 
+      console.log('🔄 PHASE 1-3: Starting enhanced reschedule with time standardization:', { 
         studentId, newDate, newTime, reason, currentDate, currentTime 
       });
       
-      // PHASE 2 FIX: Remove UTC conversion completely - use times as stored in DB
+      // PHASE 1 FIX: Standardize time format for database operations
       const dateString = format(newDate, 'yyyy-MM-dd');
-      const directTime = newTime; // Use time directly without conversion
+      const dbFormattedNewTime = formatTimeForDB(newTime);
+      const dbFormattedOldTime = currentTime ? formatTimeForDB(currentTime) : null;
 
-      console.log('🕐 PHASE 2 FIX: Direct time handling (no UTC conversion):', {
-        selectedTime: newTime,
-        directTime: directTime,
-        newDate: dateString
+      console.log('🕐 PHASE 1: Time standardization complete:', {
+        originalNewTime: newTime,
+        dbFormattedNewTime: dbFormattedNewTime,
+        originalOldTime: currentTime,
+        dbFormattedOldTime: dbFormattedOldTime,
+        dateString: dateString
       });
 
       // Get student's current assignment details
       const { data: studentData, error: studentError } = await supabase
         .from('students')
-        .select('assigned_teacher_id, trial_date, trial_time')
+        .select('assigned_teacher_id, trial_date, trial_time, family_group_id')
         .eq('id', studentId)
         .single();
 
@@ -142,33 +170,59 @@ export const useStudentStatusManagement = () => {
       const teacherId = studentData.assigned_teacher_id;
       const oldDate = studentData.trial_date;
       const oldTime = studentData.trial_time;
+      const familyGroupId = studentData.family_group_id;
+
+      console.log('📋 Student data retrieved:', {
+        teacherId,
+        oldDate,
+        oldTime,
+        familyGroupId,
+        isFamily: !!familyGroupId
+      });
 
       if (!teacherId) {
         toast.error('No teacher assigned to this student');
         return false;
       }
 
-      // PHASE 2 FIX: Check availability using direct time format
+      // PHASE 3 FIX: Enhanced availability check with proper time format
+      console.log('🔍 PHASE 3: Checking availability with standardized time format:', {
+        teacherId,
+        dateString,
+        dbFormattedNewTime
+      });
+
       const { data: availabilityCheck, error: availabilityError } = await supabase
         .from('teacher_availability')
         .select('*')
         .eq('teacher_id', teacherId)
         .eq('date', dateString)
-        .eq('time_slot', directTime) // PHASE 2 FIX: Use direct time
+        .eq('time_slot', dbFormattedNewTime)
         .eq('is_available', true)
         .eq('is_booked', false)
         .single();
 
       if (availabilityError || !availabilityCheck) {
-        console.error('❌ Slot not available:', availabilityError);
+        console.error('❌ PHASE 3: Slot not available:', {
+          error: availabilityError,
+          query: { teacherId, dateString, time_slot: dbFormattedNewTime }
+        });
         toast.error('Selected time slot is no longer available');
         return false;
       }
 
-      // PHASE 2 FIX: Free up old slot using correct time format
+      console.log('✅ PHASE 3: New slot confirmed available:', availabilityCheck.id);
+
+      // PHASE 4 FIX: Enhanced old slot freeing with proper error handling
       if (oldDate && oldTime) {
-        console.log('🔓 PHASE 2 FIX: Freeing old slot with correct time:', { oldDate, oldTime });
-        const { error: oldSlotError } = await supabase
+        const formattedOldTime = formatTimeForDB(oldTime);
+        console.log('🔓 PHASE 4: Freeing old slot with enhanced error handling:', { 
+          oldDate, 
+          originalOldTime: oldTime,
+          formattedOldTime: formattedOldTime 
+        });
+
+        const { data: oldSlotData, error: oldSlotError } = await supabase
           .from('teacher_availability')
           .update({ 
             is_booked: false,
@@ -177,17 +231,28 @@ export const useStudentStatusManagement = () => {
           })
           .eq('teacher_id', teacherId)
           .eq('date', oldDate)
-          .eq('time_slot', oldTime); // PHASE 2 FIX: Use stored time directly
+          .eq('time_slot', formattedOldTime)
+          .select();
 
         if (oldSlotError) {
-          console.error('❌ Error freeing old slot:', oldSlotError);
+          console.error('❌ PHASE 4: Error freeing old slot:', {
+            error: oldSlotError,
+            query: { teacherId, oldDate, time_slot: formattedOldTime }
+          });
           toast.error('Failed to free old time slot');
           return false;
         }
+
+        console.log('✅ PHASE 4: Old slot freed successfully:', oldSlotData);
       }
 
-      // PHASE 2 FIX: Book new slot using direct time
-      console.log('🔒 PHASE 2 FIX: Booking new slot with direct time:', { teacherId, dateString, directTime });
+      // PHASE 3 FIX: Book new slot with standardized time
+      console.log('🔒 PHASE 3: Booking new slot with standardized time:', { 
+        availabilityId: availabilityCheck.id, 
+        studentId,
+        dbFormattedNewTime 
+      });
+
       const { error: newSlotError } = await supabase
         .from('teacher_availability')
         .update({
@@ -203,24 +268,64 @@ export const useStudentStatusManagement = () => {
         return false;
       }
 
-      // PHASE 2 FIX: Update student with direct time
-      console.log('📝 PHASE 2 FIX: Updating student record with direct time:', { studentId, dateString, directTime });
-      const { error: studentUpdateError } = await supabase
-        .from('students')
-        .update({ 
-          trial_date: dateString,
-          trial_time: directTime, // PHASE 2 FIX: Use direct time
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', studentId);
+      // PHASE 2 & 5 FIX: Update student/family with enhanced handling
+      if (familyGroupId) {
+        console.log('👨‍👩‍👧‍👦 PHASE 2: Updating family group with new schedule');
+        // Update family group
+        const { error: familyUpdateError } = await supabase
+          .from('family_groups')
+          .update({ 
+            trial_date: dateString,
+            trial_time: dbFormattedNewTime,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', familyGroupId);
 
-      if (studentUpdateError) {
-        console.error('❌ Error updating student:', studentUpdateError);
-        toast.error('Failed to update student details');
-        return false;
+        if (familyUpdateError) {
+          console.error('❌ Error updating family group:', familyUpdateError);
+          toast.error('Failed to update family details');
+          return false;
+        }
+
+        // Update all students in the family
+        const { error: familyStudentsUpdateError } = await supabase
+          .from('students')
+          .update({ 
+            trial_date: dateString,
+            trial_time: dbFormattedNewTime,
+            updated_at: new Date().toISOString()
+          })
+          .eq('family_group_id', familyGroupId);
+
+        if (familyStudentsUpdateError) {
+          console.error('❌ Error updating family students:', familyStudentsUpdateError);
+          toast.error('Failed to update family student details');
+          return false;
+        }
+
+        console.log('✅ PHASE 2: Family group and all students updated successfully');
+      } else {
+        console.log('👤 PHASE 2: Updating individual student');
+        // Update individual student
+        const { error: studentUpdateError } = await supabase
+          .from('students')
+          .update({ 
+            trial_date: dateString,
+            trial_time: dbFormattedNewTime,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', studentId);
+
+        if (studentUpdateError) {
+          console.error('❌ Error updating student:', studentUpdateError);
+          toast.error('Failed to update student details');
+          return false;
+        }
+
+        console.log('✅ PHASE 2: Individual student updated successfully');
       }
 
-      // Update session with reschedule info
+      // PHASE 5 FIX: Enhanced session update with better error handling
       const { data: sessionStudents, error: sessionStudentsError } = await supabase
         .from('session_students')
         .select('session_id')
@@ -237,7 +342,7 @@ export const useStudentStatusManagement = () => {
           .select('id, reschedule_count, original_date, original_time, scheduled_date, scheduled_time')
           .in('id', sessionIds)
           .eq('scheduled_date', oldDate || dateString)
-          .eq('scheduled_time', oldTime || directTime) // PHASE 2 FIX: Use direct time
+          .eq('scheduled_time', dbFormattedOldTime || dbFormattedNewTime)
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -247,7 +352,7 @@ export const useStudentStatusManagement = () => {
             .from('sessions')
             .update({
               scheduled_date: dateString,
-              scheduled_time: directTime, // PHASE 2 FIX: Use direct time
+              scheduled_time: dbFormattedNewTime,
               reschedule_count: (session.reschedule_count || 0) + 1,
               reschedule_reason: reason,
               original_date: session.original_date || oldDate,
@@ -259,16 +364,18 @@ export const useStudentStatusManagement = () => {
           if (sessionUpdateError) {
             console.error('❌ Error updating session:', sessionUpdateError);
             // Don't fail the operation for this
+          } else {
+            console.log('✅ PHASE 5: Session updated with reschedule information');
           }
         }
       }
 
-      console.log('✅ PHASE 2 FIX: Student rescheduled successfully with direct time handling');
-      toast.success('Student trial session rescheduled successfully');
+      console.log('✅ PHASE 1-5: Student rescheduled successfully with all enhancements');
+      toast.success(`${familyGroupId ? 'Family' : 'Student'} trial session rescheduled successfully`);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error in rescheduleStudent:', error);
-      toast.error('Failed to reschedule student');
+      toast.error(`Failed to reschedule: ${error.message || 'Unknown error'}`);
       return false;
     } finally {
       setLoading(false);

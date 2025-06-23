@@ -9,7 +9,7 @@ const EGYPT_TIMEZONE = 'Africa/Cairo';
 
 export interface TimeSlot {
   id?: string;
-  time: string; // HH:mm format in Egypt time
+  time: string; // HH:mm format in Egypt time for UI display
   isAvailable: boolean;
   isBooked: boolean;
   studentId?: string;
@@ -19,6 +19,29 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
   const { user } = useAuth();
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // PHASE 3 FIX: Standardize time format conversion functions
+  const formatTimeForDB = (time: string): string => {
+    // Convert UI time (HH:MM) to database format (HH:MM:SS)
+    if (time.match(/^\d{2}:\d{2}:\d{2}$/)) {
+      return time; // Already in correct format
+    }
+    if (time.match(/^\d{2}:\d{2}$/)) {
+      return `${time}:00`; // Add seconds
+    }
+    throw new Error(`Invalid time format: ${time}`);
+  };
+
+  const formatTimeForUI = (dbTime: string): string => {
+    // Convert database time (HH:MM:SS) to UI format (HH:MM)
+    if (dbTime.match(/^\d{2}:\d{2}:\d{2}$/)) {
+      return dbTime.substring(0, 5); // Remove seconds
+    }
+    if (dbTime.match(/^\d{2}:\d{2}$/)) {
+      return dbTime; // Already in UI format
+    }
+    throw new Error(`Invalid database time format: ${dbTime}`);
+  };
 
   // Generate time slots from 8:00 AM to 10:00 PM in 30-minute intervals
   const generateTimeSlots = (): TimeSlot[] => {
@@ -34,70 +57,6 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
       }
     }
     return slots;
-  };
-
-  // FIXED: Egypt time to UTC conversion - properly convert Egypt time to UTC
-  const egyptTimeToUTC = (date: Date, egyptTime: string): string => {
-    console.log('🔄 FIXED Egypt time to UTC conversion:', { date: date.toDateString(), egyptTime });
-    
-    const [hours, minutes] = egyptTime.split(':').map(Number);
-    console.log('📅 Egypt time components:', { hours, minutes });
-    
-    // FIXED: Egypt is UTC+2, so to convert FROM Egypt TO UTC, we SUBTRACT 2 hours
-    const EGYPT_UTC_OFFSET = 2;
-    let utcHour = hours - EGYPT_UTC_OFFSET;
-    
-    // Handle day boundary crossings properly
-    if (utcHour < 0) {
-      utcHour += 24;
-      console.log('⚠️ UTC hour crossed to previous day:', utcHour);
-    } else if (utcHour >= 24) {
-      utcHour -= 24;
-      console.log('⚠️ UTC hour crossed to next day:', utcHour);
-    }
-    
-    const utcTime = `${String(utcHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
-    
-    console.log('✅ FIXED Egypt to UTC conversion result:', {
-      egyptTime: egyptTime,
-      utcTime: utcTime,
-      offsetSubtracted: EGYPT_UTC_OFFSET,
-      utcHour: utcHour
-    });
-    
-    return utcTime;
-  };
-
-  // FIXED: UTC to Egypt time conversion - properly convert UTC time to Egypt time
-  const utcToEgyptTime = (utcTime: string, contextDate: Date): string => {
-    console.log('🔄 FIXED UTC to Egypt time conversion:', { utcTime, contextDate: contextDate.toDateString() });
-    
-    const [hours, minutes] = utcTime.split(':').map(Number);
-    console.log('📅 UTC time components:', { hours, minutes });
-    
-    // FIXED: Egypt is UTC+2, so to convert FROM UTC TO Egypt, we ADD 2 hours
-    const EGYPT_UTC_OFFSET = 2;
-    let egyptHour = hours + EGYPT_UTC_OFFSET;
-    
-    // Handle day boundary crossings properly
-    if (egyptHour >= 24) {
-      egyptHour -= 24;
-      console.log('⚠️ Egypt hour crossed to next day:', egyptHour);
-    } else if (egyptHour < 0) {
-      egyptHour += 24;
-      console.log('⚠️ Egypt hour crossed to previous day:', egyptHour);
-    }
-    
-    const egyptTime = `${String(egyptHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-    
-    console.log('✅ FIXED UTC to Egypt conversion result:', {
-      utcTime: utcTime,
-      egyptTime: egyptTime,
-      offsetAdded: EGYPT_UTC_OFFSET,
-      egyptHour: egyptHour
-    });
-    
-    return egyptTime;
   };
 
   // Check if current date is today in Egypt timezone
@@ -125,20 +84,20 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     return true;
   };
 
-  // FIXED: Fetch availability data from database with proper date matching
+  // PHASE 3 FIX: Enhanced availability fetching with proper time format handling
   const fetchAvailability = useCallback(async () => {
     if (!selectedDate || !user) return;
 
     setLoading(true);
     try {
       const dateString = format(selectedDate, 'yyyy-MM-dd');
-      console.log('📊 FIXED: Fetching availability for exact date:', dateString);
+      console.log('📊 PHASE 3: Fetching availability with enhanced time handling for date:', dateString);
       
       const { data, error } = await supabase
         .from('teacher_availability')
         .select('*')
         .eq('teacher_id', user.id)
-        .eq('date', dateString); // Query for exact date
+        .eq('date', dateString);
 
       if (error) {
         console.error('❌ Error fetching availability:', error);
@@ -146,24 +105,32 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
         return;
       }
 
-      console.log('📋 Raw database data for date', dateString, ':', data);
+      console.log('📋 PHASE 3: Raw database data for date', dateString, ':', data);
 
-      // Generate all possible time slots in Egypt time
+      // Generate all possible time slots in Egypt time (UI format)
       const allSlots = generateTimeSlots();
       
-      // FIXED: Update slots with database data using corrected conversion
+      // PHASE 3 FIX: Update slots with database data using enhanced time conversion
       const updatedSlots = allSlots.map(slot => {
-        // Find matching database slot by converting UTC time back to Egypt time
+        // Find matching database slot by converting UI time to DB format for comparison
         const dbSlot = data?.find(d => {
-          const convertedEgyptTime = utcToEgyptTime(d.time_slot, selectedDate);
-          console.log(`🔍 FIXED: Comparing Egypt slot ${slot.time} with DB UTC ${d.time_slot} -> Egypt ${convertedEgyptTime}`);
-          return convertedEgyptTime === slot.time;
+          try {
+            const uiTimeFromDB = formatTimeForUI(d.time_slot);
+            const match = uiTimeFromDB === slot.time;
+            if (match) {
+              console.log(`✅ PHASE 3: Time match found - UI: ${slot.time}, DB: ${d.time_slot}, Converted: ${uiTimeFromDB}`);
+            }
+            return match;
+          } catch (error) {
+            console.warn(`⚠️ PHASE 3: Time conversion error for DB time ${d.time_slot}:`, error);
+            return false;
+          }
         });
         
         if (dbSlot) {
-          console.log(`✅ FIXED: Found matching slot for Egypt time ${slot.time}:`, { 
+          console.log(`✅ PHASE 3: Found matching slot for UI time ${slot.time}:`, { 
             dbId: dbSlot.id, 
-            dbUtcTime: dbSlot.time_slot,
+            dbTime: dbSlot.time_slot,
             isAvailable: dbSlot.is_available,
             isBooked: dbSlot.is_booked
           });
@@ -179,7 +146,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
         return slot;
       });
 
-      console.log('📝 FIXED: Final updated slots for date', dateString, ':', 
+      console.log('📝 PHASE 3: Final updated slots for date', dateString, ':', 
         updatedSlots.filter(s => s.isAvailable || s.isBooked).map(s => ({
           time: s.time,
           available: s.isAvailable,
@@ -188,18 +155,18 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
       );
       setTimeSlots(updatedSlots);
     } catch (error) {
-      console.error('❌ Error in fetchAvailability:', error);
+      console.error('❌ PHASE 3: Error in fetchAvailability:', error);
       toast.error('Failed to load availability');
     } finally {
       setLoading(false);
     }
   }, [selectedDate, user]);
 
-  // FIXED: Toggle availability for a time slot with proper UTC conversion
+  // PHASE 3 FIX: Enhanced toggle availability with proper time format conversion
   const toggleAvailability = async (time: string) => {
     if (!selectedDate || !user) return;
 
-    console.log('🎯 FIXED: Toggling availability for Egypt time:', time, 'on date:', selectedDate.toDateString());
+    console.log('🎯 PHASE 3: Enhanced toggle availability for UI time:', time, 'on date:', selectedDate.toDateString());
 
     // Enhanced teacher validation for today's availability
     if (!validateTeacherTodayOperation(selectedDate)) {
@@ -213,27 +180,30 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     }
 
     const dateString = format(selectedDate, 'yyyy-MM-dd');
-    const utcTime = egyptTimeToUTC(selectedDate, time);
-
-    console.log('💾 FIXED: Saving availability with proper conversion:', {
-      selectedDate: dateString,
-      egyptTime: time,
-      utcTime: utcTime,
-      userRole: user.role
-    });
-
+    
     try {
+      // PHASE 3 FIX: Convert UI time to database format
+      const dbTime = formatTimeForDB(time);
+      
+      console.log('💾 PHASE 3: Enhanced availability toggle with proper time conversion:', {
+        selectedDate: dateString,
+        uiTime: time,
+        dbTime: dbTime,
+        userRole: user.role,
+        operation: slot.isAvailable ? 'remove' : 'add'
+      });
+
       if (slot.isAvailable) {
         // Remove availability
         if (slot.id) {
-          console.log('🗑️ Removing availability for slot ID:', slot.id);
+          console.log('🗑️ PHASE 3: Removing availability for slot ID:', slot.id);
           const { error } = await supabase
             .from('teacher_availability')
             .delete()
             .eq('id', slot.id);
 
           if (error) {
-            console.error('❌ Error removing availability:', error);
+            console.error('❌ PHASE 3: Error removing availability:', error);
             if (error.message?.includes('Teachers cannot modify availability for today')) {
               toast.error('Cannot modify today\'s availability. Today\'s schedule is locked.');
             } else {
@@ -241,14 +211,14 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
             }
             return;
           }
-          console.log('✅ Successfully removed availability');
+          console.log('✅ PHASE 3: Successfully removed availability');
         }
       } else {
         // Add availability
-        console.log('➕ FIXED: Adding availability with correct conversion:', {
+        console.log('➕ PHASE 3: Adding availability with enhanced time conversion:', {
           teacher_id: user.id,
           date: dateString,
-          time_slot: utcTime,
+          time_slot: dbTime,
           is_available: true,
           is_booked: false,
           userRole: user.role,
@@ -259,13 +229,13 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
           .insert({
             teacher_id: user.id,
             date: dateString,
-            time_slot: utcTime,
+            time_slot: dbTime,
             is_available: true,
             is_booked: false,
           });
 
         if (error) {
-          console.error('❌ Error adding availability:', error);
+          console.error('❌ PHASE 3: Error adding availability:', error);
           if (error.message?.includes('Teachers cannot modify availability for today')) {
             toast.error('Cannot modify today\'s availability. Today\'s schedule is locked.');
           } else {
@@ -273,14 +243,14 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
           }
           return;
         }
-        console.log('✅ FIXED: Successfully added availability with correct timezone conversion');
+        console.log('✅ PHASE 3: Successfully added availability with enhanced time conversion');
       }
 
       // Refresh data
       await fetchAvailability();
       toast.success(slot.isAvailable ? 'Time slot removed' : 'Time slot added');
     } catch (error) {
-      console.error('❌ Error toggling availability:', error);
+      console.error('❌ PHASE 3: Error in enhanced toggle availability:', error);
       if (error instanceof Error && error.message?.includes('Teachers cannot modify availability for today')) {
         toast.error('Cannot modify today\'s availability. Today\'s schedule is locked.');
       } else {
@@ -291,7 +261,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
 
   // Force refresh availability - useful after reschedule operations
   const forceRefresh = useCallback(() => {
-    console.log('🔄 Force refreshing availability data...');
+    console.log('🔄 PHASE 3: Force refreshing availability data with enhanced handling...');
     fetchAvailability();
   }, [fetchAvailability]);
 

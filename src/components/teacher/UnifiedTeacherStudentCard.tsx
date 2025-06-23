@@ -26,7 +26,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialData';
 import { format } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
 import { supabase } from '@/integrations/supabase/client';
 
 const EGYPT_TIMEZONE = 'Africa/Cairo';
@@ -149,13 +148,14 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
     try {
       console.log('🔄 Formatting date/time:', { date, time });
       
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}:\d{2}$/.test(time)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}(:\d{2})?$/.test(time)) {
         console.error('❌ Invalid date/time format:', { date, time });
         return 'Invalid format';
       }
       
-      // FIXED: Remove UTC conversion, treat as Egypt time directly
-      const egyptDateTimeString = `${date}T${time}`;
+      // Handle both HH:MM and HH:MM:SS formats
+      const normalizedTime = time.length === 5 ? `${time}:00` : time;
+      const egyptDateTimeString = `${date}T${normalizedTime}`;
       const egyptDateTime = new Date(egyptDateTimeString);
       
       if (isNaN(egyptDateTime.getTime())) {
@@ -176,12 +176,13 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
     if (!date || !time) return '';
     
     try {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}:\d{2}$/.test(time)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}(:\d{2})?$/.test(time)) {
         return '';
       }
       
-      // FIXED: Remove UTC conversion, treat as Egypt time directly
-      const egyptDateTimeString = `${date}T${time}`;
+      // Handle both HH:MM and HH:MM:SS formats
+      const normalizedTime = time.length === 5 ? `${time}:00` : time;
+      const egyptDateTimeString = `${date}T${normalizedTime}`;
       const egyptDateTime = new Date(egyptDateTimeString);
       
       if (isNaN(egyptDateTime.getTime())) {
@@ -207,12 +208,9 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
         { 
           label: 'Reschedule', 
           action: () => {
-            if (isFamily) {
-              console.warn('⚠️ Family reschedule temporarily disabled');
-              // TODO: Implement family reschedule flow
-            } else {
-              onReschedule(item);
-            }
+            // PHASE 2 FIX: Enable family reschedule functionality
+            console.log(`🔄 PHASE 2: ${isFamily ? 'Family' : 'Individual'} reschedule enabled`);
+            onReschedule(item);
           }, 
           icon: RotateCcw 
         }
@@ -233,12 +231,9 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
         { 
           label: 'Reschedule', 
           action: () => {
-            if (isFamily) {
-              console.warn('⚠️ Family reschedule temporarily disabled');
-              // TODO: Implement family reschedule flow
-            } else {
-              onReschedule(item);
-            }
+            // PHASE 2 FIX: Enable family reschedule functionality
+            console.log(`🔄 PHASE 2: ${isFamily ? 'Family' : 'Individual'} reschedule enabled`);
+            onReschedule(item);
           }, 
           icon: RotateCcw 
         },
