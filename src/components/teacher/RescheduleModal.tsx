@@ -42,46 +42,60 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
   // Reset form when modal opens/closes
   useEffect(() => {
     if (open) {
+      console.log('🔄 PHASE 4: Reschedule modal opened for student:', student?.name);
       setRescheduleReason('');
       setSelectedDate(undefined);
       setSelectedTimeSlot('');
     }
-  }, [open]);
+  }, [open, student]);
 
   // Refresh availability when date changes
   useEffect(() => {
     if (selectedDate) {
+      console.log('📅 PHASE 4: Date selected, refreshing availability:', selectedDate.toDateString());
       refreshAvailability();
     }
   }, [selectedDate, refreshAvailability]);
 
+  // PHASE 4 FIX: Enhanced reschedule function with better error handling
   const handleReschedule = async () => {
     if (!rescheduleReason || !selectedDate || !selectedTimeSlot || !student) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    console.log('🔄 Rescheduling student:', {
+    console.log('🔄 PHASE 4: Starting reschedule with enhanced validation:', {
       studentId: student.id,
+      studentName: student.name,
       reason: rescheduleReason,
-      newDate: selectedDate,
+      newDate: selectedDate.toDateString(),
       newTime: selectedTimeSlot,
       currentDate: student.trialDate,
       currentTime: student.trialTime
     });
 
-    const success = await rescheduleStudent(
-      student.id, 
-      selectedDate, 
-      selectedTimeSlot, 
-      rescheduleReason,
-      student.trialDate,
-      student.trialTime
-    );
-    
-    if (success) {
-      onSuccess();
-      resetForm();
+    try {
+      const success = await rescheduleStudent(
+        student.id, 
+        selectedDate, 
+        selectedTimeSlot, 
+        rescheduleReason,
+        student.trialDate,
+        student.trialTime
+      );
+      
+      if (success) {
+        console.log('✅ PHASE 4: Reschedule completed successfully');
+        onSuccess();
+        resetForm();
+        toast.success('Trial session rescheduled successfully!');
+      } else {
+        console.error('❌ PHASE 4: Reschedule failed');
+        toast.error('Failed to reschedule the trial session. Please try again.');
+      }
+    } catch (error) {
+      console.error('❌ PHASE 4: Reschedule error:', error);
+      toast.error('An unexpected error occurred while rescheduling.');
     }
   };
 
@@ -92,13 +106,14 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
   };
 
   const handleClose = () => {
+    console.log('🔄 PHASE 4: Reschedule modal closed');
     resetForm();
     onClose();
   };
 
   if (!student) return null;
 
-  // Categorize time slots
+  // Categorize time slots with better validation
   const availableTimeSlots = timeSlots.filter(slot => 
     slot.isAvailable && !slot.isBooked
   );
@@ -120,7 +135,12 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
         variant={isSelected ? "default" : "outline"}
         size="sm"
         disabled={isDisabled}
-        onClick={() => !isDisabled && setSelectedTimeSlot(slot.time)}
+        onClick={() => {
+          if (!isDisabled) {
+            console.log('🎯 PHASE 4: Time slot selected:', slot.time);
+            setSelectedTimeSlot(slot.time);
+          }
+        }}
         className={`text-sm relative ${
           isDisabled 
             ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' 
@@ -161,7 +181,10 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
             <Label className="text-sm font-medium">Reason for Rescheduling</Label>
             <RadioGroup
               value={rescheduleReason}
-              onValueChange={setRescheduleReason}
+              onValueChange={(value) => {
+                console.log('📝 PHASE 4: Reschedule reason selected:', value);
+                setRescheduleReason(value);
+              }}
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="trial-completed-by-teacher" id="teacher" />
@@ -184,7 +207,11 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
             <Calendar
               mode="single"
               selected={selectedDate}
-              onSelect={setSelectedDate}
+              onSelect={(date) => {
+                console.log('📅 PHASE 4: New date selected:', date?.toDateString());
+                setSelectedDate(date);
+                setSelectedTimeSlot(''); // Reset time selection when date changes
+              }}
               disabled={(date) => date < new Date()}
               className="rounded-md border"
             />
@@ -240,7 +267,7 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
             </div>
           )}
 
-          {/* Legend */}
+          {/* PHASE 4 FIX: Enhanced legend with clearer instructions */}
           {selectedDate && (availableTimeSlots.length > 0 || bookedTimeSlots.length > 0) && (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
               <p className="text-xs text-blue-800 font-medium mb-2">Legend:</p>

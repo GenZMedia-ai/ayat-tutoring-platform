@@ -1,35 +1,11 @@
 
-import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Calendar, 
-  Clock, 
-  Phone, 
-  MapPin, 
-  User, 
-  MoreHorizontal,
-  MessageCircle,
-  Video,
-  CheckCircle,
-  XCircle,
-  RotateCcw,
-  AlertTriangle,
-  Users
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Calendar, Clock, User, Users, Phone, Globe, MessageSquare, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialData';
-import { format } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
-import { supabase } from '@/integrations/supabase/client';
-
-const EGYPT_TIMEZONE = 'Africa/Cairo';
+import { WhatsAppContactButton } from './WhatsAppContactButton';
 
 interface UnifiedTeacherStudentCardProps {
   item: TeacherMixedTrialItem;
@@ -40,13 +16,6 @@ interface UnifiedTeacherStudentCardProps {
   onReschedule: (item: TeacherMixedTrialItem) => void;
 }
 
-interface RescheduleInfo {
-  rescheduleCount: number;
-  originalDate?: string;
-  originalTime?: string;
-  rescheduleReason?: string;
-}
-
 export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps> = ({
   item,
   onContact,
@@ -55,355 +24,170 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
   onMarkGhosted,
   onReschedule
 }) => {
-  const [rescheduleInfo, setRescheduleInfo] = useState<RescheduleInfo | null>(null);
-  const isFamily = item.type === 'family';
   const data = item.data;
-
-  // Log session ID for debugging
-  console.log('🎯 Unified card rendered with item:', {
-    type: item.type,
-    name: isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name,
-    id: item.id,
-    sessionId: data.sessionId
-  });
-
-  // Fetch reschedule information
-  useEffect(() => {
-    const fetchRescheduleInfo = async () => {
-      try {
-        let sessionIds: string[] = [];
-
-        if (isFamily) {
-          // For families, get session IDs from family students
-          const { data: familyStudents } = await supabase
-            .from('students')
-            .select(`
-              session_students(session_id)
-            `)
-            .eq('family_group_id', item.id);
-
-          if (familyStudents) {
-            sessionIds = familyStudents
-              .flatMap(student => student.session_students || [])
-              .map(ss => ss.session_id);
-          }
-        } else {
-          // For individuals, get from session_students
-          const { data: sessionStudents } = await supabase
-            .from('session_students')
-            .select('session_id')
-            .eq('student_id', item.id);
-
-          if (sessionStudents) {
-            sessionIds = sessionStudents.map(ss => ss.session_id);
-          }
-        }
-
-        if (sessionIds.length > 0) {
-          const { data: sessionData } = await supabase
-            .from('sessions')
-            .select('reschedule_count, original_date, original_time, reschedule_reason')
-            .in('id', sessionIds)
-            .order('created_at', { ascending: false })
-            .limit(1);
-
-          if (sessionData && sessionData.length > 0) {
-            const session = sessionData[0];
-            if (session.reschedule_count > 0) {
-              setRescheduleInfo({
-                rescheduleCount: session.reschedule_count,
-                originalDate: session.original_date,
-                originalTime: session.original_time,
-                rescheduleReason: session.reschedule_reason
-              });
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching reschedule info:', error);
-      }
-    };
-
-    fetchRescheduleInfo();
-  }, [item.id, isFamily]);
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { color: string; label: string }> = {
-      'pending': { color: 'bg-orange-100 text-orange-800', label: 'Pending' },
-      'confirmed': { color: 'bg-blue-100 text-blue-800', label: 'Confirmed' },
-      'trial-completed': { color: 'bg-green-100 text-green-800', label: 'Trial Completed' },
-      'trial-ghosted': { color: 'bg-red-100 text-red-800', label: 'Trial Ghosted' },
-    };
-
-    const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', label: status };
-    return (
-      <Badge className={`${config.color} border-0`}>
-        {config.label}
-      </Badge>
-    );
-  };
-
-  const formatDateTime = (date?: string, time?: string) => {
-    if (!date || !time) return 'Not scheduled';
-    
-    try {
-      console.log('🔄 Formatting date/time:', { date, time });
-      
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}:\d{2}$/.test(time)) {
-        console.error('❌ Invalid date/time format:', { date, time });
-        return 'Invalid format';
-      }
-      
-      // FIXED: Remove UTC conversion, treat as Egypt time directly
-      const egyptDateTimeString = `${date}T${time}`;
-      const egyptDateTime = new Date(egyptDateTimeString);
-      
-      if (isNaN(egyptDateTime.getTime())) {
-        console.error('❌ Invalid date object:', egyptDateTimeString);
-        return 'Invalid date';
-      }
-      
-      const formattedDateTime = format(egyptDateTime, 'dd/MM/yyyy \'at\' h:mm a');
-      
-      return formattedDateTime;
-    } catch (error) {
-      console.error('❌ Date formatting error:', error);
-      return 'Date formatting error';
+  
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case 'confirmed': return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'trial-completed': return 'bg-green-100 text-green-800 border-green-300';
+      case 'trial-ghosted': return 'bg-red-100 text-red-800 border-red-300';
+      case 'rescheduled': return 'bg-purple-100 text-purple-800 border-purple-300';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
     }
-  };
-
-  const formatOriginalDateTime = (date?: string, time?: string) => {
-    if (!date || !time) return '';
-    
-    try {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}:\d{2}$/.test(time)) {
-        return '';
-      }
-      
-      // FIXED: Remove UTC conversion, treat as Egypt time directly
-      const egyptDateTimeString = `${date}T${time}`;
-      const egyptDateTime = new Date(egyptDateTimeString);
-      
-      if (isNaN(egyptDateTime.getTime())) {
-        return '';
-      }
-      
-      const formattedDateTime = format(egyptDateTime, 'dd/MM \'at\' h:mm a');
-      
-      return formattedDateTime;
-    } catch (error) {
-      console.error('❌ Original date formatting error:', error);
-      return '';
-    }
-  };
-
-  const getMenuOptions = () => {
-    const options = [];
-
-    if (data.status === 'pending') {
-      options.push(
-        { label: `Contact ${isFamily ? 'Family' : 'Student'}`, action: () => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name), icon: MessageCircle },
-        { label: 'Confirm Trial', action: () => onConfirm(item), icon: CheckCircle },
-        { 
-          label: 'Reschedule', 
-          action: () => {
-            if (isFamily) {
-              console.warn('⚠️ Family reschedule temporarily disabled');
-              // TODO: Implement family reschedule flow
-            } else {
-              onReschedule(item);
-            }
-          }, 
-          icon: RotateCcw 
-        }
-      );
-    } else if (data.status === 'confirmed') {
-      const canMarkOutcome = !!data.sessionId || isFamily; // Families can always mark outcomes
-      
-      if (canMarkOutcome) {
-        options.push(
-          { label: 'Mark as Completed', action: () => onMarkCompleted(item), icon: CheckCircle },
-          { label: 'Mark as Ghosted', action: () => onMarkGhosted(item), icon: XCircle }
-        );
-      } else {
-        console.warn('⚠️ Cannot mark outcome - no session ID for individual student:', (data as TeacherTrialStudent).name);
-      }
-      
-      options.push(
-        { 
-          label: 'Reschedule', 
-          action: () => {
-            if (isFamily) {
-              console.warn('⚠️ Family reschedule temporarily disabled');
-              // TODO: Implement family reschedule flow
-            } else {
-              onReschedule(item);
-            }
-          }, 
-          icon: RotateCcw 
-        },
-        { label: `Contact ${isFamily ? 'Family' : 'Student'}`, action: () => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name), icon: MessageCircle }
-      );
-    } else {
-      options.push(
-        { label: `Contact ${isFamily ? 'Family' : 'Student'}`, action: () => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name), icon: MessageCircle }
-      );
-    }
-
-    return options;
   };
 
   const getName = () => {
-    if (isFamily) {
+    if (item.type === 'individual') {
+      return (data as TeacherTrialStudent).name;
+    } else {
       return (data as TeacherTrialFamily).parentName;
     }
-    return (data as TeacherTrialStudent).name;
   };
 
   const getDisplayInfo = () => {
-    if (isFamily) {
-      const familyData = data as TeacherTrialFamily;
+    if (item.type === 'individual') {
+      const student = data as TeacherTrialStudent;
       return {
-        uniqueId: familyData.uniqueId,
-        ageInfo: `${familyData.studentCount} students`,
-        parentInfo: null
+        icon: <User className="h-4 w-4" />,
+        title: student.name,
+        subtitle: `Age: ${student.age} • ${student.uniqueId}`,
+        phone: student.phone,
+        country: student.country
       };
     } else {
-      const studentData = data as TeacherTrialStudent;
+      const family = data as TeacherTrialFamily;
       return {
-        uniqueId: studentData.uniqueId,
-        ageInfo: `Age: ${studentData.age}`,
-        parentInfo: studentData.parentName ? `Parent: ${studentData.parentName}` : null
+        icon: <Users className="h-4 w-4" />,
+        title: family.parentName,
+        subtitle: `Family Trial • ${family.studentCount} students • ${family.uniqueId}`,
+        phone: family.phone,
+        country: family.country
       };
     }
   };
 
   const displayInfo = getDisplayInfo();
+  const canMarkAsCompleted = data.status === 'confirmed';
+  const canConfirm = data.status === 'pending';
+  const isCompleted = data.status === 'trial-completed' || data.status === 'trial-ghosted';
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                {isFamily ? (
-                  <Users className="h-4 w-4 text-primary" />
-                ) : (
-                  <User className="h-4 w-4 text-primary" />
-                )}
-                <h3 className="font-semibold text-lg">{getName()}</h3>
+    <Card className="transition-all duration-200 hover:shadow-md border-l-4 border-l-primary">
+      <CardContent className="p-6">
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                {displayInfo.icon}
               </div>
-              {getStatusBadge(data.status)}
-              <Badge variant="outline" className="text-xs">
-                {isFamily ? 'Family' : 'Individual'}
-              </Badge>
-              {rescheduleInfo && rescheduleInfo.rescheduleCount > 0 && (
-                <Badge className="bg-yellow-100 text-yellow-800 border-0">
-                  <RotateCcw className="h-3 w-3 mr-1" />
-                  Rescheduled ({rescheduleInfo.rescheduleCount}x)
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg">{displayInfo.title}</h3>
+                <p className="text-sm text-muted-foreground">{displayInfo.subtitle}</p>
+                <Badge className={`mt-2 ${getStatusColor(data.status)}`}>
+                  {data.status.replace('-', ' ').toUpperCase()}
                 </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="font-mono">{displayInfo.uniqueId}</span>
-              <span>{displayInfo.ageInfo}</span>
-              {displayInfo.parentInfo && (
-                <span>{displayInfo.parentInfo}</span>
-              )}
-            </div>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {getMenuOptions().map((option, index) => (
-                <DropdownMenuItem key={index} onClick={option.action}>
-                  <option.icon className="mr-2 h-4 w-4" />
-                  {option.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Contact Information */}
-        <div className="grid grid-cols-1 gap-3">
-          <div className="flex items-center gap-2 text-sm">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            <span>{data.phone}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span>{data.country}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <div className="flex flex-col">
-              <span className="font-medium">
-                {formatDateTime(data.trialDate, data.trialTime)}
-              </span>
-              {rescheduleInfo && rescheduleInfo.originalDate && rescheduleInfo.originalTime && (
-                <span className="text-xs text-muted-foreground">
-                  Originally: {formatOriginalDateTime(rescheduleInfo.originalDate, rescheduleInfo.originalTime)}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Reschedule Information */}
-        {rescheduleInfo && rescheduleInfo.rescheduleCount > 0 && (
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-yellow-800">
-                  Session Rescheduled {rescheduleInfo.rescheduleCount} time{rescheduleInfo.rescheduleCount > 1 ? 's' : ''}
-                </p>
-                {rescheduleInfo.rescheduleReason && (
-                  <p className="text-yellow-700 mt-1">
-                    Reason: {rescheduleInfo.rescheduleReason.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </p>
-                )}
               </div>
             </div>
           </div>
-        )}
 
-        {/* Notes */}
-        {data.notes && (
-          <div className="p-3 bg-muted rounded-lg">
-            <p className="text-sm">
-              <strong>Notes:</strong> {data.notes}
-            </p>
+          {/* Contact Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-3 px-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">{displayInfo.phone}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">{displayInfo.country}</span>
+            </div>
           </div>
-        )}
 
-        {/* Quick Actions */}
-        {data.status === 'pending' && (
-          <div className="flex gap-2 pt-2 border-t">
-            <Button 
-              size="sm" 
-              variant="outline"
-              onClick={() => onContact(data.phone, getName())}
-            >
-              Contact
-            </Button>
-            <Button 
+          {/* Trial Information */}
+          {data.trialDate && data.trialTime && (
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium">{data.trialDate}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium">{data.trialTime}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {data.notes && (
+            <div className="p-3 bg-yellow-50 rounded-lg">
+              <div className="flex items-start gap-2">
+                <MessageSquare className="h-4 w-4 text-yellow-600 mt-0.5" />
+                <p className="text-sm text-yellow-800">{data.notes}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-2 pt-2">
+            {/* Contact Button */}
+            <WhatsAppContactButton
+              phone={displayInfo.phone}
+              name={getName()}
+              onContact={onContact}
               size="sm"
-              className="ayat-button-primary"
-              onClick={() => onConfirm(item)}
-            >
-              Confirm
-            </Button>
+            />
+
+            {/* Confirm Button */}
+            {canConfirm && (
+              <Button
+                size="sm"
+                onClick={() => onConfirm(item)}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Confirm Trial
+              </Button>
+            )}
+
+            {/* Trial Outcome Buttons */}
+            {canMarkAsCompleted && (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => onMarkCompleted(item)}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Mark Completed
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => onMarkGhosted(item)}
+                >
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Mark Ghosted
+                </Button>
+              </>
+            )}
+
+            {/* PHASE 3 FIX: Enable reschedule for all trial types including families */}
+            {!isCompleted && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onReschedule(item)}
+                className="border-orange-300 text-orange-600 hover:bg-orange-50"
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Reschedule
+              </Button>
+            )}
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );
