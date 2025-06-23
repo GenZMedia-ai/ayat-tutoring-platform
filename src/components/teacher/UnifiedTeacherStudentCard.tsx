@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, User, Users, Phone, Globe, MessageSquare, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialData';
 import WhatsAppContactButton from './WhatsAppContactButton';
+import { Student } from '@/types';
 
 interface UnifiedTeacherStudentCardProps {
   item: TeacherMixedTrialItem;
@@ -67,25 +67,57 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
     }
   };
 
-  // Create a student object for WhatsAppContactButton
-  const createStudentForWhatsApp = () => {
+  // Create a complete student object for WhatsAppContactButton
+  const createStudentForWhatsApp = (): Student => {
     if (item.type === 'individual') {
       const student = data as TeacherTrialStudent;
       return {
         id: student.id,
+        uniqueId: student.uniqueId,
         name: student.name,
+        age: student.age,
         phone: student.phone,
+        country: student.country,
+        platform: 'zoom', // Default platform
+        notes: student.notes,
+        status: student.status as any,
+        parentName: student.parentName,
+        assignedTeacher: undefined,
+        assignedSalesAgent: '',
+        assignedSupervisor: undefined,
         trialDate: student.trialDate,
-        trialTime: student.trialTime
+        trialTime: student.trialTime,
+        teacherType: 'mixed' as any,
+        createdAt: '',
+        updatedAt: '',
+        paymentData: undefined,
+        sessions: undefined,
+        familyGroupId: undefined
       };
     } else {
       const family = data as TeacherTrialFamily;
       return {
         id: family.id,
+        uniqueId: family.uniqueId,
         name: family.parentName,
+        age: 0, // Not applicable for family
         phone: family.phone,
+        country: family.country,
+        platform: 'zoom', // Default platform
+        notes: family.notes,
+        status: family.status as any,
+        parentName: family.parentName,
+        assignedTeacher: undefined,
+        assignedSalesAgent: '',
+        assignedSupervisor: undefined,
         trialDate: family.trialDate,
-        trialTime: family.trialTime
+        trialTime: family.trialTime,
+        teacherType: 'mixed' as any,
+        createdAt: '',
+        updatedAt: '',
+        paymentData: undefined,
+        sessions: undefined,
+        familyGroupId: undefined
       };
     }
   };
