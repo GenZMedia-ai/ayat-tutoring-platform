@@ -21,7 +21,7 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
 
   // Filter students based on date range
   const filteredStudents = React.useMemo(() => {
-    if (!dateRange || dateRange === 'all') return paidStudents;
+    if (!dateRange || dateRange === 'all-time') return paidStudents;
     
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -35,16 +35,24 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
       switch (dateRange) {
         case 'today':
           return paymentDay.getTime() === today.getTime();
-        case 'week': {
-          const weekStart = new Date(today);
-          weekStart.setDate(today.getDate() - today.getDay());
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekStart.getDate() + 6);
-          return paymentDay >= weekStart && paymentDay <= weekEnd;
+        case 'yesterday': {
+          const yesterday = new Date(today);
+          yesterday.setDate(today.getDate() - 1);
+          return paymentDay.getTime() === yesterday.getTime();
         }
-        case 'month': {
+        case 'last-7-days': {
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - 6);
+          return paymentDay >= weekStart && paymentDay <= today;
+        }
+        case 'this-month': {
           return paymentDay.getMonth() === today.getMonth() && 
                  paymentDay.getFullYear() === today.getFullYear();
+        }
+        case 'last-month': {
+          const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+          return paymentDay >= lastMonth && paymentDay <= lastMonthEnd;
         }
         default:
           return true;
@@ -73,6 +81,19 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
     refreshPaidStudents();
   };
 
+  const getDateRangeDisplayText = (range: DateRange) => {
+    switch (range) {
+      case 'today': return 'Today';
+      case 'yesterday': return 'Yesterday';
+      case 'last-7-days': return 'Last 7 Days';
+      case 'this-month': return 'This Month';
+      case 'last-month': return 'Last Month';
+      case 'all-time': return 'All Time';
+      case 'custom': return 'Custom Range';
+      default: return 'All Time';
+    }
+  };
+
   if (loading) {
     return (
       <Card className="dashboard-card">
@@ -97,11 +118,9 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-green-600" />
             Paid Students Requiring Registration
-            {dateRange && dateRange !== 'all' && (
+            {dateRange && dateRange !== 'all-time' && (
               <Badge variant="outline" className="ml-2">
-                {dateRange === 'today' ? 'Today' : 
-                 dateRange === 'week' ? 'This Week' : 
-                 dateRange === 'month' ? 'This Month' : 'All Time'}
+                {getDateRangeDisplayText(dateRange)}
               </Badge>
             )}
           </CardTitle>
@@ -120,9 +139,7 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
               <p className="text-muted-foreground text-lg font-medium">
                 {paidStudents.length === 0 
                   ? "No paid students requiring registration" 
-                  : `No paid students found for ${dateRange === 'today' ? 'today' : 
-                      dateRange === 'week' ? 'this week' : 
-                      dateRange === 'month' ? 'this month' : 'selected period'}`
+                  : `No paid students found for ${getDateRangeDisplayText(dateRange).toLowerCase()}`
                 }
               </p>
               <p className="text-sm text-muted-foreground mt-2">
