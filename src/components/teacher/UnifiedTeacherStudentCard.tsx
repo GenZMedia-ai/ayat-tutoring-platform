@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,29 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
         subtitle: `Family Trial • ${family.studentCount} students • ${family.uniqueId}`,
         phone: family.phone,
         country: family.country
+      };
+    }
+  };
+
+  // Create a student object for WhatsAppContactButton
+  const createStudentForWhatsApp = () => {
+    if (item.type === 'individual') {
+      const student = data as TeacherTrialStudent;
+      return {
+        id: student.id,
+        name: student.name,
+        phone: student.phone,
+        trialDate: student.trialDate,
+        trialTime: student.trialTime
+      };
+    } else {
+      const family = data as TeacherTrialFamily;
+      return {
+        id: family.id,
+        name: family.parentName,
+        phone: family.phone,
+        trialDate: family.trialDate,
+        trialTime: family.trialTime
       };
     }
   };
@@ -133,10 +157,10 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
           <div className="flex flex-wrap gap-2 pt-2">
             {/* Contact Button */}
             <WhatsAppContactButton
-              phone={displayInfo.phone}
-              name={getName()}
-              onContact={onContact}
+              student={createStudentForWhatsApp()}
+              contactType="trial_confirmation"
               size="sm"
+              onContactLogged={() => onContact(displayInfo.phone, getName())}
             />
 
             {/* Confirm Button */}
@@ -173,7 +197,7 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
               </>
             )}
 
-            {/* PHASE 3 FIX: Enable reschedule for all trial types including families */}
+            {/* Reschedule Button - Now enabled for all trial types */}
             {!isCompleted && (
               <Button
                 size="sm"
