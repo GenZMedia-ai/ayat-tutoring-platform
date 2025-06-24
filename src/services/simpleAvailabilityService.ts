@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { getTimezoneConfig, convertClientTimeToServer } from '@/utils/timezoneUtils';
 
@@ -71,130 +70,106 @@ export class SimpleAvailabilityService {
       const teacherTypeFilter = this.buildTeacherTypeFilter(teacherType);
       console.log('👥 Teacher types to search:', teacherTypeFilter);
       
-      // STEP 4: Query availability table
-      console.log('📊 Querying teacher_availability table...');
-      const { data: availability, error: availabilityError } = await supabase
+      // STEP 4: FIXED QUERY - Join with profiles table and filter directly
+      console.log('📊 Executing enhanced availability query with teacher filtering...');
+      const { data: availabilityWithTeachers, error: availabilityError } = await supabase
         .from('teacher_availability')
-        .select('id, time_slot, teacher_id, is_available, is_booked')
+        .select(`
+          id,
+          time_slot,
+          teacher_id,
+          is_available,
+          is_booked,
+          profiles!inner (
+            id,
+            full_name,
+            teacher_type,
+            status,
+            role
+          )
+        `)
         .eq('date', dateStr)
         .eq('is_available', true)
         .eq('is_booked', false)
-        .in('time_slot', timeSlots);
+        .in('time_slot', timeSlots)
+        .eq('profiles.status', 'approved')
+        .eq('profiles.role', 'teacher')
+        .in('profiles.teacher_type', teacherTypeFilter);
       
       if (availabilityError) {
-        console.error('❌ Availability query error:', availabilityError);
+        console.error('❌ Enhanced availability query error:', availabilityError);
         throw availabilityError;
       }
       
-      console.log('📋 Raw availability data:', {
+      console.log('📋 Enhanced availability data with teacher filtering:', {
         dateQueried: dateStr,
         timeSlotsQueried: timeSlots,
-        rawResults: availability,
-        resultCount: availability?.length || 0
+        teacherTypesFiltered: teacherTypeFilter,
+        rawResults: availabilityWithTeachers,
+        resultCount: availabilityWithTeachers?.length || 0
       });
       
-      if (!availability || availability.length === 0) {
-        console.log('⚠️ NO AVAILABILITY FOUND - Checking what exists in DB...');
+      if (!availabilityWithTeachers || availabilityWithTeachers.length === 0) {
+        console.log('⚠️ NO AVAILABILITY FOUND AFTER ENHANCED FILTERING');
         
-        // Debug: Check what's actually in the DB for this date
+        // Debug: Check what's actually available for this date (without teacher filtering)
         const { data: debugData } = await supabase
           .from('teacher_availability')
-          .select('*')
+          .select(`
+            *,
+            profiles (
+              id,
+              full_name,
+              teacher_type,
+              status,
+              role
+            )
+          `)
           .eq('date', dateStr);
         
-        console.log('🔍 All slots for this date:', debugData);
-        
-        // Check if we have any data for this teacher type
-        const { data: teacherCheck } = await supabase
-          .from('profiles')
-          .select('id, full_name, teacher_type, status, role')
-          .eq('status', 'approved')
-          .eq('role', 'teacher')
-          .in('teacher_type', teacherTypeFilter);
-        
-        console.log('👥 Available teachers for this type:', teacherCheck);
+        console.log('🔍 All slots for this date (debug):', debugData);
         
         return [];
       }
       
-      // STEP 5: Get teacher profiles
-      const teacherIds = [...new Set(availability.map(slot => slot.teacher_id))];
-      console.log('👥 Teacher IDs found:', teacherIds);
-      
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, full_name, teacher_type, status, role')
-        .in('id', teacherIds)
-        .eq('status', 'approved')
-        .eq('role', 'teacher')
-        .in('teacher_type', teacherTypeFilter);
-      
-      if (profilesError) {
-        console.error('❌ Profiles query error:', profilesError);
-        throw profilesError;
-      }
-      
-      console.log('👥 Teacher profiles found:', {
-        profilesFound: profiles?.length || 0,
-        profiles: profiles?.map(p => ({
-          id: p.id,
-          name: p.full_name,
-          type: p.teacher_type
-        }))
+      // STEP 5: Build result slots directly from the joined data
+      const slots: SimpleTimeSlot[] = availabilityWithTeachers.map(slot => {
+        const profile = slot.profiles;
+        const timeSlotStr = slot.time_slot;
+        
+        console.log(`✅ Building enhanced slot for ${profile.full_name} at ${timeSlotStr}`);
+        
+        // Create UTC date for this slot
+        const utcSlotDate = new Date(`${dateStr}T${timeSlotStr}.000Z`);
+        const utcEndDate = new Date(utcSlotDate.getTime() + 30 * 60 * 1000);
+        
+        // Format times for display
+        const clientDisplay = this.formatTimePair(utcSlotDate, utcEndDate, timezoneConfig.iana);
+        const egyptDisplay = this.formatTimePair(utcSlotDate, utcEndDate, 'Africa/Cairo') + ' (Egypt)';
+        
+        const resultSlot = {
+          id: slot.id,
+          teacherId: slot.teacher_id,
+          teacherName: profile.full_name,
+          teacherType: profile.teacher_type,
+          utcStartTime: timeSlotStr,
+          utcEndTime: this.formatTime(utcEndDate, 'UTC'),
+          clientTimeDisplay: clientDisplay,
+          egyptTimeDisplay: egyptDisplay
+        };
+        
+        console.log('📦 Built enhanced slot:', resultSlot);
+        return resultSlot;
       });
       
-      if (!profiles || profiles.length === 0) {
-        console.log('⚠️ NO MATCHING TEACHERS FOUND');
-        return [];
-      }
-      
-      // STEP 6: Build profile map and result slots
-      const profileMap = new Map(profiles.map(profile => [profile.id, profile]));
-      console.log('🗺️ Profile map created with', profileMap.size, 'teachers');
-      
-      const slots: SimpleTimeSlot[] = availability
-        .filter(slot => {
-          const hasProfile = profileMap.has(slot.teacher_id);
-          console.log(`🔍 Slot ${slot.id} (${slot.time_slot}) - Teacher ${slot.teacher_id} - Has Profile: ${hasProfile}`);
-          return hasProfile;
-        })
-        .map(slot => {
-          const profile = profileMap.get(slot.teacher_id)!;
-          const timeSlotStr = slot.time_slot;
-          
-          console.log(`✅ Building slot for ${profile.full_name} at ${timeSlotStr}`);
-          
-          // Create UTC date for this slot
-          const utcSlotDate = new Date(`${dateStr}T${timeSlotStr}.000Z`);
-          const utcEndDate = new Date(utcSlotDate.getTime() + 30 * 60 * 1000);
-          
-          // Format times for display
-          const clientDisplay = this.formatTimePair(utcSlotDate, utcEndDate, timezoneConfig.iana);
-          const egyptDisplay = this.formatTimePair(utcSlotDate, utcEndDate, 'Africa/Cairo') + ' (Egypt)';
-          
-          const resultSlot = {
-            id: slot.id,
-            teacherId: slot.teacher_id,
-            teacherName: profile.full_name,
-            teacherType: profile.teacher_type,
-            utcStartTime: timeSlotStr,
-            utcEndTime: this.formatTime(utcEndDate, 'UTC'),
-            clientTimeDisplay: clientDisplay,
-            egyptTimeDisplay: egyptDisplay
-          };
-          
-          console.log('📦 Built slot:', resultSlot);
-          return resultSlot;
-        });
-      
-      console.log('🎯 === FINAL RESULTS ===');
-      console.log(`✅ Found ${slots.length} available slots`);
-      console.log('📋 Final slots:', slots);
+      console.log('🎯 === ENHANCED FINAL RESULTS ===');
+      console.log(`✅ Found ${slots.length} available slots with enhanced filtering`);
+      console.log('📋 Enhanced final slots:', slots);
       console.log('🔍 === DEBUGGING SESSION END ===');
       
       return slots;
     } catch (error) {
-      console.error('💥 CRITICAL ERROR in searchAvailableSlots:', error);
+      console.error('💥 CRITICAL ERROR in enhanced searchAvailableSlots:', error);
       throw error;
     }
   }
