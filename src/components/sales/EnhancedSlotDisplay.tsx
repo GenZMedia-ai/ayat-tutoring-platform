@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, Clock, MapPin } from 'lucide-react';
+import { Users, Clock, MapPin, AlertCircle } from 'lucide-react';
 import { GroupedTimeSlot, SimpleTimeSlot } from '@/services/simpleAvailabilityService';
 
 interface EnhancedSlotDisplayProps {
@@ -28,10 +28,24 @@ export const EnhancedSlotDisplay: React.FC<EnhancedSlotDisplayProps> = ({
 
   if (groupedSlots.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground space-y-2">
-        <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-        <p className="font-medium">No available slots found for the selected hour.</p>
-        <p className="text-sm">Try selecting a different time or check nearby hours.</p>
+      <div className="text-center py-8 text-muted-foreground space-y-4">
+        <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+        <div className="space-y-2">
+          <p className="font-medium">No available slots found for the selected hour.</p>
+          <div className="text-sm space-y-1">
+            <p>💡 <strong>Tips to find available slots:</strong></p>
+            <ul className="list-disc list-inside space-y-1 text-left max-w-md mx-auto">
+              <li>Try different hours (database shows slots from 4:00 PM - 6:30 PM Qatar time)</li>
+              <li>Check if the selected date has teacher availability</li>
+              <li>Consider selecting "Mixed" teacher type for more options</li>
+              <li>Verify the timezone matches your client's location</li>
+            </ul>
+          </div>
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm">
+            <p><strong>Current Database Availability:</strong></p>
+            <p>June 24, 2025: 7:00 PM - 9:30 PM Qatar time (16:00-18:30 UTC)</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -127,6 +141,7 @@ export const EnhancedSlotDisplay: React.FC<EnhancedSlotDisplayProps> = ({
         <p className="text-sm text-muted-foreground">
           💡 <strong>Tip:</strong> Each time slot is 30 minutes long. 
           You can book with any available teacher or choose a specific one.
+          Times are automatically converted between client timezone and Egypt time.
         </p>
       </div>
     </div>

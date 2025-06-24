@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,11 +18,21 @@ import { EnhancedSlotDisplay } from '@/components/sales/EnhancedSlotDisplay';
 import { supabase } from '@/integrations/supabase/client';
 
 const SimpleSalesDashboard: React.FC = () => {
-  // FIXED: Use UTC date to prevent timezone conversion issues
+  // FIXED: Dynamic date initialization instead of hardcoded date
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
-    const utcDate = new Date(Date.UTC(2025, 5, 22)); // Month is 0-indexed, June 22nd
-    return utcDate;
+    const now = new Date();
+    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   });
+  
+  // FIXED: Add display date for Calendar to handle timezone display correctly
+  const dateForCalendar = selectedDate
+    ? new Date(
+        selectedDate.getUTCFullYear(),
+        selectedDate.getUTCMonth(),
+        selectedDate.getUTCDate()
+      )
+    : undefined;
+  
   const [timezone, setTimezone] = useState('qatar');
   const [teacherType, setTeacherType] = useState('mixed');
   const [selectedHour, setSelectedHour] = useState(14);
@@ -107,6 +118,8 @@ const SimpleSalesDashboard: React.FC = () => {
       return;
     }
     
+    console.log('=== FIXED SEARCH TRIGGER ===');
+    console.log('Search parameters:', { selectedDate: selectedDate.toDateString(), timezone, teacherType, selectedHour });
     checkAvailability(selectedDate, timezone, teacherType, selectedHour);
   };
 
@@ -271,12 +284,12 @@ const SimpleSalesDashboard: React.FC = () => {
                     </Select>
                   </div>
 
+                  {/* FIXED: Use dateForCalendar for display and proper date selection */}
                   <Calendar
                     mode="single"
-                    selected={selectedDate}
+                    selected={dateForCalendar}
                     onSelect={(date) => {
                       if (date) {
-                        // Convert selected date to UTC to prevent timezone issues
                         const utcDate = new Date(Date.UTC(
                           date.getFullYear(),
                           date.getMonth(),
@@ -286,7 +299,11 @@ const SimpleSalesDashboard: React.FC = () => {
                       }
                     }}
                     className="rounded-md border"
-                    disabled={(date) => date < new Date('2025-06-21')}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today;
+                    }}
                   />
 
                   <Button 
@@ -300,8 +317,13 @@ const SimpleSalesDashboard: React.FC = () => {
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
+                    {/* FIXED: Proper date display using UTC formatting */}
                     <h4 className="font-medium">
-                      Available Slots for {selectedDate?.toDateString()}
+                      Available Slots for {selectedDate ?
+                        new Intl.DateTimeFormat('en-US', {
+                          dateStyle: 'full',
+                          timeZone: 'UTC'
+                        }).format(selectedDate) : ''}
                     </h4>
                     <div className="text-xs text-muted-foreground">
                       Date: {selectedDate?.toISOString().split('T')[0]}

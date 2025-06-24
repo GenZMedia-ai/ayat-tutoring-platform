@@ -39,14 +39,20 @@ export class SimpleAvailabilityService {
         throw new Error(`Invalid timezone: ${timezone}`);
       }
       
-      console.log('=== ENHANCED SEARCH: Searching for both 30-minute slots ===');
+      console.log('=== FIXED SEARCH: Converting client hour to UTC ===');
       console.log('Selected hour:', selectedHour, 'Date:', dateStr, 'Timezone:', timezone);
       
-      // PHASE 1 FIX: Search for BOTH 30-minute slots in the selected hour
-      const slot1Time = `${String(selectedHour).padStart(2, '0')}:00:00`;
-      const slot2Time = `${String(selectedHour).padStart(2, '0')}:30:00`;
+      // CRITICAL FIX: Convert client hour to UTC before searching
+      const serverTime = convertClientTimeToServer(date, selectedHour, timezone);
+      const utcHour = serverTime.utcHour;
       
-      console.log('Searching for slots:', slot1Time, 'and', slot2Time);
+      console.log('UTC hour conversion:', { clientHour: selectedHour, utcHour, offset: timezoneConfig.offset });
+      
+      // PHASE 1 FIX: Search for BOTH 30-minute slots in the converted UTC hour
+      const slot1Time = `${String(utcHour).padStart(2, '0')}:00:00`;
+      const slot2Time = `${String(utcHour).padStart(2, '0')}:30:00`;
+      
+      console.log('Searching for UTC slots:', slot1Time, 'and', slot2Time);
       
       // Build teacher type filter
       let teacherTypeFilter: string[];
@@ -135,7 +141,7 @@ export class SimpleAvailabilityService {
           };
         });
       
-      console.log('=== ENHANCED SEARCH RESULTS ===');
+      console.log('=== FIXED SEARCH RESULTS ===');
       console.log('Total slots found:', slots.length);
       console.log('Slots breakdown:', slots.map(s => ({ time: s.utcStartTime, teacher: s.teacherName })));
       

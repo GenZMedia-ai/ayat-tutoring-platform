@@ -20,11 +20,21 @@ const SalesHomepage: React.FC = () => {
   const [dateFilter, setDateFilter] = useState('today');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | null>(null);
   
-  // Quick Availability Checker state
+  // FIXED: Dynamic date initialization instead of hardcoded date
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
-    const utcDate = new Date(Date.UTC(2025, 5, 22));
-    return utcDate;
+    const now = new Date();
+    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   });
+  
+  // FIXED: Add display date for Calendar to handle timezone display correctly
+  const dateForCalendar = selectedDate
+    ? new Date(
+        selectedDate.getUTCFullYear(),
+        selectedDate.getUTCMonth(),
+        selectedDate.getUTCDate()
+      )
+    : undefined;
+  
   const [timezone, setTimezone] = useState('qatar');
   const [teacherType, setTeacherType] = useState('mixed');
   const [selectedHour, setSelectedHour] = useState(14);
@@ -151,7 +161,7 @@ const SalesHomepage: React.FC = () => {
       return;
     }
     console.log('=== ENHANCED SEARCH TRIGGER ===');
-    console.log('Search parameters:', { selectedDate, timezone, teacherType, selectedHour });
+    console.log('Search parameters:', { selectedDate: selectedDate.toDateString(), timezone, teacherType, selectedHour });
     checkAvailability(selectedDate, timezone, teacherType, selectedHour);
   };
 
@@ -166,7 +176,7 @@ const SalesHomepage: React.FC = () => {
     if (!selectedDate || !selectedSlot) return false;
     
     console.log('=== ENHANCED BOOKING SUBMISSION ===');
-    console.log('Booking data:', { selectedDate, selectedSlot, isMultiStudent });
+    console.log('Booking data:', { selectedDate: selectedDate.toDateString(), selectedSlot, isMultiStudent });
     
     const success = await bookTrialSession(
       data,
@@ -329,9 +339,10 @@ const SalesHomepage: React.FC = () => {
                 </Select>
               </div>
 
+              {/* FIXED: Use dateForCalendar for display and proper date selection */}
               <Calendar
                 mode="single"
-                selected={selectedDate}
+                selected={dateForCalendar}
                 onSelect={(date) => {
                   if (date) {
                     const utcDate = new Date(Date.UTC(
@@ -343,7 +354,11 @@ const SalesHomepage: React.FC = () => {
                   }
                 }}
                 className="rounded-md border"
-                disabled={(date) => date < new Date('2025-06-21')}
+                disabled={(date) => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  return date < today;
+                }}
               />
 
               <Button 
@@ -357,8 +372,13 @@ const SalesHomepage: React.FC = () => {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
+                {/* FIXED: Proper date display using UTC formatting */}
                 <h4 className="font-medium">
-                  Available Slots for {selectedDate?.toDateString()}
+                  Available Slots for {selectedDate ?
+                    new Intl.DateTimeFormat('en-US', {
+                      dateStyle: 'full',
+                      timeZone: 'UTC'
+                    }).format(selectedDate) : ''}
                 </h4>
                 <div className="text-xs text-muted-foreground">
                   Date: {selectedDate?.toISOString().split('T')[0]}
