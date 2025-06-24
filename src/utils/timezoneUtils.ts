@@ -5,14 +5,46 @@ export const getTimezoneConfig = (timezoneValue: string) => {
   return TIMEZONES.find(tz => tz.value === timezoneValue);
 };
 
-// Simplified timezone conversion for the sales availability checker
+// Convert Egypt time (teacher's local time) to UTC for database storage
+export const convertEgyptTimeToUTC = (egyptHour: number, egyptMinute: number = 0): string => {
+  // Egypt is UTC+2, so subtract 2 hours to get UTC
+  const egyptOffset = 2;
+  let utcHour = egyptHour - egyptOffset;
+  
+  // Handle 24-hour boundary
+  if (utcHour < 0) {
+    utcHour += 24;
+  } else if (utcHour >= 24) {
+    utcHour -= 24;
+  }
+  
+  return `${String(utcHour).padStart(2, '0')}:${String(egyptMinute).padStart(2, '0')}:00`;
+};
+
+// Convert UTC time from database to Egypt time for teacher display
+export const convertUTCToEgyptTime = (utcTimeString: string): string => {
+  const [hours, minutes] = utcTimeString.split(':').map(Number);
+  const egyptOffset = 2;
+  let egyptHour = hours + egyptOffset;
+  
+  // Handle 24-hour boundary
+  if (egyptHour >= 24) {
+    egyptHour -= 24;
+  } else if (egyptHour < 0) {
+    egyptHour += 24;
+  }
+  
+  return `${String(egyptHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
+// Simplified timezone conversion for sales availability checker
 export const convertClientTimeToServer = (clientDate: Date, clientHour: number, timezoneValue: string) => {
   const tzConfig = getTimezoneConfig(timezoneValue);
   if (!tzConfig) {
     throw new Error(`Invalid timezone: ${timezoneValue}`);
   }
 
-  console.log('=== SIMPLIFIED TIMEZONE CONVERSION ===');
+  console.log('=== CLIENT TO UTC CONVERSION ===');
   console.log('Input:', { 
     clientDate: clientDate.toDateString(), 
     clientHour, 
@@ -31,31 +63,16 @@ export const convertClientTimeToServer = (clientDate: Date, clientHour: number, 
     adjustedUtcHour = utcHour - 24;
   }
 
-  // Preserve original date
-  const utcDate = new Date(
-    clientDate.getFullYear(),
-    clientDate.getMonth(),
-    clientDate.getDate(),
-    adjustedUtcHour
-  );
-
-  const utcDateString = clientDate.toISOString().split('T')[0]; // Keep original date
-
   const result = {
-    utcDate,
-    utcDateString,
     utcHour: adjustedUtcHour,
     utcTime: `${String(adjustedUtcHour).padStart(2, '0')}:00:00`
   };
 
-  console.log('Conversion result:', {
-    originalDate: clientDate.toDateString(),
-    preservedDateString: result.utcDateString,
+  console.log('Client to UTC result:', {
     clientHour: clientHour,
     utcHour: result.utcHour,
     utcTime: result.utcTime
   });
-  console.log('=== END TIMEZONE CONVERSION ===');
 
   return result;
 };

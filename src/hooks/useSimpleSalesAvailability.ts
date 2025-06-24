@@ -39,14 +39,15 @@ export const useSimpleSalesAvailability = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('=== SIMPLIFIED AVAILABILITY CHECK ===');
-      console.log('Parameters:', { 
+      console.log('=== REAL USER SELECTION SEARCH ===');
+      console.log('Real user selections:', { 
         date: date.toDateString(), 
         timezone, 
         teacherType, 
         selectedHour 
       });
       
+      // Use only real user selections - no mock data
       const slots = await SimpleAvailabilityService.searchAvailableSlots(
         date,
         timezone,
@@ -54,16 +55,16 @@ export const useSimpleSalesAvailability = () => {
         selectedHour
       );
       
-      console.log(`Found ${slots.length} available slots`);
+      console.log(`Found ${slots.length} real available slots from user selections`);
       
-      // Group slots by time
+      // Group real slots by time
       const grouped = SimpleAvailabilityService.groupSlotsByTime(slots);
-      console.log(`Grouped into ${grouped.length} time slots`);
+      console.log(`Grouped into ${grouped.length} real time slots`);
       
       setAvailableSlots(slots);
       setGroupedSlots(grouped);
     } catch (error) {
-      console.error('Availability check error:', error);
+      console.error('Real availability check error:', error);
       toast.error('Failed to check availability');
       setAvailableSlots([]);
       setGroupedSlots([]);
@@ -81,14 +82,14 @@ export const useSimpleSalesAvailability = () => {
   ): Promise<boolean> => {
     // Use family booking for multi-student sessions
     if (isMultiStudent) {
-      console.log('Routing to family booking system');
+      console.log('Routing to real family booking system');
       return await bookFamilyTrialSession(bookingData, selectedDate, selectedSlot, teacherType);
     }
 
-    // Single student booking
+    // Single student booking with real data
     try {
-      console.log('=== SINGLE STUDENT BOOKING ===');
-      console.log('Booking details:', { 
+      console.log('=== REAL SINGLE STUDENT BOOKING ===');
+      console.log('Real booking details:', { 
         date: selectedDate.toDateString(),
         slotId: selectedSlot.id,
         teacherId: selectedSlot.teacherId,
@@ -98,6 +99,7 @@ export const useSimpleSalesAvailability = () => {
       
       const bookingDateString = selectedDate.toISOString().split('T')[0];
       
+      // Use real selected data for booking
       const { data, error } = await supabase.rpc('simple_book_trial_session', {
         p_booking_data: bookingData,
         p_is_multi_student: isMultiStudent,
@@ -108,7 +110,7 @@ export const useSimpleSalesAvailability = () => {
       });
 
       if (error) {
-        console.error('Booking error:', error);
+        console.error('Real booking error:', error);
         toast.error(`Booking failed: ${error.message}`);
         return false;
       }
@@ -132,7 +134,7 @@ export const useSimpleSalesAvailability = () => {
         return false;
       }
     } catch (error) {
-      console.error('Booking exception:', error);
+      console.error('Real booking exception:', error);
       toast.error('Booking failed due to system error');
       return false;
     }
