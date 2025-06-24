@@ -96,7 +96,7 @@ export class SimpleAvailabilityService {
     
     if (availabilityError) {
       console.error('Real availability query error:', availabilityError);
-      throw availibilityError;
+      throw availabilityError;
     }
     
     console.log(`Found ${availability?.length || 0} real available time slots in database`);
