@@ -11,9 +11,9 @@ import { useMixedStudentData, MixedStudentItem } from '@/hooks/useMixedStudentDa
 import { useFamilyGroups } from '@/hooks/useFamilyGroups';
 import { UnifiedTrialCard } from '@/components/shared/UnifiedTrialCard';
 import { FamilyCard } from '@/components/family/FamilyCard';
-import { StudentEditModal } from './StudentEditModal';
-import { StatusChangeModal } from './StatusChangeModal';
-import { FollowUpManagementTab } from './FollowUpManagementTab';
+import { StudentEditModal } from '@/components/sales/StudentEditModal';
+import { StatusChangeModal } from '@/components/sales/StatusChangeModal';
+import { FollowUpManagementTab } from '@/components/sales/FollowUpManagementTab';
 import { FamilyGroup } from '@/types/family';
 import { TrialSessionFlowStudent } from '@/types/trial';
 import { toast } from 'sonner';
