@@ -14,13 +14,13 @@ import { HOURLY_TIME_SLOTS, TIMEZONES } from '@/constants/timeSlots';
 import { BookingModal } from '@/components/booking/BookingModal';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
-import { TrendingUp, Users, Calendar as CalendarIcon, DollarSign, Search, Clock } from 'lucide-react';
 
 const SalesHomepage: React.FC = () => {
   // Date filtering
   const [dateFilter, setDateFilter] = useState('today');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | null>(null);
   
+  // Quick Availability Checker state
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
     const utcDate = new Date(Date.UTC(2025, 5, 22));
     return utcDate;
@@ -31,6 +31,7 @@ const SalesHomepage: React.FC = () => {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
 
+  // Stats state
   const [salesStats, setSalesStats] = useState({
     bookedTrials: { total: 0, individual: 0, family: 0 },
     completedTrials: 0,
@@ -65,6 +66,7 @@ const SalesHomepage: React.FC = () => {
     }
   };
 
+  // Load sales statistics with date filtering
   useEffect(() => {
     const loadSalesStats = async () => {
       try {
@@ -75,6 +77,7 @@ const SalesHomepage: React.FC = () => {
         const fromStr = format(from, 'yyyy-MM-dd');
         const toStr = format(to, 'yyyy-MM-dd');
 
+        // Booked Trials (Individual)
         const { count: individualTrials } = await supabase
           .from('students')
           .select('*', { count: 'exact', head: true })
@@ -82,6 +85,7 @@ const SalesHomepage: React.FC = () => {
           .gte('created_at', fromStr)
           .lte('created_at', toStr + 'T23:59:59');
 
+        // Booked Trials (Family)
         const { count: familyTrials } = await supabase
           .from('family_groups')
           .select('*', { count: 'exact', head: true })
@@ -89,6 +93,7 @@ const SalesHomepage: React.FC = () => {
           .gte('created_at', fromStr)
           .lte('created_at', toStr + 'T23:59:59');
 
+        // Completed Trials (ready for conversion)
         const { count: completedTrials } = await supabase
           .from('students')
           .select('*', { count: 'exact', head: true })
@@ -97,6 +102,7 @@ const SalesHomepage: React.FC = () => {
           .gte('created_at', fromStr)
           .lte('created_at', toStr + 'T23:59:59');
 
+        // Pending Follow-up
         const { count: pendingFollowup } = await supabase
           .from('sales_followups')
           .select('*', { count: 'exact', head: true })
@@ -105,6 +111,7 @@ const SalesHomepage: React.FC = () => {
           .gte('created_at', fromStr)
           .lte('created_at', toStr + 'T23:59:59');
 
+        // Conversions (Trial → Paid)
         const { count: paidStudents } = await supabase
           .from('students')
           .select('*', { count: 'exact', head: true })
@@ -113,6 +120,7 @@ const SalesHomepage: React.FC = () => {
           .gte('created_at', fromStr)
           .lte('created_at', toStr + 'T23:59:59');
 
+        // Calculate conversion percentage
         const totalCompleted = (completedTrials || 0) + (paidStudents || 0);
         const conversionPercentage = totalCompleted > 0 ? Math.round(((paidStudents || 0) / totalCompleted) * 100) : 0;
 
@@ -171,29 +179,21 @@ const SalesHomepage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-stone-900">Sales Command Center</h2>
-          <p className="text-stone-600 mt-1">Manage your sales pipeline and book appointments</p>
-        </div>
-        <Badge variant="outline" className="modern-badge bg-stone-100/80 text-stone-700 border-stone-200/60">
+        <h2 className="text-3xl font-bold text-primary">Sales Command Center</h2>
+        <Badge variant="outline" className="text-xs">
           Sales Agent Dashboard
         </Badge>
       </div>
 
-      {/* Modern Date Filter */}
-      <Card className="modern-card">
-        <CardHeader className="modern-card-header">
-          <CardTitle className="text-lg font-semibold text-stone-900 flex items-center gap-2">
-            <div className="modern-icon-circle">
-              <CalendarIcon className="w-4 h-4 text-stone-600" />
-            </div>
-            Filter by Date
-          </CardTitle>
+      {/* Date Filter */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg">Filter by Date</CardTitle>
         </CardHeader>
-        <CardContent className="modern-card-content">
-          <div className="flex flex-wrap gap-3">
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
             {[
               { value: 'today', label: 'Today' },
               { value: 'yesterday', label: 'Yesterday' },
@@ -208,7 +208,6 @@ const SalesHomepage: React.FC = () => {
                 variant={dateFilter === option.value ? "default" : "outline"}
                 size="sm"
                 onClick={() => setDateFilter(option.value)}
-                className={dateFilter === option.value ? "modern-button-primary" : "modern-button-secondary"}
               >
                 {option.label}
               </Button>
@@ -217,85 +216,68 @@ const SalesHomepage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Modern Stats Cards */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="modern-stats-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-stone-600">Booked Trials</p>
-              <div className="text-3xl font-bold text-stone-900 mt-2">{salesStats.bookedTrials.total}</div>
-              <div className="text-xs text-stone-500 space-y-1 mt-2">
-                <div>Individual: {salesStats.bookedTrials.individual}</div>
-                <div>Family: {salesStats.bookedTrials.family}</div>
-              </div>
+        <Card className="dashboard-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Booked Trials</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">{salesStats.bookedTrials.total}</div>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <div>Individual: {salesStats.bookedTrials.individual}</div>
+              <div>Family: {salesStats.bookedTrials.family}</div>
             </div>
-            <div className="modern-icon-circle bg-blue-50 border-blue-200/40">
-              <Users className="w-5 h-5 text-blue-600" />
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="modern-stats-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-stone-600">Completed Trials</p>
-              <div className="text-3xl font-bold text-emerald-600 mt-2">{salesStats.completedTrials}</div>
-              <p className="text-xs text-stone-500 mt-2">Ready for conversion</p>
-            </div>
-            <div className="modern-icon-circle bg-emerald-50 border-emerald-200/40">
-              <TrendingUp className="w-5 h-5 text-emerald-600" />
-            </div>
-          </div>
-        </div>
+        <Card className="dashboard-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Completed Trials</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{salesStats.completedTrials}</div>
+            <p className="text-xs text-muted-foreground">Ready for conversion</p>
+          </CardContent>
+        </Card>
 
-        <div className="modern-stats-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-stone-600">Pending Follow-up</p>
-              <div className="text-3xl font-bold text-amber-600 mt-2">{salesStats.pendingFollowup}</div>
-              <p className="text-xs text-stone-500 mt-2">Need attention</p>
-            </div>
-            <div className="modern-icon-circle bg-amber-50 border-amber-200/40">
-              <Clock className="w-5 h-5 text-amber-600" />
-            </div>
-          </div>
-        </div>
+        <Card className="dashboard-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Pending Follow-up</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{salesStats.pendingFollowup}</div>
+            <p className="text-xs text-muted-foreground">Need attention</p>
+          </CardContent>
+        </Card>
 
-        <div className="modern-stats-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-stone-600">Conversions</p>
-              <div className="text-3xl font-bold text-purple-600 mt-2">{salesStats.conversions.count}</div>
-              <p className="text-xs text-stone-500 mt-2">{salesStats.conversions.percentage}% conversion rate</p>
-            </div>
-            <div className="modern-icon-circle bg-purple-50 border-purple-200/40">
-              <DollarSign className="w-5 h-5 text-purple-600" />
-            </div>
-          </div>
-        </div>
+        <Card className="dashboard-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Conversions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{salesStats.conversions.count}</div>
+            <p className="text-xs text-muted-foreground">{salesStats.conversions.percentage}% conversion rate</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Modern Quick Availability Checker */}
-      <Card className="modern-card">
-        <CardHeader className="modern-card-header">
-          <CardTitle className="text-xl font-semibold text-stone-900 flex items-center gap-3">
-            <div className="modern-icon-circle bg-stone-100 border-stone-200/40">
-              <Search className="w-5 h-5 text-stone-600" />
-            </div>
-            Quick Availability Checker
-          </CardTitle>
-          <CardDescription className="text-stone-600">
+      {/* Quick Availability Checker */}
+      <Card className="dashboard-card">
+        <CardHeader>
+          <CardTitle>Quick Availability Checker</CardTitle>
+          <CardDescription>
             Search and book available trial session slots for both individual and family bookings
           </CardDescription>
         </CardHeader>
-        <CardContent className="modern-card-content">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-6">
+        <CardContent>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium text-stone-700">Teacher Type</Label>
+                <div className="space-y-2">
+                  <Label>Teacher Type</Label>
                   <Select value={teacherType} onValueChange={setTeacherType}>
-                    <SelectTrigger className="modern-select">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -307,10 +289,10 @@ const SalesHomepage: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium text-stone-700">Client Timezone</Label>
+                <div className="space-y-2">
+                  <Label>Client Timezone</Label>
                   <Select value={timezone} onValueChange={setTimezone}>
-                    <SelectTrigger className="modern-select">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -324,10 +306,10 @@ const SalesHomepage: React.FC = () => {
                 </div>
               </div>
               
-              <div className="space-y-3">
-                <Label className="text-sm font-medium text-stone-700">Preferred Time (Hour)</Label>
+              <div className="space-y-2">
+                <Label>Preferred Time (Hour)</Label>
                 <Select value={selectedHour.toString()} onValueChange={(value) => setSelectedHour(parseFloat(value))}>
-                  <SelectTrigger className="modern-select">
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -353,67 +335,62 @@ const SalesHomepage: React.FC = () => {
                     setSelectedDate(utcDate);
                   }
                 }}
-                className="rounded-xl border border-stone-200/60 bg-white/80 backdrop-blur-sm"
+                className="rounded-md border"
                 disabled={(date) => date < new Date('2025-06-21')}
               />
 
               <Button 
                 onClick={handleSearchAvailability}
-                className="w-full modern-button-primary flex items-center gap-2"
+                className="w-full ayat-button-primary"
                 disabled={loading}
               >
-                <Search className="w-4 h-4" />
                 {loading ? 'Searching...' : 'Search Available Slots'}
               </Button>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-stone-900">
+                <h4 className="font-medium">
                   Available 30-Minute Slots for {selectedDate?.toDateString()}
                 </h4>
-                <div className="text-xs text-stone-500 bg-stone-100/60 px-3 py-1 rounded-full">
+                <div className="text-xs text-muted-foreground">
                   Date: {selectedDate?.toISOString().split('T')[0]}
                 </div>
               </div>
               
               {loading && (
-                <div className="text-center py-12 text-stone-500">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-stone-400 mx-auto mb-4"></div>
+                <div className="text-center py-8 text-muted-foreground">
                   Searching for slots on {selectedDate?.toISOString().split('T')[0]}...
                 </div>
               )}
               
               {!loading && availableSlots.length === 0 && (
-                <div className="text-center py-12 text-stone-500 space-y-3">
-                  <div className="modern-icon-circle mx-auto bg-stone-100 border-stone-200/40">
-                    <CalendarIcon className="w-6 h-6 text-stone-400" />
-                  </div>
-                  <p className="font-medium">No available slots found for {selectedDate?.toDateString()}.</p>
+                <div className="text-center py-8 text-muted-foreground space-y-2">
+                  <p>No available slots found for {selectedDate?.toDateString()}.</p>
                   <p className="text-sm">Try selecting a different date or time.</p>
                 </div>
               )}
               
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {availableSlots.map((slot) => (
-                  <div key={slot.id} className="flex items-center justify-between p-5 border border-stone-200/60 rounded-xl bg-white/80 backdrop-blur-sm hover:border-stone-300/80 transition-all duration-200">
-                    <div className="space-y-2">
-                      <div className="font-semibold text-stone-900">
+                  <div key={slot.id} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
+                    <div className="space-y-1">
+                      <div className="font-medium text-primary">
                         {slot.clientTimeDisplay}
                       </div>
-                      <div className="text-sm text-stone-600">
+                      <div className="text-sm text-muted-foreground">
                         Teacher: {slot.teacherName}
                       </div>
-                      <div className="text-xs text-stone-500">
+                      <div className="text-xs text-muted-foreground">
                         {slot.egyptTimeDisplay}
                       </div>
-                      <div className="text-xs text-emerald-600 bg-emerald-50/60 px-2 py-1 rounded-full inline-block">
+                      <div className="text-xs text-green-600">
                         UTC: {slot.utcStartTime} - {slot.utcEndTime}
                       </div>
                     </div>
                     <Button 
                       size="sm"
-                      className="modern-button-primary"
+                      className="ayat-button-primary"
                       onClick={() => handleBookNow(slot)}
                     >
                       Book Now

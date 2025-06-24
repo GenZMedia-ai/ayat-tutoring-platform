@@ -28,7 +28,7 @@ const DashboardNavigation: React.FC<DashboardNavigationProps> = ({
 
   return (
     <div className={cn(
-      "modern-pill-tabs",
+      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
       `grid w-full ${gridCols}`,
       className
     )}>
@@ -37,10 +37,11 @@ const DashboardNavigation: React.FC<DashboardNavigationProps> = ({
           key={tab.value}
           to={tab.path}
           className={cn(
-            "modern-pill-tab",
-            isActiveTab(tab.path) ? "data-[state=active]" : ""
+            "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+            isActiveTab(tab.path)
+              ? "bg-background text-foreground shadow-sm"
+              : "hover:bg-background/50"
           )}
-          data-state={isActiveTab(tab.path) ? "active" : "inactive"}
         >
           {tab.label}
         </Link>

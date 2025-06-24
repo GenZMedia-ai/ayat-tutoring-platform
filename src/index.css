@@ -94,147 +94,46 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-    background: linear-gradient(135deg, #faf9f7 0%, #f5f3f0 100%);
   }
 }
 
-/* Modern Design System - Enhanced Cards & Components */
-.modern-card {
-  @apply bg-white/80 backdrop-blur-sm border border-stone-200/60 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 hover:border-stone-300/80 hover:-translate-y-0.5;
-}
-
-.modern-card-header {
-  @apply p-6 pb-4;
-}
-
-.modern-card-content {
-  @apply p-6 pt-0;
-}
-
-.modern-stats-card {
-  @apply bg-white/90 backdrop-blur-sm border border-stone-200/50 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 hover:border-stone-300/70 hover:-translate-y-1;
-}
-
-.modern-pill-tabs {
-  @apply inline-flex h-12 items-center justify-center rounded-2xl bg-stone-100/80 backdrop-blur-sm p-1.5 text-stone-600 shadow-inner;
-}
-
-.modern-pill-tab {
-  @apply inline-flex items-center justify-center whitespace-nowrap rounded-xl px-6 py-2.5 text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
-}
-
-.modern-pill-tab[data-state="active"] {
-  @apply bg-white text-stone-900 shadow-sm border border-stone-200/60;
-}
-
-.modern-pill-tab:not([data-state="active"]) {
-  @apply hover:bg-white/50 hover:text-stone-800;
-}
-
-.modern-badge {
-  @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 backdrop-blur-sm;
-}
-
-.modern-badge-pending {
-  @apply bg-amber-50/90 text-amber-700 border-amber-200/60;
-}
-
-.modern-badge-confirmed {
-  @apply bg-blue-50/90 text-blue-700 border-blue-200/60;
-}
-
-.modern-badge-completed {
-  @apply bg-emerald-50/90 text-emerald-700 border-emerald-200/60;
-}
-
-.modern-badge-payment {
-  @apply bg-purple-50/90 text-purple-700 border-purple-200/60;
-}
-
-.modern-button-primary {
-  @apply bg-gradient-to-r from-stone-600 to-stone-700 text-white hover:from-stone-700 hover:to-stone-800 px-6 py-2.5 rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5;
-}
-
-.modern-button-secondary {
-  @apply bg-white/80 text-stone-700 border border-stone-200/60 hover:bg-stone-50 hover:border-stone-300/60 px-6 py-2.5 rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm;
-}
-
-.modern-input {
-  @apply flex h-11 w-full rounded-xl border border-stone-200/60 bg-white/80 px-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-stone-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 backdrop-blur-sm transition-all duration-200;
-}
-
-.modern-select {
-  @apply flex h-11 w-full items-center justify-between rounded-xl border border-stone-200/60 bg-white/80 px-4 py-2 text-sm ring-offset-background placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 backdrop-blur-sm transition-all duration-200;
-}
-
-.modern-icon-circle {
-  @apply w-10 h-10 rounded-xl bg-stone-100/80 backdrop-blur-sm flex items-center justify-center border border-stone-200/40;
-}
-
-/* Status-specific styling */
-.status-pending {
-  @apply modern-badge-pending;
-}
-
-.status-confirmed {
-  @apply modern-badge-confirmed;
-}
-
-.status-trial-completed {
-  @apply modern-badge-completed;
-}
-
-.status-paid {
-  @apply modern-badge-completed;
-}
-
-.status-awaiting-payment {
-  @apply modern-badge-payment;
-}
-
-.status-active {
-  @apply modern-badge-completed;
-}
-
-.status-expired {
-  @apply bg-stone-50/90 text-stone-600 border-stone-200/60;
-}
-
-/* Enhanced legacy support */
-.dashboard-card {
-  @apply modern-card;
-}
-
-.ayat-button-primary {
-  @apply modern-button-primary;
-}
-
-.ayat-button-secondary {
-  @apply modern-button-secondary;
-}
-
+/* Custom Ayat w Bian Styles */
 .brand-gradient {
   background: linear-gradient(135deg, #a57865 0%, #57463f 100%);
 }
 
-/* Smooth transitions for all interactive elements */
-* {
-  @apply transition-colors duration-200;
+.status-pending {
+  @apply bg-yellow-100 text-yellow-800 border-yellow-200;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+.status-confirmed {
+  @apply bg-blue-100 text-blue-800 border-blue-200;
 }
 
-::-webkit-scrollbar-track {
-  @apply bg-stone-100/50;
+.status-trial-completed {
+  @apply bg-green-100 text-green-800 border-green-200;
 }
 
-::-webkit-scrollbar-thumb {
-  @apply bg-stone-300/60 rounded-full;
+.status-paid {
+  @apply bg-emerald-100 text-emerald-800 border-emerald-200;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-stone-400/80;
+.status-active {
+  @apply bg-purple-100 text-purple-800 border-purple-200;
+}
+
+.status-expired {
+  @apply bg-gray-100 text-gray-800 border-gray-200;
+}
+
+.dashboard-card {
+  @apply bg-card border border-border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow;
+}
+
+.ayat-button-primary {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg font-medium transition-colors;
+}
+
+.ayat-button-secondary {
+  @apply bg-secondary text-secondary-foreground hover:bg-secondary/90 px-4 py-2 rounded-lg font-medium transition-colors;
 }
