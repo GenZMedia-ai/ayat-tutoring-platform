@@ -34,7 +34,7 @@ const SalesStudents: React.FC = () => {
     const loadPaidStudents = async () => {
       try {
         setLoading(true);
-        const { data: { user } } =                 await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data: students, error } = await supabase

@@ -15,7 +15,7 @@ interface PaymentLink {
   student_ids: string[];
   amount: number;
   currency: string;
-  status: 'pending' | 'clicked' | 'expired' | 'paid';
+  status: string; // Changed from literal union to string to match DB
   created_at: string;
   expires_at: string;
   paid_at?: string;
