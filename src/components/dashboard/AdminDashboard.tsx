@@ -11,6 +11,7 @@ const AdminDashboard: React.FC = () => {
     { value: 'trials', label: 'Trial Appointments', path: '/admin/trials' },
     { value: 'students', label: 'Students', path: '/admin/students' },
     { value: 'sessions', label: 'Sessions', path: '/admin/sessions' },
+    { value: 'notifications', label: 'Notifications', path: '/admin/notifications' },
     { value: 'settings', label: 'Settings', path: '/admin/settings' },
   ];
 
@@ -26,7 +27,7 @@ const AdminDashboard: React.FC = () => {
             </Badge>
           </div>
 
-          <DashboardNavigation tabs={tabs} gridCols="grid-cols-5" />
+          <DashboardNavigation tabs={tabs} gridCols="grid-cols-6" />
           
           <Outlet />
         </div>
