@@ -4,13 +4,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useTeacherActiveStudents } from '@/hooks/useTeacherActiveStudents';
 import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
 import { CompactStudentCard } from '@/components/teacher/CompactStudentCard';
+import { SessionEditModal } from '@/components/teacher/SessionEditModal';
+
+interface EditingSession {
+  sessionData: any;
+  studentName: string;
+  studentId: string;
+}
 
 const EnhancedTeacherStudents: React.FC = () => {
-  const { students, loading } = useTeacherActiveStudents();
+  const { students, loading, refreshStudents } = useTeacherActiveStudents();
+  const [editingSession, setEditingSession] = useState<EditingSession | null>(null);
 
-  const handleEditSession = (sessionData: any) => {
-    // TODO: Implement session editing modal
+  const handleEditSession = (sessionData: any, studentName: string, studentId: string) => {
     console.log('Edit session:', sessionData);
+    setEditingSession({
+      sessionData,
+      studentName,
+      studentId
+    });
+  };
+
+  const handleEditSuccess = () => {
+    setEditingSession(null);
+    refreshStudents();
   };
 
   if (loading) {
@@ -54,10 +71,23 @@ const EnhancedTeacherStudents: React.FC = () => {
             <CompactStudentCard
               key={student.studentId}
               student={student}
-              onEditSession={handleEditSession}
+              onEditSession={(sessionData) => 
+                handleEditSession(sessionData, student.studentName, student.studentId)
+              }
             />
           ))}
         </div>
+      )}
+
+      {editingSession && (
+        <SessionEditModal
+          session={editingSession.sessionData}
+          studentName={editingSession.studentName}
+          studentId={editingSession.studentId}
+          open={!!editingSession}
+          onClose={() => setEditingSession(null)}
+          onSuccess={handleEditSuccess}
+        />
       )}
     </div>
   );
