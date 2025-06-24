@@ -11,10 +11,6 @@ const AdminDashboard: React.FC = () => {
     { value: 'trials', label: 'Trial Appointments', path: '/admin/trials' },
     { value: 'students', label: 'Students', path: '/admin/students' },
     { value: 'sessions', label: 'Sessions', path: '/admin/sessions' },
-    { value: 'payment-links', label: 'Payment Links', path: '/admin/payment-links' },
-    { value: 'followup', label: 'Follow-up', path: '/admin/followup' },
-    { value: 'availability', label: 'Availability', path: '/admin/availability' },
-    { value: 'revenue', label: 'Revenue', path: '/admin/revenue' },
     { value: 'settings', label: 'Settings', path: '/admin/settings' },
   ];
 
@@ -30,7 +26,7 @@ const AdminDashboard: React.FC = () => {
             </Badge>
           </div>
 
-          <DashboardNavigation tabs={tabs} gridCols="grid-cols-9" />
+          <DashboardNavigation tabs={tabs} gridCols="grid-cols-5" />
           
           <Outlet />
         </div>

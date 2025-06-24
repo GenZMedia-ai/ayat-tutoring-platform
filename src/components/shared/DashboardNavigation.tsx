@@ -26,13 +26,10 @@ const DashboardNavigation: React.FC<DashboardNavigationProps> = ({
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  // For larger tab counts, use flex layout instead of grid
-  const useFlexLayout = tabs.length > 6;
-
   return (
     <div className={cn(
       "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
-      useFlexLayout ? "flex w-full overflow-x-auto" : `grid w-full ${gridCols}`,
+      `grid w-full ${gridCols}`,
       className
     )}>
       {tabs.map((tab) => (
@@ -41,7 +38,6 @@ const DashboardNavigation: React.FC<DashboardNavigationProps> = ({
           to={tab.path}
           className={cn(
             "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-            useFlexLayout ? "flex-shrink-0" : "",
             isActiveTab(tab.path)
               ? "bg-background text-foreground shadow-sm"
               : "hover:bg-background/50"
