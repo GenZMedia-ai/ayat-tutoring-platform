@@ -15,7 +15,9 @@ import {
   CreditCard,
   ExternalLink,
   Video,
-  Users
+  Users,
+  Plus,
+  AlertCircle
 } from 'lucide-react';
 import { MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { FamilyGroup } from '@/types/family';
@@ -27,6 +29,7 @@ interface UnifiedTrialCardProps {
   onEdit?: (item: MixedStudentItem) => void;
   onStatusChange?: (item: MixedStudentItem) => void;
   onContact?: (item: MixedStudentItem) => void;
+  onCreatePaymentLink?: (item: MixedStudentItem) => void;
   onRefresh?: () => void;
   showActions?: boolean;
 }
@@ -36,6 +39,7 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
   onEdit,
   onStatusChange,
   onContact,
+  onCreatePaymentLink,
   onRefresh,
   showActions = true
 }) => {
@@ -74,102 +78,35 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
     }
   };
 
-  const getName = () => {
-    if (isFamily) {
-      return (data as FamilyGroup).parent_name;
-    }
-    return (data as TrialSessionFlowStudent).name;
+  // Helper functions to get data from both types
+  const getName = () => isFamily ? (data as FamilyGroup).parent_name : (data as TrialSessionFlowStudent).name;
+  const getUniqueId = () => isFamily ? (data as FamilyGroup).unique_id : (data as TrialSessionFlowStudent).uniqueId;
+  const getStatus = () => data.status;
+  const getPhone = () => data.phone;
+  const getCountry = () => data.country;
+  const getPlatform = () => data.platform;
+  const getNotes = () => data.notes;
+  const getTrialDate = () => isFamily ? (data as FamilyGroup).trial_date : (data as TrialSessionFlowStudent).trialDate;
+  const getTrialTime = () => isFamily ? (data as FamilyGroup).trial_time : (data as TrialSessionFlowStudent).trialTime;
+  const getTeacherType = () => isFamily ? (data as FamilyGroup).teacher_type : (data as TrialSessionFlowStudent).teacherType;
+  const getStudentCount = () => isFamily ? (data as FamilyGroup).student_count : 1;
+  const getAge = () => !isFamily ? (data as TrialSessionFlowStudent).age : null;
+  const getParentName = () => !isFamily ? (data as TrialSessionFlowStudent).parentName : null;
+
+  // Individual student specific data
+  const getLastWhatsAppContact = () => !isFamily ? (data as TrialSessionFlowStudent).lastWhatsAppContact : null;
+  const getPaymentLink = () => !isFamily ? (data as TrialSessionFlowStudent).paymentLink : null;
+  const getPendingFollowUp = () => !isFamily ? (data as TrialSessionFlowStudent).pendingFollowUp : null;
+
+  // Determine what actions should be shown based on status
+  const shouldShowPaymentLink = () => {
+    const status = getStatus();
+    return (status === 'trial-completed' || status === 'trial-ghosted') && !getPaymentLink();
   };
 
-  const getUniqueId = () => {
-    if (isFamily) {
-      return (data as FamilyGroup).unique_id;
-    }
-    return (data as TrialSessionFlowStudent).uniqueId;
-  };
-
-  const getStatus = () => {
-    return data.status;
-  };
-
-  const getPhone = () => {
-    return data.phone;
-  };
-
-  const getCountry = () => {
-    return data.country;
-  };
-
-  const getPlatform = () => {
-    return data.platform;
-  };
-
-  const getNotes = () => {
-    return data.notes;
-  };
-
-  const getTrialDate = () => {
-    if (isFamily) {
-      return (data as FamilyGroup).trial_date;
-    }
-    return (data as TrialSessionFlowStudent).trialDate;
-  };
-
-  const getTrialTime = () => {
-    if (isFamily) {
-      return (data as FamilyGroup).trial_time;
-    }
-    return (data as TrialSessionFlowStudent).trialTime;
-  };
-
-  const getTeacherType = () => {
-    if (isFamily) {
-      return (data as FamilyGroup).teacher_type;
-    }
-    return (data as TrialSessionFlowStudent).teacherType;
-  };
-
-  const getStudentCount = () => {
-    if (isFamily) {
-      return (data as FamilyGroup).student_count;
-    }
-    return 1; // Individual student
-  };
-
-  const getAge = () => {
-    if (!isFamily) {
-      return (data as TrialSessionFlowStudent).age;
-    }
-    return null;
-  };
-
-  const getParentName = () => {
-    if (!isFamily) {
-      return (data as TrialSessionFlowStudent).parentName;
-    }
-    return null;
-  };
-
-  // Get individual student specific data
-  const getLastWhatsAppContact = () => {
-    if (!isFamily) {
-      return (data as TrialSessionFlowStudent).lastWhatsAppContact;
-    }
-    return null;
-  };
-
-  const getPaymentLink = () => {
-    if (!isFamily) {
-      return (data as TrialSessionFlowStudent).paymentLink;
-    }
-    return null;
-  };
-
-  const getPendingFollowUp = () => {
-    if (!isFamily) {
-      return (data as TrialSessionFlowStudent).pendingFollowUp;
-    }
-    return null;
+  const shouldShowFollowUpSchedule = () => {
+    const status = getStatus();
+    return (status === 'trial-completed' || status === 'trial-ghosted' || status === 'awaiting-payment') && !getPendingFollowUp();
   };
 
   return (
@@ -330,17 +267,64 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
           </>
         )}
 
-        {/* Contact Action */}
-        {showActions && onContact && (
-          <div className="flex gap-2 pt-2 border-t">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => onContact(item)}
-            >
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Contact {isFamily ? 'Family' : 'Student'}
-            </Button>
+        {/* Action Buttons */}
+        {showActions && (
+          <div className="flex flex-wrap gap-2 pt-2 border-t">
+            {/* Contact Button */}
+            {onContact && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => onContact(item)}
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Contact {isFamily ?
+                 'Family' : 'Student'}
+              </Button>
+            )}
+
+            {/* Create Payment Link Button */}
+            {shouldShowPaymentLink() && onCreatePaymentLink && (
+              <Button 
+                variant="default" 
+                size="sm"
+                onClick={() => onCreatePaymentLink(item)}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Create Payment Link
+              </Button>
+            )}
+
+            {/* Schedule Follow-up Button */}
+            {shouldShowFollowUpSchedule() && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  // This would trigger follow-up scheduling
+                  console.log('Schedule follow-up for:', getName());
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Schedule Follow-up
+              </Button>
+            )}
+
+            {/* Payment Link Status for existing links */}
+            {getPaymentLink() && getPaymentLink()!.status === 'pending' && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  // Copy payment link to clipboard
+                  navigator.clipboard.writeText(getPaymentLink()!.stripeSessionId || '');
+                }}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Payment Link
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

@@ -2,32 +2,39 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Filter, Calendar } from 'lucide-react';
 import { useMixedStudentData, MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { useFamilyGroups } from '@/hooks/useFamilyGroups';
 import { UnifiedTrialCard } from '@/components/shared/UnifiedTrialCard';
-import { FamilyCard } from '@/components/family/FamilyCard';
 import { StudentEditModal } from '@/components/sales/StudentEditModal';
 import { StatusChangeModal } from '@/components/sales/StatusChangeModal';
-import { FollowUpManagementTab } from '@/components/sales/FollowUpManagementTab';
+import { PaymentLinkModal } from '@/components/sales/PaymentLinkModal';
+import { PaymentLinkSuccessModal } from '@/components/sales/PaymentLinkSuccessModal';
 import { FamilyGroup } from '@/types/family';
 import { TrialSessionFlowStudent } from '@/types/trial';
 import { toast } from 'sonner';
 
 const SalesTrialAppointments: React.FC = () => {
   const { items, loading, refetchData, getStatsCount } = useMixedStudentData();
-  const { familyGroups, loading: familyLoading, fetchFamilyGroups, updateFamilyStatus } = useFamilyGroups();
+  const { familyGroups, loading: familyLoading, fetchFamilyGroups } = useFamilyGroups();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [editingItem, setEditingItem] = useState<MixedStudentItem | null>(null);
   const [changingStatusItem, setChangingStatusItem] = useState<MixedStudentItem | null>(null);
+  const [paymentLinkItem, setPaymentLinkItem] = useState<MixedStudentItem | null>(null);
+  const [paymentSuccessData, setPaymentSuccessData] = useState<any>(null);
 
-  // Filter individual items
-  const filteredItems = items.filter(item => {
+  // Combine individual items and family groups
+  const combinedItems = [...items, ...familyGroups.map(family => ({
+    type: 'family' as const,
+    id: family.id,
+    data: family
+  }))];
+
+  // Filter combined items
+  const filteredItems = combinedItems.filter(item => {
     const data = item.data;
     const name = item.type === 'family' 
       ? (data as FamilyGroup).parent_name 
@@ -69,10 +76,22 @@ const SalesTrialAppointments: React.FC = () => {
     window.open(whatsappUrl, '_blank');
   };
 
-  const handleFamilyContact = (family: any) => {
-    const message = `Hello ${family.parent_name}, this is regarding your family trial session. Please let us know if you have any questions.`;
-    const whatsappUrl = `https://wa.me/${family.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+  const handlePaymentLinkSuccess = (paymentData: any, studentData: any) => {
+    const name = paymentLinkItem?.type === 'family' 
+      ? (paymentLinkItem.data as FamilyGroup).parent_name 
+      : (paymentLinkItem.data as TrialSessionFlowStudent).name;
+    
+    setPaymentSuccessData({
+      url: paymentData.url,
+      amount: paymentData.amount || 0,
+      currency: paymentData.currency || 'USD',
+      studentName: name,
+      studentPhone: paymentLinkItem?.data.phone
+    });
+    
+    setPaymentLinkItem(null);
+    refetchData();
+    fetchFamilyGroups();
   };
 
   if (loading || familyLoading) {
@@ -93,7 +112,7 @@ const SalesTrialAppointments: React.FC = () => {
         <div>
           <h3 className="text-lg font-semibold">Trial Appointments</h3>
           <p className="text-sm text-muted-foreground">
-            Manage individual and family trial sessions, and process payments
+            Manage all trial sessions, payments, and follow-ups
           </p>
         </div>
         <Button onClick={() => {
@@ -105,164 +124,120 @@ const SalesTrialAppointments: React.FC = () => {
         </Button>
       </div>
 
-      {/* Main Tabs for Trial Management */}
-      <Tabs defaultValue="individual" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="individual">Individual Bookings</TabsTrigger>
-          <TabsTrigger value="families">Family Groups</TabsTrigger>
-          <TabsTrigger value="followup">Follow-up & Payment</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="individual" className="space-y-4">
-          {/* Search and Filter Controls */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search by name, ID, or phone..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="sm:w-48">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger>
-                      <Filter className="h-4 w-4 mr-2" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label} ({statusFilter === option.value ? filteredItems.length : getStatsCount(option.value)})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-600">
-                    {getStatsCount('pending')}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Pending</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {getStatsCount('confirmed')}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Confirmed</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
-                    {getStatsCount('trial-completed')}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Completed</div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {getStatsCount('awaiting-payment')}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Awaiting Payment</div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Individual Trials List */}
-          {filteredItems.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                    No individual appointments found
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {searchTerm || statusFilter !== 'all' 
-                      ? 'Try adjusting your search or filter criteria'
-                      : 'You haven\'t created any individual trial appointments yet'
-                    }
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filteredItems.map((item) => (
-                <UnifiedTrialCard
-                  key={`${item.type}-${item.id}`}
-                  item={item}
-                  onEdit={setEditingItem}
-                  onStatusChange={setChangingStatusItem}
-                  onContact={handleContact}
-                  onRefresh={refetchData}
+      {/* Search and Filter Controls */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, ID, or phone..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
                 />
-              ))}
+              </div>
             </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="families" className="space-y-4">
-          <Card className="dashboard-card">
-            <CardHeader>
-              <CardTitle>Family Groups Management</CardTitle>
-              <CardDescription>
-                Manage family trial sessions and group bookings
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {familyGroups.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No family groups found.</p>
-                  <p className="text-sm">Family bookings will appear here once created.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {familyGroups.map((family) => (
-                    <FamilyCard
-                      key={family.id}
-                      family={family}
-                      onContact={() => handleFamilyContact(family)}
-                      onEdit={() => {
-                        toast.info('Edit family functionality coming soon');
-                      }}
-                      onStatusChange={(status) => updateFamilyStatus(family.id, status)}
-                    />
+            <div className="sm:w-48">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label} ({option.value === 'all' ? filteredItems.length : getStatsCount(option.value)})
+                    </SelectItem>
                   ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="followup" className="space-y-4">
-          <FollowUpManagementTab />
-        </TabsContent>
-      </Tabs>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-600">
+                {getStatsCount('pending')}
+              </div>
+              <div className="text-sm text-muted-foreground">Pending</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {getStatsCount('confirmed')}
+              </div>
+              <div className="text-sm text-muted-foreground">Confirmed</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {getStatsCount('trial-completed')}
+              </div>
+              <div className="text-sm text-muted-foreground">Completed</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">
+                {getStatsCount('awaiting-payment')}
+              </div>
+              <div className="text-sm text-muted-foreground">Awaiting Payment</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* All Trials List */}
+      {filteredItems.length === 0 ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                No trial appointments found
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {searchTerm || statusFilter !== 'all' 
+                  ? 'Try adjusting your search or filter criteria'
+                  : 'You haven\'t created any trial appointments yet'
+                }
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {filteredItems.map((item) => (
+            <UnifiedTrialCard
+              key={`${item.type}-${item.id}`}
+              item={item}
+              onEdit={setEditingItem}
+              onStatusChange={setChangingStatusItem}
+              onContact={handleContact}
+              onCreatePaymentLink={setPaymentLinkItem}
+              onRefresh={() => {
+                refetchData();
+                fetchFamilyGroups();
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Modals */}
       {editingItem && editingItem.type === 'individual' && (
@@ -286,6 +261,23 @@ const SalesTrialAppointments: React.FC = () => {
             setChangingStatusItem(null);
             refetchData();
           }}
+        />
+      )}
+
+      {paymentLinkItem && (
+        <PaymentLinkModal
+          student={paymentLinkItem.data}
+          open={!!paymentLinkItem}
+          onClose={() => setPaymentLinkItem(null)}
+          onSuccess={handlePaymentLinkSuccess}
+        />
+      )}
+
+      {paymentSuccessData && (
+        <PaymentLinkSuccessModal
+          open={!!paymentSuccessData}
+          onClose={() => setPaymentSuccessData(null)}
+          paymentData={paymentSuccessData}
         />
       )}
     </div>

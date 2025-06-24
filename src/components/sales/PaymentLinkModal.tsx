@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -20,7 +19,7 @@ interface PaymentLinkModalProps {
   student: TrialSessionFlowStudent | FamilyGroup;
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (stripeData: any, paymentDetails: { amount: number, currency: string, studentName: string, studentPhone: string }) => void;
 }
 
 export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
@@ -263,16 +262,15 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
       // Step 2: Update student status to awaiting-payment
       await updateStudentStatus();
 
-      // Step 3: Copy to clipboard and notify success
-      if (stripeData?.url) {
-        await navigator.clipboard.writeText(stripeData.url);
-        toast.success('Payment link created and copied to clipboard!');
-      } else {
-        toast.success('Payment link created successfully!');
-      }
-
       console.log('🎉 Payment link creation completed successfully');
-      onSuccess();
+      
+      // Pass the stripe data to the success callback instead of just showing toast
+      onSuccess(stripeData, {
+        amount: finalPrice,
+        currency: selectedCurrency.code,
+        studentName: getStudentName(),
+        studentPhone: getStudentPhone()
+      });
 
     } catch (error: any) {
       console.error('❌ Payment link creation failed:', error);
