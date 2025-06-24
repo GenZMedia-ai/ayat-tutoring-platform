@@ -37,14 +37,14 @@ export const convertUTCToEgyptTime = (utcTimeString: string): string => {
   return `${String(egyptHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 };
 
-// Simplified timezone conversion for sales availability checker
+// FIXED: Complete datetime conversion for sales availability checker
 export const convertClientTimeToServer = (clientDate: Date, clientHour: number, timezoneValue: string) => {
   const tzConfig = getTimezoneConfig(timezoneValue);
   if (!tzConfig) {
     throw new Error(`Invalid timezone: ${timezoneValue}`);
   }
 
-  console.log('=== CLIENT TO UTC CONVERSION ===');
+  console.log('=== FIXED CLIENT TO UTC CONVERSION ===');
   console.log('Input:', { 
     clientDate: clientDate.toDateString(), 
     clientHour, 
@@ -52,24 +52,27 @@ export const convertClientTimeToServer = (clientDate: Date, clientHour: number, 
     offset: tzConfig.offset 
   });
 
-  // Simple conversion: UTC hour = client hour - offset
-  const utcHour = clientHour - tzConfig.offset;
-  
-  // Handle 0-23 boundary
-  let adjustedUtcHour = utcHour;
-  if (utcHour < 0) {
-    adjustedUtcHour = utcHour + 24;
-  } else if (utcHour >= 24) {
-    adjustedUtcHour = utcHour - 24;
-  }
+  // Build complete datetime in client timezone
+  const clientDateTime = new Date(clientDate);
+  clientDateTime.setHours(clientHour, 0, 0, 0);
+
+  // Convert to UTC by subtracting offset hours (handles day boundaries correctly)
+  const utcDateTime = new Date(clientDateTime.getTime() - (tzConfig.offset * 60 * 60 * 1000));
+
+  // Extract the correct UTC date and hour
+  const utcDateStr = utcDateTime.toISOString().split('T')[0];
+  const utcHour = utcDateTime.getUTCHours();
 
   const result = {
-    utcHour: adjustedUtcHour,
-    utcTime: `${String(adjustedUtcHour).padStart(2, '0')}:00:00`
+    utcHour,
+    utcDateStr,
+    utcTime: `${String(utcHour).padStart(2, '0')}:00:00`
   };
 
-  console.log('Client to UTC result:', {
-    clientHour: clientHour,
+  console.log('FIXED Conversion Result:', {
+    clientDateTime: clientDateTime.toISOString(),
+    utcDateTime: utcDateTime.toISOString(),
+    utcDate: result.utcDateStr,
     utcHour: result.utcHour,
     utcTime: result.utcTime
   });
