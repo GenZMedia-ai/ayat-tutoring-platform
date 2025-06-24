@@ -67,16 +67,31 @@ const SalesStudents: React.FC = () => {
         const studentsWithProgress: PaidStudent[] = [];
         
         for (const student of students || []) {
+          // Count completed sessions by joining sessions and session_students tables
           const { count: sessionsCompleted } = await supabase
             .from('sessions')
-            .select('*', { count: 'exact', head: true })
-            .eq('student_id', student.id)
+            .select('*, session_students!inner(*)', { count: 'exact', head: true })
+            .eq('session_students.student_id', student.id)
             .eq('status', 'completed');
 
           studentsWithProgress.push({
-            ...student,
+            id: student.id,
+            unique_id: student.unique_id,
+            name: student.name,
+            age: student.age,
+            phone: student.phone,
+            country: student.country,
+            platform: student.platform,
+            status: student.status,
+            parent_name: student.parent_name,
+            package_session_count: student.package_session_count,
+            package_name: student.package_name,
+            payment_amount: student.payment_amount,
+            payment_currency: student.payment_currency,
+            created_at: student.created_at,
             sessions_completed: sessionsCompleted || 0,
-            is_family_member: Boolean(student.family_group_id)
+            is_family_member: Boolean(student.family_group_id),
+            family_group_id: student.family_group_id
           });
         }
 
