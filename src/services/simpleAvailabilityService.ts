@@ -31,12 +31,28 @@ export class SimpleAvailabilityService {
     selectedHour: number
   ): Promise<SimpleTimeSlot[]> {
     try {
-      const dateStr = date.toISOString().split('T')[0];
+      // FIXED: Use UTC methods to ensure we get the correct date regardless of user's browser timezone
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
       const timezoneConfig = getTimezoneConfig(timezone);
       
       if (!timezoneConfig) {
         throw new Error(`Invalid timezone: ${timezone}`);
       }
+      
+      console.log('=== DATE CONVERSION FIX VERIFICATION ===');
+      console.log('Date conversion check:', {
+        originalDate: date.toString(),
+        utcString: date.toISOString(),
+        extractedDate: dateStr,
+        localDate: date.toLocaleDateString(),
+        utcDate: new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())).toISOString(),
+        oldMethod: date.toISOString().split('T')[0],
+        newMethod: dateStr
+      });
       
       console.log('=== REAL DATABASE SEARCH START ===');
       console.log('Search parameters:', { date: dateStr, timezone, teacherType, selectedHour });
