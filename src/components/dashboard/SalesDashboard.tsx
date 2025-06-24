@@ -7,8 +7,9 @@ import DashboardNavigation from '@/components/shared/DashboardNavigation';
 
 const SalesDashboard: React.FC = () => {
   const tabs = [
-    { value: 'homepage', label: 'Command Center', path: '/sales/homepage' },
-    { value: 'trials', label: 'Trial Management', path: '/sales/trials' },
+    { value: 'homepage', label: 'Home Page', path: '/sales/homepage' },
+    { value: 'trials', label: 'Trial Appointments', path: '/sales/trials' },
+    { value: 'payment-links', label: 'Payment Links', path: '/sales/payment-links' },
     { value: 'followup', label: 'Follow-up', path: '/sales/followup' },
     { value: 'students', label: 'Students', path: '/sales/students' },
     { value: 'analytics', label: 'Analytics', path: '/sales/analytics' },
@@ -26,7 +27,7 @@ const SalesDashboard: React.FC = () => {
             </Badge>
           </div>
 
-          <DashboardNavigation tabs={tabs} gridCols="grid-cols-5" />
+          <DashboardNavigation tabs={tabs} gridCols="grid-cols-6" />
           
           <Outlet />
         </div>
