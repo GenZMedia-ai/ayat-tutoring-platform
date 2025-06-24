@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, Clock, MapPin, AlertCircle, Search, Database } from 'lucide-react';
+import { Users, Clock, MapPin, AlertCircle } from 'lucide-react';
 import { GroupedTimeSlot, SimpleTimeSlot } from '@/services/simpleAvailabilityService';
 
 interface EnhancedSlotDisplayProps {
@@ -22,7 +22,6 @@ export const EnhancedSlotDisplay: React.FC<EnhancedSlotDisplayProps> = ({
       <div className="text-center py-8 text-muted-foreground">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
         <p>Searching for available slots...</p>
-        <p className="text-xs mt-2">Checking teacher availability and timezone conversion...</p>
       </div>
     );
   }
@@ -34,48 +33,13 @@ export const EnhancedSlotDisplay: React.FC<EnhancedSlotDisplayProps> = ({
         <div className="space-y-2">
           <p className="font-medium text-red-600">No available slots found for the selected hour.</p>
           <div className="text-sm space-y-2">
-            <div className="p-3 bg-yellow-50 rounded-lg text-left">
-              <p className="font-medium text-yellow-800 mb-2">🔍 Search Details:</p>
-              <p className="text-yellow-700 text-xs">Check browser console for detailed search logs including:</p>
-              <ul className="list-disc list-inside text-yellow-700 text-xs mt-1 space-y-1">
-                <li>Timezone conversion results</li>
-                <li>Database query parameters</li>
-                <li>Teacher filtering process</li>
-                <li>Available vs searched time slots</li>
-              </ul>
-            </div>
-            
             <div className="p-3 bg-blue-50 rounded-lg text-left">
-              <p className="font-medium text-blue-800 mb-2">💡 Troubleshooting Tips:</p>
+              <p className="font-medium text-blue-800 mb-2">💡 Try These Options:</p>
               <ul className="list-disc list-inside text-blue-700 text-xs space-y-1">
-                <li><strong>Check Console:</strong> Open browser dev tools for detailed search logs</li>
-                <li><strong>Try Different Hours:</strong> Database shows availability 4:00 PM - 6:30 PM Qatar time</li>
-                <li><strong>Teacher Type:</strong> Try "Mixed" for more options</li>
-                <li><strong>Date:</strong> Ensure selected date has teacher availability</li>
-                <li><strong>Timezone:</strong> Verify timezone matches client location</li>
+                <li><strong>Different Hours:</strong> Teachers are typically available 4:00 PM - 10:00 PM Qatar time</li>
+                <li><strong>Teacher Type:</strong> Try "Mixed" for maximum availability</li>
+                <li><strong>Different Date:</strong> Tomorrow or next week may have more options</li>
               </ul>
-            </div>
-            
-            <div className="p-3 bg-green-50 rounded-lg text-left">
-              <p className="font-medium text-green-800 mb-2">📅 Current Database Status:</p>
-              <div className="text-green-700 text-xs space-y-1">
-                <p><strong>Date:</strong> June 24, 2025</p>
-                <p><strong>Available Times (Qatar):</strong> 7:00 PM - 9:30 PM</p>
-                <p><strong>Available Times (UTC):</strong> 16:00 - 18:30</p>
-                <p><strong>Teachers:</strong> 6 slots available with teacher "Esraa"</p>
-                <p><strong>Search Range:</strong> System searches exact hour + fallback (±1 hour)</p>
-              </div>
-            </div>
-
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <Database className="h-4 w-4 text-gray-600" />
-                <p className="font-medium text-gray-800 text-sm">Debug Information</p>
-              </div>
-              <p className="text-xs text-gray-600">
-                If slots should be available, check browser console for detailed search logs. 
-                The system logs timezone conversion, database queries, and teacher filtering steps.
-              </p>
             </div>
           </div>
         </div>
@@ -116,17 +80,12 @@ export const EnhancedSlotDisplay: React.FC<EnhancedSlotDisplayProps> = ({
                     </span>
                   </div>
                   
-                  {/* Timezone Information */}
+                  {/* Egypt Time Information */}
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">
                       {timeSlot.egyptTimeDisplay}
                     </span>
-                  </div>
-                  
-                  {/* UTC Time for Reference */}
-                  <div className="text-xs text-green-600">
-                    UTC: {timeSlot.utcStartTime} - {timeSlot.utcEndTime}
                   </div>
 
                   {/* Teacher Details */}
@@ -145,7 +104,7 @@ export const EnhancedSlotDisplay: React.FC<EnhancedSlotDisplayProps> = ({
                     Book Any Teacher
                   </Button>
                   
-                  {/* Show individual teachers if more than 1 */}
+                  {/* Individual teacher buttons if more than 1 */}
                   {timeSlot.teacherCount > 1 && (
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground text-center">Or choose specific teacher:</p>
@@ -172,28 +131,6 @@ export const EnhancedSlotDisplay: React.FC<EnhancedSlotDisplayProps> = ({
             </CardContent>
           </Card>
         ))}
-      </div>
-      
-      {/* Enhanced Summary Information */}
-      <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-        <div className="flex items-center gap-2 mb-2">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <p className="font-medium text-sm">Search Results Summary</p>
-        </div>
-        <div className="text-sm text-muted-foreground space-y-1">
-          <p>
-            💡 <strong>Found {groupedSlots.length} available time slots</strong> with automatic timezone conversion.
-          </p>
-          <p>
-            🔍 <strong>Search included:</strong> Exact hour + ±1 hour fallback range for better availability.
-          </p>
-          <p>
-            👥 <strong>Teacher Filtering:</strong> Mixed teachers are included in all searches for maximum options.
-          </p>
-          <p>
-            🕒 <strong>Each slot:</strong> 30 minutes long with real-time availability checking.
-          </p>
-        </div>
       </div>
     </div>
   );

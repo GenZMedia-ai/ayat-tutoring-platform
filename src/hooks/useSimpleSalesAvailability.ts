@@ -16,7 +16,6 @@ export type SimpleBookingData = {
   students?: { name: string; age: number }[];
 };
 
-// Type for the simple booking response
 type SimpleBookingResponse = {
   success: boolean;
   teacher_name: string;
@@ -40,8 +39,8 @@ export const useSimpleSalesAvailability = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('=== ENHANCED AVAILABILITY CHECK START ===');
-      console.log('Request Parameters:', { 
+      console.log('=== SIMPLIFIED AVAILABILITY CHECK ===');
+      console.log('Parameters:', { 
         date: date.toDateString(), 
         timezone, 
         teacherType, 
@@ -55,17 +54,16 @@ export const useSimpleSalesAvailability = () => {
         selectedHour
       );
       
-      console.log('Enhanced slots received:', slots.length);
-      console.log('Date preservation check: All slots should be for date:', date.toDateString());
+      console.log(`Found ${slots.length} available slots`);
       
-      // PHASE 2: Group slots by time
+      // Group slots by time
       const grouped = SimpleAvailabilityService.groupSlotsByTime(slots);
-      console.log('Grouped slots:', grouped);
+      console.log(`Grouped into ${grouped.length} time slots`);
       
       setAvailableSlots(slots);
       setGroupedSlots(grouped);
     } catch (error) {
-      console.error('Enhanced availability check error:', error);
+      console.error('Availability check error:', error);
       toast.error('Failed to check availability');
       setAvailableSlots([]);
       setGroupedSlots([]);
@@ -83,26 +81,22 @@ export const useSimpleSalesAvailability = () => {
   ): Promise<boolean> => {
     // Use family booking for multi-student sessions
     if (isMultiStudent) {
-      console.log('=== ENHANCED: ROUTING TO FAMILY BOOKING SYSTEM ===');
-      console.log('Selected date preservation:', selectedDate.toDateString());
+      console.log('Routing to family booking system');
       return await bookFamilyTrialSession(bookingData, selectedDate, selectedSlot, teacherType);
     }
 
-    // Single student booking with date preservation
+    // Single student booking
     try {
-      console.log('=== ENHANCED: SINGLE STUDENT BOOKING START ===');
-      console.log('Booking parameters with date preservation:', { 
-        selectedDate: selectedDate.toDateString(),
-        selectedDateISO: selectedDate.toISOString().split('T')[0],
+      console.log('=== SINGLE STUDENT BOOKING ===');
+      console.log('Booking details:', { 
+        date: selectedDate.toDateString(),
         slotId: selectedSlot.id,
         teacherId: selectedSlot.teacherId,
         teacherType, 
         isMultiStudent 
       });
       
-      // Use the selected date directly (no conversion)
       const bookingDateString = selectedDate.toISOString().split('T')[0];
-      console.log('Date being sent to booking function:', bookingDateString);
       
       const { data, error } = await supabase.rpc('simple_book_trial_session', {
         p_booking_data: bookingData,
@@ -113,28 +107,9 @@ export const useSimpleSalesAvailability = () => {
         p_teacher_id: selectedSlot.teacherId
       });
 
-      console.log('Enhanced booking response:', { data, error });
-
       if (error) {
-        console.error('Enhanced booking error:', error);
-        
-        let errorMessage = 'Booking failed - please try again';
-        
-        if (error.message?.includes('Cannot modify availability for today')) {
-          errorMessage = 'Unable to book for today due to schedule protection. Please try a future date or contact support.';
-        } else if (error.message?.includes('Time slot no longer available')) {
-          errorMessage = 'This time slot was just booked by someone else. Please select another time.';
-        } else if (error.message?.includes('Teacher not found')) {
-          errorMessage = 'Teacher information is unavailable. Please refresh and try again.';
-        } else if (error.message?.includes('Authentication required')) {
-          errorMessage = 'Please log in again to complete the booking.';
-        } else if (error.message?.includes('Access denied')) {
-          errorMessage = 'You do not have permission to book sessions. Please contact your administrator.';
-        } else if (error.message) {
-          errorMessage = `Booking failed: ${error.message}`;
-        }
-        
-        toast.error(errorMessage);
+        console.error('Booking error:', error);
+        toast.error(`Booking failed: ${error.message}`);
         return false;
       }
 
@@ -143,14 +118,6 @@ export const useSimpleSalesAvailability = () => {
       if (bookingResult?.success) {
         const teacherName = bookingResult.teacher_name || 'Unknown Teacher';
         const studentNames = bookingResult.student_names || '';
-        
-        console.log('Enhanced booking success with date preservation:', {
-          teacherName,
-          studentNames,
-          sessionId: bookingResult.session_id,
-          originalDate: selectedDate.toDateString(),
-          bookedDate: bookingDateString
-        });
         
         toast.success(
           `✅ Trial session booked successfully with ${teacherName} for ${studentNames}`,
@@ -161,26 +128,12 @@ export const useSimpleSalesAvailability = () => {
         );
         return true;
       } else {
-        console.error('Enhanced booking failed - no success flag');
         toast.error('Booking failed - please try again');
         return false;
       }
     } catch (error) {
-      console.error('Enhanced booking exception:', error);
-      
-      let errorMessage = 'Booking failed due to system error';
-      
-      if (error instanceof Error) {
-        if (error.message?.includes('network') || error.message?.includes('fetch')) {
-          errorMessage = 'Network error - please check your connection and try again';
-        } else if (error.message?.includes('timeout')) {
-          errorMessage = 'Request timed out - please try again';
-        } else {
-          errorMessage = `System error: ${error.message}`;
-        }
-      }
-      
-      toast.error(errorMessage);
+      console.error('Booking exception:', error);
+      toast.error('Booking failed due to system error');
       return false;
     }
   };
