@@ -45,7 +45,7 @@ const SalesStudents: React.FC = () => {
 
       console.log('Loading paid students for user:', user.id);
 
-      // Get students with their teacher information
+      // Get students with their teacher information using proper foreign key relationship
       const { data: students, error } = await supabase
         .from('students')
         .select(`
@@ -65,7 +65,7 @@ const SalesStudents: React.FC = () => {
           created_at,
           family_group_id,
           assigned_teacher_id,
-          profiles:assigned_teacher_id (
+          profiles!fk_students_assigned_teacher (
             full_name
           )
         `)

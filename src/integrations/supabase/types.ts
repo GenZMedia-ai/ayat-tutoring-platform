@@ -94,7 +94,29 @@ export type Database = {
           unique_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_family_groups_assigned_sales_agent"
+            columns: ["assigned_sales_agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_family_groups_assigned_supervisor"
+            columns: ["assigned_supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_family_groups_assigned_teacher"
+            columns: ["assigned_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       family_package_selections: {
         Row: {
@@ -391,7 +413,22 @@ export type Database = {
           student_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_sales_followups_sales_agent"
+            columns: ["sales_agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_sales_followups_student"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       session_students: {
         Row: {
@@ -572,6 +609,34 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_students_assigned_sales_agent"
+            columns: ["assigned_sales_agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_students_assigned_supervisor"
+            columns: ["assigned_supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_students_assigned_teacher"
+            columns: ["assigned_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_students_family_group"
+            columns: ["family_group_id"]
+            isOneToOne: false
+            referencedRelation: "family_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "students_family_group_id_fkey"
             columns: ["family_group_id"]

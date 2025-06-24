@@ -28,7 +28,7 @@ const SalesFollowup: React.FC = () => {
   const [followUpTasks, setFollowUpTasks] = useState<FollowUpTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState('alltime'); // Changed default to show all data
+  const [dateFilter, setDateFilter] = useState('alltime');
 
   // Get date range based on filter
   const getDateRange = () => {
@@ -117,7 +117,7 @@ const SalesFollowup: React.FC = () => {
             .from('sales_followups')
             .select(`
               *,
-              students:student_id (
+              students!fk_sales_followups_student (
                 name,
                 phone
               )
@@ -128,7 +128,7 @@ const SalesFollowup: React.FC = () => {
             .from('sales_followups')
             .select(`
               *,
-              students:student_id (
+              students!fk_sales_followups_student (
                 name,
                 phone
               )
