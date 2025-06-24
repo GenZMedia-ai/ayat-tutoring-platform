@@ -5,26 +5,53 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, Calendar, CreditCard } from 'lucide-react';
-import { useMixedStudentData, MixedStudentItem } from '@/hooks/useMixedStudentData';
-import { useSalesPermissions } from '@/hooks/useSalesPermissions';
-import { UnifiedTrialCard } from '@/components/shared/UnifiedTrialCard';
-import { StudentEditModal } from '@/components/sales/StudentEditModal';
-import { StatusChangeModal } from '@/components/sales/StatusChangeModal';
-import { PaymentLinkModal } from '@/components/sales/PaymentLinkModal';
-import { FamilyGroup } from '@/types/family';
-import { TrialSessionFlowStudent } from '@/types/trial';
+import { Search, Filter, Calendar, CreditCard, Phone, Edit, RefreshCw } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 
+interface TrialStudent {
+  id: string;
+  unique_id: string;
+  name: string;
+  age: number;
+  phone: string;
+  country: string;
+  platform: string;
+  status: string;
+  parent_name?: string;
+  trial_date?: string;
+  trial_time?: string;
+  assigned_teacher_id?: string;
+  teacher_name?: string;
+  created_at: string;
+  family_group_id?: string;
+  is_family_member: boolean;
+}
+
+interface FamilyGroup {
+  id: string;
+  unique_id: string;
+  parent_name: string;
+  phone: string;
+  country: string;
+  platform: string;
+  status: string;
+  student_count: number;
+  trial_date?: string;
+  trial_time?: string;
+  assigned_teacher_id?: string;
+  teacher_name?: string;
+  created_at: string;
+}
+
 const SalesTrialAppointments: React.FC = () => {
-  const { items, loading, refetchData } = useMixedStudentData();
+  const [individualStudents, setIndividualStudents] = useState<TrialStudent[]>([]);
+  const [familyGroups, setFamilyGroups] = useState<FamilyGroup[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [teacherFilter, setTeacherFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState('today');
-  const [editingItem, setEditingItem] = useState<MixedStudentItem | null>(null);
-  const [changingStatusItem, setChangingStatusItem] = useState<MixedStudentItem | null>(null);
-  const [paymentLinkItem, setPaymentLinkItem] = useState<TrialSessionFlowStudent | FamilyGroup | null>(null);
 
   // Get date range based on filter
   const getDateRange = () => {
@@ -49,38 +76,116 @@ const SalesTrialAppointments: React.FC = () => {
     }
   };
 
-  // Filter items based on date, status, teacher, and search
-  const filteredItems = items.filter(item => {
-    const data = item.data;
-    const name = item.type === 'family' 
-      ? (data as FamilyGroup).parent_name 
-      : (data as TrialSessionFlowStudent).name;
-    const uniqueId = item.type === 'family'
-      ? (data as FamilyGroup).unique_id
-      : (data as TrialSessionFlowStudent).uniqueId;
-    
-    // Date filtering
-    const { from, to } = getDateRange();
-    const itemDate = new Date(
-      item.type === 'family' 
-        ? (data as FamilyGroup).created_at 
-        : (data as TrialSessionFlowStudent).createdAt
-    );
-    const matchesDate = dateFilter === 'alltime' || 
-      (itemDate >= from && itemDate <= to);
-    
-    // Search filtering
-    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         uniqueId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         data.phone.includes(searchTerm);
-    
-    // Status filtering
-    const matchesStatus = statusFilter === 'all' || data.status === statusFilter;
-    
-    // Teacher filtering (if implemented)
-    const matchesTeacher = teacherFilter === 'all'; // Simplified for now
-    
-    return matchesDate && matchesSearch && matchesStatus && matchesTeacher;
+  // Load data
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { from, to } = getDateRange();
+      const fromStr = format(from, 'yyyy-MM-dd');
+      const toStr = format(to, 'yyyy-MM-dd');
+
+      // Load individual students
+      const { data: students, error: studentsError } = await supabase
+        .from('students')
+        .select(`
+          *,
+          profiles:assigned_teacher_id (
+            full_name
+          )
+        `)
+        .eq('assigned_sales_agent_id', user.id)
+        .is('family_group_id', null)
+        .gte('created_at', fromStr)
+        .lte('created_at', toStr + 'T23:59:59')
+        .order('created_at', { ascending: false });
+
+      if (studentsError) throw studentsError;
+
+      // Load family groups
+      const { data: families, error: familiesError } = await supabase
+        .from('family_groups')
+        .select(`
+          *,
+          profiles:assigned_teacher_id (
+            full_name
+          )
+        `)
+        .eq('assigned_sales_agent_id', user.id)
+        .gte('created_at', fromStr)
+        .lte('created_at', toStr + 'T23:59:59')
+        .order('created_at', { ascending: false });
+
+      if (familiesError) throw familiesError;
+
+      // Process individual students
+      const processedStudents = (students || []).map(student => ({
+        id: student.id,
+        unique_id: student.unique_id,
+        name: student.name,
+        age: student.age,
+        phone: student.phone,
+        country: student.country,
+        platform: student.platform,
+        status: student.status,
+        parent_name: student.parent_name,
+        trial_date: student.trial_date,
+        trial_time: student.trial_time,
+        assigned_teacher_id: student.assigned_teacher_id,
+        teacher_name: (student.profiles as any)?.full_name || 'Not Assigned',
+        created_at: student.created_at,
+        family_group_id: student.family_group_id,
+        is_family_member: false
+      }));
+
+      // Process family groups
+      const processedFamilies = (families || []).map(family => ({
+        id: family.id,
+        unique_id: family.unique_id,
+        parent_name: family.parent_name,
+        phone: family.phone,
+        country: family.country,
+        platform: family.platform,
+        status: family.status,
+        student_count: family.student_count,
+        trial_date: family.trial_date,
+        trial_time: family.trial_time,
+        assigned_teacher_id: family.assigned_teacher_id,
+        teacher_name: (family.profiles as any)?.full_name || 'Not Assigned',
+        created_at: family.created_at
+      }));
+
+      setIndividualStudents(processedStudents);
+      setFamilyGroups(processedFamilies);
+    } catch (error) {
+      console.error('Error loading trial appointments:', error);
+      toast.error('Failed to load trial appointments');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [dateFilter]);
+
+  // Filter data
+  const filteredStudents = individualStudents.filter(student => {
+    const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         student.unique_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         student.phone.includes(searchTerm);
+    const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const filteredFamilies = familyGroups.filter(family => {
+    const matchesSearch = family.parent_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         family.unique_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         family.phone.includes(searchTerm);
+    const matchesStatus = statusFilter === 'all' || family.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   const statusOptions = [
@@ -97,29 +202,38 @@ const SalesTrialAppointments: React.FC = () => {
     { value: 'dropped', label: 'Dropped' }
   ];
 
-  const handleContact = (item: MixedStudentItem) => {
-    const phone = item.data.phone;
-    const name = item.type === 'family' 
-      ? (item.data as FamilyGroup).parent_name 
-      : (item.data as TrialSessionFlowStudent).name;
-    
+  const handleContact = (phone: string, name: string) => {
     const whatsappUrl = `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=Hello ${name}! This is regarding your trial session booking.`;
     window.open(whatsappUrl, '_blank');
   };
 
-  const handleCreatePaymentLink = (item: MixedStudentItem) => {
-    setPaymentLinkItem(item.data);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'trial-completed':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'trial-ghosted':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'awaiting-payment':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'paid':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'active':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'expired':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'cancelled':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'dropped':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      default:
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    }
   };
 
-  const isCompletedTrial = (status: string) => {
+  const canCreatePaymentLink = (status: string) => {
     return status === 'trial-completed' || status === 'trial-ghosted';
-  };
-
-  const getTeacherName = (item: MixedStudentItem) => {
-    // This would need to be enhanced to fetch actual teacher names
-    return item.type === 'family' 
-      ? (item.data as FamilyGroup).assigned_teacher_id || 'Not Assigned'
-      : (item.data as TrialSessionFlowStudent).assignedTeacher || 'Not Assigned';
   };
 
   if (loading) {
@@ -135,16 +249,16 @@ const SalesTrialAppointments: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header and Controls */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Trial Appointments</h3>
           <p className="text-sm text-muted-foreground">
-            Manage all trial sessions across all statuses and create payment links
+            Manage all trial sessions and create payment links for completed trials
           </p>
         </div>
-        <Button onClick={refetchData} variant="outline" size="sm">
-          <Search className="h-4 w-4 mr-2" />
+        <Button onClick={loadData} variant="outline" size="sm">
+          <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
       </div>
@@ -152,8 +266,7 @@ const SalesTrialAppointments: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Date Filter */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Date Filter</label>
               <Select value={dateFilter} onValueChange={setDateFilter}>
@@ -171,7 +284,6 @@ const SalesTrialAppointments: React.FC = () => {
               </Select>
             </div>
             
-            {/* Status Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Status Filter</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -189,27 +301,12 @@ const SalesTrialAppointments: React.FC = () => {
               </Select>
             </div>
 
-            {/* Teacher Filter */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Teacher Filter</label>
-              <Select value={teacherFilter} onValueChange={setTeacherFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Teachers" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Teachers</SelectItem>
-                  {/* Add teacher options here */}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Search */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Name or Phone..."
+                  placeholder="Name, ID, or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -220,8 +317,52 @@ const SalesTrialAppointments: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-600">
+                {filteredStudents.filter(s => s.status === 'pending').length + filteredFamilies.filter(f => f.status === 'pending').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Pending</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {filteredStudents.filter(s => s.status === 'confirmed').length + filteredFamilies.filter(f => f.status === 'confirmed').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Confirmed</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {filteredStudents.filter(s => s.status === 'trial-completed').length + filteredFamilies.filter(f => f.status === 'trial-completed').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Completed</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">
+                {filteredStudents.filter(s => s.status === 'awaiting-payment').length + filteredFamilies.filter(f => f.status === 'awaiting-payment').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Awaiting Payment</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Trial Appointments List */}
-      {filteredItems.length === 0 ? (
+      {filteredStudents.length === 0 && filteredFamilies.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">
@@ -240,63 +381,37 @@ const SalesTrialAppointments: React.FC = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredItems.map((item) => (
-            <Card key={`${item.type}-${item.id}`} className={`${isCompletedTrial(item.data.status) ? 'border-green-200 bg-green-50' : ''}`}>
+          {/* Individual Students */}
+          {filteredStudents.map((student) => (
+            <Card key={`student-${student.id}`} className={`${canCreatePaymentLink(student.status) ? 'border-green-200 bg-green-50' : ''}`}>
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Badge variant={item.type === 'family' ? 'secondary' : 'default'}>
-                      {item.type === 'family'
-                        ? `Family (${(item.data as FamilyGroup).student_count})`
-                        : 'Individual'
-                      }
+                    <Badge variant="default">Individual</Badge>
+                    <Badge className={getStatusColor(student.status)}>
+                      {student.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                     </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {item.data.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </Badge>
-                    {isCompletedTrial(item.data.status) && (
+                    {canCreatePaymentLink(student.status) && (
                       <Badge className="bg-green-100 text-green-800 border-green-200">
                         Ready for Payment Link
                       </Badge>
                     )}
                   </div>
                 </div>
-                <CardTitle className="text-lg">
-                  {item.type === 'family' 
-                    ? (item.data as FamilyGroup).parent_name 
-                    : (item.data as TrialSessionFlowStudent).name
-                  }
-                </CardTitle>
-                <CardDescription>
-                  ID: {item.type === 'family'
-                    ? (item.data as FamilyGroup).unique_id
-                    : (item.data as TrialSessionFlowStudent).uniqueId
-                  }
-                </CardDescription>
+                <CardTitle className="text-lg">{student.name}</CardTitle>
+                <CardDescription>ID: {student.unique_id} • Age: {student.age}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Phone:</span> {item.data.phone}
-                  </div>
-                  <div>
-                    <span className="font-medium">Country:</span> {item.data.country}
-                  </div>
-                  <div>
-                    <span className="font-medium">Platform:</span> {item.data.platform}
-                  </div>
-                  <div>
-                    <span className="font-medium">Teacher:</span> {getTeacherName(item)}
-                  </div>
-                  {item.type === 'individual' && (
-                    <div>
-                      <span className="font-medium">Age:</span> {(item.data as TrialSessionFlowStudent).age}
-                    </div>
+                  <div><span className="font-medium">Phone:</span> {student.phone}</div>
+                  <div><span className="font-medium">Country:</span> {student.country}</div>
+                  <div><span className="font-medium">Platform:</span> {student.platform}</div>
+                  <div><span className="font-medium">Teacher:</span> {student.teacher_name}</div>
+                  {student.parent_name && (
+                    <div><span className="font-medium">Parent:</span> {student.parent_name}</div>
                   )}
-                  {(item.data as any).trial_date && (
-                    <div>
-                      <span className="font-medium">Trial Date:</span> {(item.data as any).trial_date}
-                    </div>
+                  {student.trial_date && student.trial_time && (
+                    <div><span className="font-medium">Trial:</span> {student.trial_date} at {student.trial_time}</div>
                   )}
                 </div>
 
@@ -304,29 +419,77 @@ const SalesTrialAppointments: React.FC = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleContact(item)}
+                    onClick={() => handleContact(student.phone, student.name)}
                   >
+                    <Phone className="h-4 w-4 mr-1" />
                     Contact
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setEditingItem(item)}
-                  >
+                  <Button size="sm" variant="outline">
+                    <Edit className="h-4 w-4 mr-1" />
                     Edit
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setChangingStatusItem(item)}
-                  >
-                    Change Status
-                  </Button>
-                  {isCompletedTrial(item.data.status) && (
+                  {canCreatePaymentLink(student.status) && (
                     <Button
                       size="sm"
                       className="bg-green-600 hover:bg-green-700 text-white"
-                      onClick={() => handleCreatePaymentLink(item)}
+                    >
+                      <CreditCard className="h-4 w-4 mr-1" />
+                      Create Payment Link
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
+          {/* Family Groups */}
+          {filteredFamilies.map((family) => (
+            <Card key={`family-${family.id}`} className={`${canCreatePaymentLink(family.status) ? 'border-green-200 bg-green-50' : ''}`}>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">Family ({family.student_count})</Badge>
+                    <Badge className={getStatusColor(family.status)}>
+                      {family.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </Badge>
+                    {canCreatePaymentLink(family.status) && (
+                      <Badge className="bg-green-100 text-green-800 border-green-200">
+                        Ready for Payment Link
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <CardTitle className="text-lg">{family.parent_name}</CardTitle>
+                <CardDescription>ID: {family.unique_id} • {family.student_count} students</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><span className="font-medium">Phone:</span> {family.phone}</div>
+                  <div><span className="font-medium">Country:</span> {family.country}</div>
+                  <div><span className="font-medium">Platform:</span> {family.platform}</div>
+                  <div><span className="font-medium">Teacher:</span> {family.teacher_name}</div>
+                  {family.trial_date && family.trial_time && (
+                    <div><span className="font-medium">Trial:</span> {family.trial_date} at {family.trial_time}</div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleContact(family.phone, family.parent_name)}
+                  >
+                    <Phone className="h-4 w-4 mr-1" />
+                    Contact
+                  </Button>
+                  <Button size="sm" variant="outline">
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                  {canCreatePaymentLink(family.status) && (
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white"
                     >
                       <CreditCard className="h-4 w-4 mr-1" />
                       Create Payment Link
@@ -337,43 +500,6 @@ const SalesTrialAppointments: React.FC = () => {
             </Card>
           ))}
         </div>
-      )}
-
-      {/* Modals */}
-      {editingItem && editingItem.type === 'individual' && (
-        <StudentEditModal
-          student={editingItem.data as TrialSessionFlowStudent}
-          open={!!editingItem}
-          onClose={() => setEditingItem(null)}
-          onSuccess={() => {
-            setEditingItem(null);
-            refetchData();
-          }}
-        />
-      )}
-
-      {changingStatusItem && changingStatusItem.type === 'individual' && (
-        <StatusChangeModal
-          student={changingStatusItem.data as TrialSessionFlowStudent}
-          open={!!changingStatusItem}
-          onClose={() => setChangingStatusItem(null)}
-          onSuccess={() => {
-            setChangingStatusItem(null);
-            refetchData();
-          }}
-        />
-      )}
-
-      {paymentLinkItem && (
-        <PaymentLinkModal
-          student={paymentLinkItem}
-          open={!!paymentLinkItem}
-          onClose={() => setPaymentLinkItem(null)}
-          onSuccess={() => {
-            setPaymentLinkItem(null);
-            refetchData();
-          }}
-        />
       )}
     </div>
   );

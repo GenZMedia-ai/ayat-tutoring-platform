@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { User, Calendar, Package, DollarSign } from 'lucide-react';
+import { User, Calendar, Package, DollarSign, Phone, BookOpen } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -24,6 +24,8 @@ interface PaidStudent {
   sessions_completed: number;
   is_family_member: boolean;
   family_group_id: string | null;
+  teacher_name: string;
+  assigned_teacher_id: string | null;
 }
 
 const SalesStudents: React.FC = () => {
@@ -35,7 +37,7 @@ const SalesStudents: React.FC = () => {
     const loadPaidStudents = async () => {
       try {
         setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await su pabase.auth.getUser();
         if (!user) return;
 
         const { data: students, error } = await supabase
@@ -55,7 +57,11 @@ const SalesStudents: React.FC = () => {
             payment_amount,
             payment_currency,
             created_at,
-            family_group_id
+            family_group_id,
+            assigned_teacher_id,
+            profiles:assigned_teacher_id (
+              full_name
+            )
           `)
           .eq('assigned_sales_agent_id', user.id)
           .in('status', ['paid', 'active', 'expired'])
@@ -91,7 +97,9 @@ const SalesStudents: React.FC = () => {
             created_at: student.created_at,
             sessions_completed: sessionsCompleted || 0,
             is_family_member: Boolean(student.family_group_id),
-            family_group_id: student.family_group_id
+            family_group_id: student.family_group_id,
+            teacher_name: (student.profiles as any)?.full_name || 'Not Assigned',
+            assigned_teacher_id: student.assigned_teacher_id
           });
         }
 
@@ -124,6 +132,13 @@ const SalesStudents: React.FC = () => {
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   };
 
+  const handleWhatsAppContact = (student: PaidStudent) => {
+    const phone = student.phone.replace(/[^0-9]/g, '');
+    const message = `Hello ${student.name}! This is regarding your learning sessions with us. How are your lessons going?`;
+    const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -151,7 +166,7 @@ const SalesStudents: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="text-center">
@@ -179,6 +194,16 @@ const SalesStudents: React.FC = () => {
                 {paidStudents.filter(s => s.status === 'expired').length}
               </div>
               <div className="text-sm text-muted-foreground">Expired (Renewal)</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">
+                ${paidStudents.reduce((sum, s) => sum + (s.payment_amount || 0), 0)}
+              </div>
+              <div className="text-sm text-muted-foreground">Total Revenue</div>
             </div>
           </CardContent>
         </Card>
@@ -213,7 +238,7 @@ const SalesStudents: React.FC = () => {
                       <Badge variant="outline">Family Member</Badge>
                     )}
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm font-medium text-green-600">
                     {student.payment_amount} {student.payment_currency}
                   </div>
                 </div>
@@ -233,6 +258,9 @@ const SalesStudents: React.FC = () => {
                   <div>
                     <span className="font-medium">Platform:</span> {student.platform}
                   </div>
+                  <div>
+                    <span className="font-medium">Teacher:</span> {student.teacher_name}
+                  </div>
                   {student.parent_name && (
                     <div>
                       <span className="font-medium">Parent:</span> {student.parent_name}
@@ -249,7 +277,7 @@ const SalesStudents: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <BookOpen className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">
                       {student.sessions_completed}/{student.package_session_count} sessions
                     </span>
@@ -273,6 +301,17 @@ const SalesStudents: React.FC = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Contact Button */}
+                <div className="pt-2">
+                  <button
+                    onClick={() => handleWhatsAppContact(student)}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors"
+                  >
+                    <Phone className="h-4 w-4" />
+                    Contact via WhatsApp
+                  </button>
+                </div>
 
                 {/* Status-specific messages */}
                 {student.status === 'paid' && (

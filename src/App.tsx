@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,9 +24,10 @@ import TeacherRevenue from "./components/dashboard/teacher/TeacherRevenue";
 import TeacherPaidRegistration from "./components/dashboard/teacher/TeacherPaidRegistration";
 import TeacherSessionManagement from "./components/dashboard/teacher/TeacherSessionManagement";
 
-// Sales Tab Components
+// Sales Tab Components - FIXED IMPORTS
 import SalesHomepage from "./components/dashboard/sales/SalesHomepage";
-import SalesTrialManagement from "./components/dashboard/sales/SalesTrialManagement";
+import SalesTrialAppointments from "./components/dashboard/sales/SalesTrialAppointments";
+import SalesPaymentLinks from "./components/dashboard/sales/SalesPaymentLinks";
 import SalesFollowup from "./components/dashboard/sales/SalesFollowup";
 import SalesStudents from "./components/dashboard/sales/SalesStudents";
 import SalesAnalytics from "./components/dashboard/sales/SalesAnalytics";
@@ -74,11 +76,12 @@ const App = () => (
               <Route index element={<Navigate to="homepage" replace />} />
             </Route>
 
-            {/* Sales Routes */}
+            {/* Sales Routes - FIXED */}
             <Route path="/sales" element={<Navigate to="/sales/homepage" replace />} />
             <Route path="/sales/*" element={<SalesDashboard />}>
               <Route path="homepage" element={<SalesHomepage />} />
-              <Route path="trials" element={<SalesTrialManagement />} />
+              <Route path="trials" element={<SalesTrialAppointments />} />
+              <Route path="payment-links" element={<SalesPaymentLinks />} />
               <Route path="followup" element={<SalesFollowup />} />
               <Route path="students" element={<SalesStudents />} />
               <Route path="analytics" element={<SalesAnalytics />} />

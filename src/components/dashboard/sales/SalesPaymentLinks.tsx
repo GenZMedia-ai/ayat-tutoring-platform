@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, ExternalLink, Copy } from 'lucide-react';
+import { Search, Filter, ExternalLink, Copy, RefreshCw, DollarSign } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
@@ -15,7 +15,7 @@ interface PaymentLink {
   student_ids: string[];
   amount: number;
   currency: string;
-  status: string; // Changed from literal union to string to match DB
+  status: string;
   created_at: string;
   expires_at: string;
   paid_at?: string;
@@ -24,6 +24,8 @@ interface PaymentLink {
   created_by: string;
   student_names?: string[];
   family_group_id?: string;
+  payment_type: string;
+  package_session_count: number;
 }
 
 const SalesPaymentLinks: React.FC = () => {
@@ -31,7 +33,6 @@ const SalesPaymentLinks: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [teacherFilter, setTeacherFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState('thismonth');
 
   // Get date range based on filter
@@ -58,30 +59,43 @@ const SalesPaymentLinks: React.FC = () => {
   };
 
   // Load payment links
-  useEffect(() => {
-    const loadPaymentLinks = async () => {
-      try {
-        setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+  const loadPaymentLinks = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-        const { from, to } = getDateRange();
-        const fromStr = format(from, 'yyyy-MM-dd');
-        const toStr = format(to, 'yyyy-MM-dd');
+      const { from, to } = getDateRange();
+      const fromStr = format(from, 'yyyy-MM-dd');
+      const toStr = format(to, 'yyyy-MM-dd');
 
-        const { data: links, error } = await supabase
-          .from('payment_links')
-          .select('*')
-          .eq('created_by', user.id)
-          .gte('created_at', fromStr)
-          .lte('created_at', toStr + 'T23:59:59')
-          .order('created_at', { ascending: false });
+      const { data: links, error } = await supabase
+        .from('payment_links')
+        .select('*')
+        .eq('created_by', user.id)
+        .gte('created_at', fromStr)
+        .lte('created_at', toStr + 'T23:59:59')
+        .order('created_at', { ascending: false });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        // Fetch student names for each payment link
-        const linksWithNames = await Promise.all(
-          (links || []).map(async (link) => {
+      // Fetch student names for each payment link
+      const linksWithNames = await Promise.all(
+        (links || []).map(async (link) => {
+          if (link.family_group_id) {
+            // For family payments, get family info
+            const { data: family } = await supabase
+              .from('family_groups')
+              .select('parent_name, student_count')
+              .eq('id', link.family_group_id)
+              .single();
+            
+            return {
+              ...link,
+              student_names: family ? [`${family.parent_name} (${family.student_count} students)`] : ['Family Group']
+            };
+          } else {
+            // For individual payments, get student names
             const { data: students } = await supabase
               .from('students')
               .select('name')
@@ -91,18 +105,20 @@ const SalesPaymentLinks: React.FC = () => {
               ...link,
               student_names: students?.map(s => s.name) || []
             };
-          })
-        );
+          }
+        })
+      );
 
-        setPaymentLinks(linksWithNames);
-      } catch (error) {
-        console.error('Error loading payment links:', error);
-        toast.error('Failed to load payment links');
-      } finally {
-        setLoading(false);
-      }
-    };
+      setPaymentLinks(linksWithNames);
+    } catch (error) {
+      console.error('Error loading payment links:', error);
+      toast.error('Failed to load payment links');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadPaymentLinks();
   }, [dateFilter]);
 
@@ -138,6 +154,12 @@ const SalesPaymentLinks: React.FC = () => {
     }
   };
 
+  const getTotalRevenue = () => {
+    return filteredLinks
+      .filter(link => link.status === 'paid')
+      .reduce((sum, link) => sum + link.amount, 0);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -159,15 +181,65 @@ const SalesPaymentLinks: React.FC = () => {
             Manage all created payment links and track their status
           </p>
         </div>
-        <Badge variant="outline">
-          {filteredLinks.length} payment links
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">
+            {filteredLinks.length} payment links
+          </Badge>
+          <Button onClick={loadPaymentLinks} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">
+                {filteredLinks.filter(l => l.status === 'pending').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Pending</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {filteredLinks.filter(l => l.status === 'clicked').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Clicked</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {filteredLinks.filter(l => l.status === 'paid').length}
+              </div>
+              <div className="text-sm text-muted-foreground">Paid</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                ${getTotalRevenue()}
+              </div>
+              <div className="text-sm text-muted-foreground">Revenue Generated</div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Date Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Date Filter</label>
@@ -204,19 +276,6 @@ const SalesPaymentLinks: React.FC = () => {
               </Select>
             </div>
 
-            {/* Teacher Filter */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Teacher Filter</label>
-              <Select value={teacherFilter} onValueChange={setTeacherFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Teachers" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Teachers</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Search */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
@@ -239,7 +298,7 @@ const SalesPaymentLinks: React.FC = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">
-              <ExternalLink className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-muted-foreground mb-2">
                 No payment links found
               </h3>
@@ -265,16 +324,19 @@ const SalesPaymentLinks: React.FC = () => {
                     <Badge variant="outline" className="text-xs">
                       {link.currency.toUpperCase()}
                     </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {link.payment_type === 'family' ? 'Family' : 'Individual'}
+                    </Badge>
                   </div>
                   <div className="text-lg font-semibold text-primary">
-                    {link.amount} {link.currency.toUpperCase()}
+                    ${link.amount}
                   </div>
                 </div>
                 <CardTitle className="text-lg">
                   {link.student_names?.join(', ') || 'Unknown Student'}
                 </CardTitle>
                 <CardDescription>
-                  Payment Link ID: {link.id.slice(0, 8)}...
+                  Payment Link ID: {link.id.slice(0, 8)}... • {link.package_session_count} sessions
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -319,6 +381,23 @@ const SalesPaymentLinks: React.FC = () => {
                     </>
                   )}
                 </div>
+
+                {/* Status Messages */}
+                {link.status === 'pending' && (
+                  <div className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
+                    ⏳ Payment link created and ready to be shared with the client
+                  </div>
+                )}
+                {link.status === 'clicked' && (
+                  <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                    👁️ Client has viewed the payment link but hasn't completed payment yet
+                  </div>
+                )}
+                {link.status === 'paid' && (
+                  <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
+                    ✅ Payment completed successfully! Student is ready for activation
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
