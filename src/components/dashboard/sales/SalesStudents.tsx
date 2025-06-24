@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -37,7 +36,7 @@ const SalesStudents: React.FC = () => {
     const loadPaidStudents = async () => {
       try {
         setLoading(true);
-        const { data: { user } } = await su pabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data: students, error } = await supabase
