@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import { TEACHER_TYPES } from '@/constants/teacherTypes';
 import { HOURLY_TIME_SLOTS, TIMEZONES } from '@/constants/timeSlots';
 import { BookingModal } from '@/components/booking/BookingModal';
 import { FamilyCard } from '@/components/family/FamilyCard';
+import { EnhancedSlotDisplay } from '@/components/sales/EnhancedSlotDisplay';
 import { supabase } from '@/integrations/supabase/client';
 
 const SimpleSalesDashboard: React.FC = () => {
@@ -35,7 +35,7 @@ const SimpleSalesDashboard: React.FC = () => {
     familyGroups: 0
   });
 
-  const { loading, availableSlots, checkAvailability, bookTrialSession } = useSimpleSalesAvailability();
+  const { loading, groupedSlots, checkAvailability, bookTrialSession } = useSimpleSalesAvailability();
   const { familyGroups, loading: familyLoading, fetchFamilyGroups, updateFamilyStatus } = useFamilyGroups();
 
   // Load sales statistics
@@ -207,16 +207,16 @@ const SimpleSalesDashboard: React.FC = () => {
       {/* Main Content with Tabs */}
       <Tabs defaultValue="booking" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="booking">Quick Availability Checker</TabsTrigger>
+          <TabsTrigger value="booking">Enhanced Quick Checker</TabsTrigger>
           <TabsTrigger value="families">Family Groups</TabsTrigger>
         </TabsList>
 
         <TabsContent value="booking" className="space-y-4">
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>Quick Availability Checker</CardTitle>
+              <CardTitle>🚀 Enhanced Quick Availability Checker</CardTitle>
               <CardDescription>
-                Search and book available trial session slots for both individual and family bookings
+                Find both 30-minute slots with teacher counts and timezone displays
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -294,60 +294,25 @@ const SimpleSalesDashboard: React.FC = () => {
                     className="w-full ayat-button-primary"
                     disabled={loading}
                   >
-                    {loading ? 'Searching...' : 'Search Available Slots'}
+                    {loading ? 'Searching...' : '🔍 Find Available Slots'}
                   </Button>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="font-medium">
-                      Available 30-Minute Slots for {selectedDate?.toDateString()}
+                      Available Slots for {selectedDate?.toDateString()}
                     </h4>
                     <div className="text-xs text-muted-foreground">
                       Date: {selectedDate?.toISOString().split('T')[0]}
                     </div>
                   </div>
                   
-                  {loading && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Searching for slots on {selectedDate?.toISOString().split('T')[0]}...
-                    </div>
-                  )}
-                  
-                  {!loading && availableSlots.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground space-y-2">
-                      <p>No available slots found for {selectedDate?.toDateString()}.</p>
-                      <p className="text-sm">Try selecting a different date or time.</p>
-                    </div>
-                  )}
-                  
-                  <div className="space-y-2">
-                    {availableSlots.map((slot) => (
-                      <div key={slot.id} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
-                        <div className="space-y-1">
-                          <div className="font-medium text-primary">
-                            {slot.clientTimeDisplay}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Teacher: {slot.teacherName}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {slot.egyptTimeDisplay}
-                          </div>
-                          <div className="text-xs text-green-600">
-                            UTC: {slot.utcStartTime} - {slot.utcEndTime}
-                          </div>
-                        </div>
-                        <Button 
-                          size="sm"
-                          className="ayat-button-primary"
-                          onClick={() => handleBookNow(slot)}
-                        >
-                          Book Now
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                  <EnhancedSlotDisplay
+                    groupedSlots={groupedSlots}
+                    onBookSlot={handleBookNow}
+                    loading={loading}
+                  />
                 </div>
               </div>
             </CardContent>

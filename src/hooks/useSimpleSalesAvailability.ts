@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { SimpleAvailabilityService, SimpleTimeSlot } from '@/services/simpleAvailabilityService';
+import { SimpleAvailabilityService, SimpleTimeSlot, GroupedTimeSlot } from '@/services/simpleAvailabilityService';
 import { supabase } from '@/integrations/supabase/client';
 import { useFamilyBooking } from '@/hooks/useFamilyBooking';
 
@@ -29,6 +29,7 @@ type SimpleBookingResponse = {
 export const useSimpleSalesAvailability = () => {
   const [loading, setLoading] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<SimpleTimeSlot[]>([]);
+  const [groupedSlots, setGroupedSlots] = useState<GroupedTimeSlot[]>([]);
   const { bookFamilyTrialSession } = useFamilyBooking();
 
   const checkAvailability = async (
@@ -39,7 +40,7 @@ export const useSimpleSalesAvailability = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('=== PHASE 4: SIMPLIFIED AVAILABILITY CHECK START ===');
+      console.log('=== ENHANCED AVAILABILITY CHECK START ===');
       console.log('Request Parameters:', { 
         date: date.toDateString(), 
         timezone, 
@@ -54,13 +55,20 @@ export const useSimpleSalesAvailability = () => {
         selectedHour
       );
       
-      console.log('Simplified slots received:', slots.length);
+      console.log('Enhanced slots received:', slots.length);
       console.log('Date preservation check: All slots should be for date:', date.toDateString());
+      
+      // PHASE 2: Group slots by time
+      const grouped = SimpleAvailabilityService.groupSlotsByTime(slots);
+      console.log('Grouped slots:', grouped);
+      
       setAvailableSlots(slots);
+      setGroupedSlots(grouped);
     } catch (error) {
-      console.error('Simplified availability check error:', error);
+      console.error('Enhanced availability check error:', error);
       toast.error('Failed to check availability');
       setAvailableSlots([]);
+      setGroupedSlots([]);
     } finally {
       setLoading(false);
     }
@@ -75,14 +83,14 @@ export const useSimpleSalesAvailability = () => {
   ): Promise<boolean> => {
     // Use family booking for multi-student sessions
     if (isMultiStudent) {
-      console.log('=== PHASE 4: ROUTING TO FAMILY BOOKING SYSTEM ===');
+      console.log('=== ENHANCED: ROUTING TO FAMILY BOOKING SYSTEM ===');
       console.log('Selected date preservation:', selectedDate.toDateString());
       return await bookFamilyTrialSession(bookingData, selectedDate, selectedSlot, teacherType);
     }
 
     // Single student booking with date preservation
     try {
-      console.log('=== PHASE 4: SINGLE STUDENT BOOKING START ===');
+      console.log('=== ENHANCED: SINGLE STUDENT BOOKING START ===');
       console.log('Booking parameters with date preservation:', { 
         selectedDate: selectedDate.toDateString(),
         selectedDateISO: selectedDate.toISOString().split('T')[0],
@@ -92,23 +100,23 @@ export const useSimpleSalesAvailability = () => {
         isMultiStudent 
       });
       
-      // PHASE 4: Use the selected date directly (no conversion)
+      // Use the selected date directly (no conversion)
       const bookingDateString = selectedDate.toISOString().split('T')[0];
       console.log('Date being sent to booking function:', bookingDateString);
       
       const { data, error } = await supabase.rpc('simple_book_trial_session', {
         p_booking_data: bookingData,
         p_is_multi_student: isMultiStudent,
-        p_selected_date: bookingDateString, // Preserve original selected date
+        p_selected_date: bookingDateString,
         p_utc_start_time: selectedSlot.utcStartTime,
         p_teacher_type: teacherType,
         p_teacher_id: selectedSlot.teacherId
       });
 
-      console.log('Single student booking response:', { data, error });
+      console.log('Enhanced booking response:', { data, error });
 
       if (error) {
-        console.error('Single student booking error:', error);
+        console.error('Enhanced booking error:', error);
         
         let errorMessage = 'Booking failed - please try again';
         
@@ -136,7 +144,7 @@ export const useSimpleSalesAvailability = () => {
         const teacherName = bookingResult.teacher_name || 'Unknown Teacher';
         const studentNames = bookingResult.student_names || '';
         
-        console.log('Single student booking success with date preservation:', {
+        console.log('Enhanced booking success with date preservation:', {
           teacherName,
           studentNames,
           sessionId: bookingResult.session_id,
@@ -153,12 +161,12 @@ export const useSimpleSalesAvailability = () => {
         );
         return true;
       } else {
-        console.error('Single student booking failed - no success flag');
+        console.error('Enhanced booking failed - no success flag');
         toast.error('Booking failed - please try again');
         return false;
       }
     } catch (error) {
-      console.error('Single student booking exception:', error);
+      console.error('Enhanced booking exception:', error);
       
       let errorMessage = 'Booking failed due to system error';
       
@@ -180,6 +188,7 @@ export const useSimpleSalesAvailability = () => {
   return {
     loading,
     availableSlots,
+    groupedSlots,
     checkAvailability,
     bookTrialSession
   };

@@ -14,6 +14,16 @@ export interface SimpleTimeSlot {
   egyptTimeDisplay: string;
 }
 
+export interface GroupedTimeSlot {
+  timeRange: string;
+  clientTimeDisplay: string;
+  egyptTimeDisplay: string;
+  teacherCount: number;
+  teachers: SimpleTimeSlot[];
+  utcStartTime: string;
+  utcEndTime: string;
+}
+
 export class SimpleAvailabilityService {
   static async searchAvailableSlots(
     date: Date,
@@ -29,12 +39,14 @@ export class SimpleAvailabilityService {
         throw new Error(`Invalid timezone: ${timezone}`);
       }
       
-      const serverTime = convertClientTimeToServer(date, selectedHour, timezone);
+      console.log('=== ENHANCED SEARCH: Searching for both 30-minute slots ===');
+      console.log('Selected hour:', selectedHour, 'Date:', dateStr, 'Timezone:', timezone);
       
-      // Search for the selected hour and the next 30 minutes
-      const baseUtcHour = serverTime.utcHour;
-      const startTime = `${String(baseUtcHour).padStart(2, '0')}:00:00`;
-      const endTime = `${String(baseUtcHour + 1).padStart(2, '0')}:00:00`;
+      // PHASE 1 FIX: Search for BOTH 30-minute slots in the selected hour
+      const slot1Time = `${String(selectedHour).padStart(2, '0')}:00:00`;
+      const slot2Time = `${String(selectedHour).padStart(2, '0')}:30:00`;
+      
+      console.log('Searching for slots:', slot1Time, 'and', slot2Time);
       
       // Build teacher type filter
       let teacherTypeFilter: string[];
@@ -44,15 +56,14 @@ export class SimpleAvailabilityService {
         teacherTypeFilter = [teacherType, 'mixed'];
       }
       
-      // Query database for available slots
+      // Query database for available slots - search for BOTH specific times
       const { data: availability, error: availabilityError } = await supabase
         .from('teacher_availability')
         .select('id, time_slot, teacher_id')
         .eq('date', dateStr)
         .eq('is_available', true)
         .eq('is_booked', false)
-        .gte('time_slot', startTime)
-        .lt('time_slot', endTime)
+        .in('time_slot', [slot1Time, slot2Time])
         .order('time_slot');
       
       if (availabilityError) {
@@ -60,7 +71,11 @@ export class SimpleAvailabilityService {
         throw availabilityError;
       }
       
+      console.log('Raw availability data found:', availability?.length || 0, 'slots');
+      console.log('Availability data:', availability);
+      
       if (!availability || availability.length === 0) {
+        console.log('No availability found for the selected hour slots');
         return [];
       }
       
@@ -82,6 +97,7 @@ export class SimpleAvailabilityService {
       }
       
       if (!profiles || profiles.length === 0) {
+        console.log('No approved teachers found for the criteria');
         return [];
       }
       
@@ -119,11 +135,53 @@ export class SimpleAvailabilityService {
           };
         });
       
+      console.log('=== ENHANCED SEARCH RESULTS ===');
+      console.log('Total slots found:', slots.length);
+      console.log('Slots breakdown:', slots.map(s => ({ time: s.utcStartTime, teacher: s.teacherName })));
+      
       return slots;
     } catch (error) {
       console.error('Availability search error:', error);
       throw error;
     }
+  }
+  
+  // PHASE 2: New method to group slots by time
+  static groupSlotsByTime(slots: SimpleTimeSlot[]): GroupedTimeSlot[] {
+    const grouped = new Map<string, SimpleTimeSlot[]>();
+    
+    // Group slots by their UTC start time
+    slots.forEach(slot => {
+      const key = slot.utcStartTime;
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(slot);
+    });
+    
+    // Convert to GroupedTimeSlot format
+    const result: GroupedTimeSlot[] = [];
+    
+    grouped.forEach((teacherSlots, timeKey) => {
+      const firstSlot = teacherSlots[0];
+      
+      // Create time range display
+      const startTime = firstSlot.clientTimeDisplay.split('-')[0];
+      const endTime = firstSlot.clientTimeDisplay.split('-')[1];
+      
+      result.push({
+        timeRange: `${startTime} - ${endTime}`,
+        clientTimeDisplay: firstSlot.clientTimeDisplay,
+        egyptTimeDisplay: firstSlot.egyptTimeDisplay,
+        teacherCount: teacherSlots.length,
+        teachers: teacherSlots,
+        utcStartTime: firstSlot.utcStartTime,
+        utcEndTime: firstSlot.utcEndTime
+      });
+    });
+    
+    // Sort by UTC start time
+    return result.sort((a, b) => a.utcStartTime.localeCompare(b.utcStartTime));
   }
   
   private static formatTimeInTimezone(date: Date, timeZone: string): string {
