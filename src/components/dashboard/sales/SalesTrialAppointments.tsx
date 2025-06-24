@@ -51,7 +51,7 @@ const SalesTrialAppointments: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState('today');
+  const [dateFilter, setDateFilter] = useState('alltime'); // Changed default to show all data
 
   // Get date range based on filter
   const getDateRange = () => {
@@ -70,9 +70,9 @@ const SalesTrialAppointments: React.FC = () => {
         const lastMonth = subDays(startOfMonth(now), 1);
         return { from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) };
       case 'alltime':
-        return { from: new Date('2024-01-01'), to: now };
+        return { from: new Date('2024-01-01'), to: new Date('2030-12-31') };
       default:
-        return { from: now, to: now };
+        return { from: new Date('2024-01-01'), to: new Date('2030-12-31') };
     }
   };
 
@@ -81,44 +81,85 @@ const SalesTrialAppointments: React.FC = () => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('No authenticated user found');
+        return;
+      }
 
       const { from, to } = getDateRange();
       const fromStr = format(from, 'yyyy-MM-dd');
       const toStr = format(to, 'yyyy-MM-dd');
 
-      // Load individual students
-      const { data: students, error: studentsError } = await supabase
-        .from('students')
-        .select(`
-          *,
-          profiles:assigned_teacher_id (
-            full_name
-          )
-        `)
-        .eq('assigned_sales_agent_id', user.id)
-        .is('family_group_id', null)
-        .gte('created_at', fromStr)
-        .lte('created_at', toStr + 'T23:59:59')
-        .order('created_at', { ascending: false });
+      console.log('Loading data for date range:', fromStr, 'to', toStr);
 
-      if (studentsError) throw studentsError;
+      // Load individual students - filter by created_at for broader results
+      const studentsQuery = dateFilter === 'alltime' 
+        ? supabase
+            .from('students')
+            .select(`
+              *,
+              profiles:assigned_teacher_id (
+                full_name
+              )
+            `)
+            .eq('assigned_sales_agent_id', user.id)
+            .is('family_group_id', null)
+            .order('created_at', { ascending: false })
+        : supabase
+            .from('students')
+            .select(`
+              *,
+              profiles:assigned_teacher_id (
+                full_name
+              )
+            `)
+            .eq('assigned_sales_agent_id', user.id)
+            .is('family_group_id', null)
+            .gte('created_at', fromStr)
+            .lte('created_at', toStr + 'T23:59:59')
+            .order('created_at', { ascending: false });
+
+      const { data: students, error: studentsError } = await studentsQuery;
+
+      if (studentsError) {
+        console.error('Error loading students:', studentsError);
+        throw new Error(`Failed to load students: ${studentsError.message}`);
+      }
 
       // Load family groups
-      const { data: families, error: familiesError } = await supabase
-        .from('family_groups')
-        .select(`
-          *,
-          profiles:assigned_teacher_id (
-            full_name
-          )
-        `)
-        .eq('assigned_sales_agent_id', user.id)
-        .gte('created_at', fromStr)
-        .lte('created_at', toStr + 'T23:59:59')
-        .order('created_at', { ascending: false });
+      const familiesQuery = dateFilter === 'alltime'
+        ? supabase
+            .from('family_groups')
+            .select(`
+              *,
+              profiles:assigned_teacher_id (
+                full_name
+              )
+            `)
+            .eq('assigned_sales_agent_id', user.id)
+            .order('created_at', { ascending: false })
+        : supabase
+            .from('family_groups')
+            .select(`
+              *,
+              profiles:assigned_teacher_id (
+                full_name
+              )
+            `)
+            .eq('assigned_sales_agent_id', user.id)
+            .gte('created_at', fromStr)
+            .lte('created_at', toStr + 'T23:59:59')
+            .order('created_at', { ascending: false });
 
-      if (familiesError) throw familiesError;
+      const { data: families, error: familiesError } = await familiesQuery;
+
+      if (familiesError) {
+        console.error('Error loading families:', familiesError);
+        throw new Error(`Failed to load families: ${familiesError.message}`);
+      }
+
+      console.log('Loaded students:', students?.length || 0);
+      console.log('Loaded families:', families?.length || 0);
 
       // Process individual students
       const processedStudents = (students || []).map(student => ({
@@ -159,9 +200,17 @@ const SalesTrialAppointments: React.FC = () => {
 
       setIndividualStudents(processedStudents);
       setFamilyGroups(processedFamilies);
+
+      // Show success message if data loaded
+      if (processedStudents.length > 0 || processedFamilies.length > 0) {
+        console.log('Data loaded successfully');
+      } else {
+        console.log('No data found for the selected criteria');
+      }
+
     } catch (error) {
       console.error('Error loading trial appointments:', error);
-      toast.error('Failed to load trial appointments');
+      toast.error(error instanceof Error ? error.message : 'Failed to load trial appointments');
     } finally {
       setLoading(false);
     }
@@ -274,12 +323,12 @@ const SalesTrialAppointments: React.FC = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="alltime">All Time</SelectItem>
                   <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="yesterday">Yesterday</SelectItem>
                   <SelectItem value="last7days">Last 7 Days</SelectItem>
                   <SelectItem value="thismonth">This Month</SelectItem>
                   <SelectItem value="lastmonth">Last Month</SelectItem>
-                  <SelectItem value="alltime">All Time</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -373,7 +422,9 @@ const SalesTrialAppointments: React.FC = () => {
               <p className="text-sm text-muted-foreground">
                 {searchTerm || statusFilter !== 'all' 
                   ? 'Try adjusting your search or filter criteria'
-                  : 'You haven\'t created any trial appointments yet'
+                  : dateFilter === 'alltime' 
+                    ? 'You haven\'t created any trial appointments yet'
+                    : 'No appointments found for the selected date range. Try "All Time" to see all data.'
                 }
               </p>
             </div>

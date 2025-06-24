@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { User, Calendar, Package, DollarSign, Phone, BookOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { User, Calendar, Package, DollarSign, Phone, BookOpen, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -31,86 +33,127 @@ const SalesStudents: React.FC = () => {
   const [paidStudents, setPaidStudents] = useState<PaidStudent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load paid students
-  useEffect(() => {
-    const loadPaidStudents = async () => {
-      try {
-        setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data: students, error } = await supabase
-          .from('students')
-          .select(`
-            id,
-            unique_id,
-            name,
-            age,
-            phone,
-            country,
-            platform,
-            status,
-            parent_name,
-            package_session_count,
-            package_name,
-            payment_amount,
-            payment_currency,
-            created_at,
-            family_group_id,
-            assigned_teacher_id,
-            profiles:assigned_teacher_id (
-              full_name
-            )
-          `)
-          .eq('assigned_sales_agent_id', user.id)
-          .in('status', ['paid', 'active', 'expired'])
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        // Get session completion counts for each student
-        const studentsWithProgress: PaidStudent[] = [];
-        
-        for (const student of students || []) {
-          // Count completed sessions by joining sessions and session_students tables
-          const { count: sessionsCompleted } = await supabase
-            .from('sessions')
-            .select('*, session_students!inner(*)', { count: 'exact', head: true })
-            .eq('session_students.student_id', student.id)
-            .eq('status', 'completed');
-
-          studentsWithProgress.push({
-            id: student.id,
-            unique_id: student.unique_id,
-            name: student.name,
-            age: student.age,
-            phone: student.phone,
-            country: student.country,
-            platform: student.platform,
-            status: student.status,
-            parent_name: student.parent_name,
-            package_session_count: student.package_session_count,
-            package_name: student.package_name,
-            payment_amount: student.payment_amount,
-            payment_currency: student.payment_currency,
-            created_at: student.created_at,
-            sessions_completed: sessionsCompleted || 0,
-            is_family_member: Boolean(student.family_group_id),
-            family_group_id: student.family_group_id,
-            teacher_name: (student.profiles as any)?.full_name || 'Not Assigned',
-            assigned_teacher_id: student.assigned_teacher_id
-          });
-        }
-
-        setPaidStudents(studentsWithProgress);
-      } catch (error) {
-        console.error('Error loading paid students:', error);
-        toast.error('Failed to load paid students');
-      } finally {
-        setLoading(false);
+  // Load paid students with optimized session counting
+  const loadPaidStudents = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('No authenticated user found');
+        return;
       }
-    };
 
+      console.log('Loading paid students for user:', user.id);
+
+      // Get students with their teacher information
+      const { data: students, error } = await supabase
+        .from('students')
+        .select(`
+          id,
+          unique_id,
+          name,
+          age,
+          phone,
+          country,
+          platform,
+          status,
+          parent_name,
+          package_session_count,
+          package_name,
+          payment_amount,
+          payment_currency,
+          created_at,
+          family_group_id,
+          assigned_teacher_id,
+          profiles:assigned_teacher_id (
+            full_name
+          )
+        `)
+        .eq('assigned_sales_agent_id', user.id)
+        .in('status', ['paid', 'active', 'expired'])
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading students:', error);
+        throw new Error(`Failed to load students: ${error.message}`);
+      }
+
+      console.log('Loaded students:', students?.length || 0);
+
+      if (!students || students.length === 0) {
+        setPaidStudents([]);
+        console.log('No paid students found');
+        return;
+      }
+
+      // Get session completion counts for all students in a single query
+      const studentIds = students.map(s => s.id);
+      
+      const { data: sessionCounts, error: sessionError } = await supabase
+        .from('sessions')
+        .select(`
+          id,
+          status,
+          session_students!inner(
+            student_id
+          )
+        `)
+        .in('session_students.student_id', studentIds)
+        .eq('status', 'completed');
+
+      if (sessionError) {
+        console.error('Error loading session counts:', sessionError);
+        // Don't throw error, just log it and continue with 0 counts
+      }
+
+      console.log('Loaded session counts:', sessionCounts?.length || 0);
+
+      // Create a map of student ID to completed session count
+      const sessionCountMap = new Map<string, number>();
+      if (sessionCounts) {
+        sessionCounts.forEach(session => {
+          const studentId = (session.session_students as any)[0]?.student_id;
+          if (studentId) {
+            sessionCountMap.set(studentId, (sessionCountMap.get(studentId) || 0) + 1);
+          }
+        });
+      }
+
+      // Process students with session counts
+      const studentsWithProgress: PaidStudent[] = students.map(student => ({
+        id: student.id,
+        unique_id: student.unique_id,
+        name: student.name,
+        age: student.age,
+        phone: student.phone,
+        country: student.country,
+        platform: student.platform,
+        status: student.status,
+        parent_name: student.parent_name,
+        package_session_count: student.package_session_count || 8,
+        package_name: student.package_name,
+        payment_amount: student.payment_amount || 0,
+        payment_currency: student.payment_currency || 'USD',
+        created_at: student.created_at,
+        sessions_completed: sessionCountMap.get(student.id) || 0,
+        is_family_member: Boolean(student.family_group_id),
+        family_group_id: student.family_group_id,
+        teacher_name: (student.profiles as any)?.full_name || 'Not Assigned',
+        assigned_teacher_id: student.assigned_teacher_id
+      }));
+
+      setPaidStudents(studentsWithProgress);
+      console.log('Processed students with session progress:', studentsWithProgress.length);
+
+    } catch (error) {
+      console.error('Error loading paid students:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to load paid students');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadPaidStudents();
   }, []);
 
@@ -159,9 +202,15 @@ const SalesStudents: React.FC = () => {
             Monitor your converted students and their learning progress
           </p>
         </div>
-        <Badge variant="outline">
-          {paidStudents.length} paid students
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">
+            {paidStudents.length} paid students
+          </Badge>
+          <Button onClick={loadPaidStudents} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}

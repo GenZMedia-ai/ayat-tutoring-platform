@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, MessageCircle, Calendar, CheckCircle } from 'lucide-react';
+import { Search, MessageCircle, Calendar, CheckCircle, RefreshCw, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
@@ -28,7 +28,7 @@ const SalesFollowup: React.FC = () => {
   const [followUpTasks, setFollowUpTasks] = useState<FollowUpTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState('today');
+  const [dateFilter, setDateFilter] = useState('alltime'); // Changed default to show all data
 
   // Get date range based on filter
   const getDateRange = () => {
@@ -47,55 +47,127 @@ const SalesFollowup: React.FC = () => {
         const lastMonth = subDays(startOfMonth(now), 1);
         return { from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) };
       case 'alltime':
-        return { from: new Date('2024-01-01'), to: now };
+        return { from: new Date('2024-01-01'), to: new Date('2030-12-31') };
       default:
-        return { from: now, to: now };
+        return { from: new Date('2024-01-01'), to: new Date('2030-12-31') };
+    }
+  };
+
+  // Create sample follow-up data for testing
+  const createSampleData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get some students to create follow-up tasks for
+      const { data: students } = await supabase
+        .from('students')
+        .select('id, name, phone')
+        .eq('assigned_sales_agent_id', user.id)
+        .in('status', ['trial-completed', 'trial-ghosted'])
+        .limit(3);
+
+      if (!students || students.length === 0) {
+        toast.info('No eligible students found for follow-up tasks');
+        return;
+      }
+
+      // Create sample follow-up tasks
+      const sampleTasks = students.map((student, index) => ({
+        student_id: student.id,
+        sales_agent_id: user.id,
+        scheduled_date: new Date(Date.now() + index * 24 * 60 * 60 * 1000).toISOString(),
+        reason: index === 0 ? 'trial_followup' : index === 1 ? 'payment_reminder' : 'general_followup',
+        completed: false,
+        notes: `Follow-up with ${student.name} regarding their trial session`
+      }));
+
+      const { error } = await supabase
+        .from('sales_followups')
+        .insert(sampleTasks);
+
+      if (error) throw error;
+
+      toast.success('Sample follow-up tasks created successfully');
+      loadFollowUpTasks();
+    } catch (error) {
+      console.error('Error creating sample data:', error);
+      toast.error('Failed to create sample data');
     }
   };
 
   // Load follow-up tasks
-  useEffect(() => {
-    const loadFollowUpTasks = async () => {
-      try {
-        setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { from, to } = getDateRange();
-        const fromStr = format(from, 'yyyy-MM-dd');
-        const toStr = format(to, 'yyyy-MM-dd');
-
-        const { data: followups, error } = await supabase
-          .from('sales_followups')
-          .select(`
-            *,
-            students:student_id (
-              name,
-              phone
-            )
-          `)
-          .eq('sales_agent_id', user.id)
-          .gte('scheduled_date', fromStr)
-          .lte('scheduled_date', toStr + 'T23:59:59')
-          .order('scheduled_date', { ascending: true });
-
-        if (error) throw error;
-
-        const tasksWithStudentInfo = (followups || []).map(followup => ({
-          ...followup,
-          student_name: (followup.students as any)?.name || 'Unknown',
-          student_phone: (followup.students as any)?.phone || ''
-        }));
-
-        setFollowUpTasks(tasksWithStudentInfo);
-      } catch (error) {
-        console.error('Error loading follow-up tasks:', error);
-        toast.error('Failed to load follow-up tasks');
-      } finally {
-        setLoading(false);
+  const loadFollowUpTasks = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('No authenticated user found');
+        return;
       }
-    };
 
+      const { from, to } = getDateRange();
+      const fromStr = format(from, 'yyyy-MM-dd');
+      const toStr = format(to, 'yyyy-MM-dd');
+
+      console.log('Loading follow-up tasks for date range:', fromStr, 'to', toStr);
+
+      const followupsQuery = dateFilter === 'alltime'
+        ? supabase
+            .from('sales_followups')
+            .select(`
+              *,
+              students:student_id (
+                name,
+                phone
+              )
+            `)
+            .eq('sales_agent_id', user.id)
+            .order('scheduled_date', { ascending: true })
+        : supabase
+            .from('sales_followups')
+            .select(`
+              *,
+              students:student_id (
+                name,
+                phone
+              )
+            `)
+            .eq('sales_agent_id', user.id)
+            .gte('scheduled_date', fromStr)
+            .lte('scheduled_date', toStr + 'T23:59:59')
+            .order('scheduled_date', { ascending: true });
+
+      const { data: followups, error } = await followupsQuery;
+
+      if (error) {
+        console.error('Error loading follow-up tasks:', error);
+        throw new Error(`Failed to load follow-up tasks: ${error.message}`);
+      }
+
+      console.log('Loaded follow-up tasks:', followups?.length || 0);
+
+      const tasksWithStudentInfo = (followups || []).map(followup => ({
+        ...followup,
+        student_name: (followup.students as any)?.name || 'Unknown',
+        student_phone: (followup.students as any)?.phone || ''
+      }));
+
+      setFollowUpTasks(tasksWithStudentInfo);
+
+      if (tasksWithStudentInfo.length === 0) {
+        console.log('No follow-up tasks found for the selected criteria');
+      }
+
+    } catch (error) {
+      console.error('Error loading follow-up tasks:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to load follow-up tasks');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadFollowUpTasks();
   }, [dateFilter]);
 
@@ -160,9 +232,19 @@ const SalesFollowup: React.FC = () => {
             Manage scheduled follow-ups and track outreach activities
           </p>
         </div>
-        <Badge variant="outline">
-          {filteredTasks.filter(t => !t.completed).length} pending tasks
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">
+            {filteredTasks.filter(t => !t.completed).length} pending tasks
+          </Badge>
+          <Button onClick={createSampleData} variant="outline" size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Sample Data
+          </Button>
+          <Button onClick={loadFollowUpTasks} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -177,12 +259,12 @@ const SalesFollowup: React.FC = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="alltime">All Time</SelectItem>
                   <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="yesterday">Yesterday</SelectItem>
                   <SelectItem value="last7days">Last 7 Days</SelectItem>
                   <SelectItem value="thismonth">This Month</SelectItem>
                   <SelectItem value="lastmonth">Last Month</SelectItem>
-                  <SelectItem value="alltime">All Time</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -213,12 +295,18 @@ const SalesFollowup: React.FC = () => {
               <h3 className="text-lg font-medium text-muted-foreground mb-2">
                 No follow-up tasks found
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground mb-4">
                 {searchTerm 
                   ? 'Try adjusting your search criteria'
-                  : 'You don\'t have any follow-up tasks scheduled for this period'
+                  : dateFilter === 'alltime'
+                    ? 'You don\'t have any follow-up tasks yet'
+                    : 'No follow-up tasks found for the selected date range. Try "All Time" to see all data.'
                 }
               </p>
+              <Button onClick={createSampleData} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Sample Follow-up Tasks
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -233,7 +321,7 @@ const SalesFollowup: React.FC = () => {
                       {task.completed ? 'COMPLETED' : 'PENDING'}
                     </Badge>
                     <Badge variant="outline" className="text-xs">
-                      {task.reason}
+                      {task.reason.replace('_', ' ').toUpperCase()}
                     </Badge>
                   </div>
                   <div className="text-sm text-muted-foreground">
