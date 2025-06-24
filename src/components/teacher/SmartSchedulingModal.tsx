@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -75,7 +75,7 @@ export const SmartSchedulingModal: React.FC<SmartSchedulingModalProps> = ({
   });
 
   // Initialize sessions when student changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (student) {
       const sessionCount = student.packageSessionCount || 8;
       const initialSessions: SessionData[] = Array.from(
