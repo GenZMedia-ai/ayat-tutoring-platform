@@ -15,14 +15,15 @@ interface PaidStudent {
   country: string;
   platform: string;
   status: string;
-  parent_name?: string;
+  parent_name: string | null;
   package_session_count: number;
-  package_name?: string;
+  package_name: string | null;
   payment_amount: number;
   payment_currency: string;
   created_at: string;
-  sessions_completed?: number;
+  sessions_completed: number;
   is_family_member: boolean;
+  family_group_id: string | null;
 }
 
 const SalesStudents: React.FC = () => {
@@ -63,21 +64,21 @@ const SalesStudents: React.FC = () => {
         if (error) throw error;
 
         // Get session completion counts for each student
-        const studentsWithProgress = await Promise.all(
-          (students || []).map(async (student) => {
-            const { count: sessionsCompleted } = await supabase
-              .from('sessions')
-              .select('*', { count: 'exact', head: true })
-              .eq('student_id', student.id)
-              .eq('status', 'completed');
+        const studentsWithProgress: PaidStudent[] = [];
+        
+        for (const student of students || []) {
+          const { count: sessionsCompleted } = await supabase
+            .from('sessions')
+            .select('*', { count: 'exact', head: true })
+            .eq('student_id', student.id)
+            .eq('status', 'completed');
 
-            return {
-              ...student,
-              sessions_completed: sessionsCompleted || 0,
-              is_family_member: !!student.family_group_id
-            };
-          })
-        );
+          studentsWithProgress.push({
+            ...student,
+            sessions_completed: sessionsCompleted || 0,
+            is_family_member: Boolean(student.family_group_id)
+          });
+        }
 
         setPaidStudents(studentsWithProgress);
       } catch (error) {
@@ -245,13 +246,13 @@ const SalesStudents: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Progress</span>
-                      <span>{getProgressPercentage(student.sessions_completed || 0, student.package_session_count)}%</span>
+                      <span>{getProgressPercentage(student.sessions_completed, student.package_session_count)}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
                         className="bg-green-600 h-2 rounded-full transition-all duration-300"
                         style={{ 
-                          width: `${getProgressPercentage(student.sessions_completed || 0, student.package_session_count)}%` 
+                          width: `${getProgressPercentage(student.sessions_completed, student.package_session_count)}%` 
                         }}
                       ></div>
                     </div>
