@@ -11,7 +11,6 @@ import { useSimpleSalesAvailability, SimpleBookingData } from '@/hooks/useSimple
 import { TEACHER_TYPES } from '@/constants/teacherTypes';
 import { HOURLY_TIME_SLOTS, TIMEZONES } from '@/constants/timeSlots';
 import { BookingModal } from '@/components/booking/BookingModal';
-import { EnhancedSlotDisplay } from '@/components/sales/EnhancedSlotDisplay';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 
@@ -25,15 +24,6 @@ const SalesHomepage: React.FC = () => {
     const now = new Date();
     return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   });
-  
-  // FIXED: Add display date for Calendar to handle timezone display correctly
-  const dateForCalendar = selectedDate
-    ? new Date(
-        selectedDate.getUTCFullYear(),
-        selectedDate.getUTCMonth(),
-        selectedDate.getUTCDate()
-      )
-    : undefined;
   
   const [timezone, setTimezone] = useState('qatar');
   const [teacherType, setTeacherType] = useState('mixed');
@@ -49,9 +39,8 @@ const SalesHomepage: React.FC = () => {
     conversions: { count: 0, percentage: 0 }
   });
 
-  const { loading, groupedSlots, checkAvailability, bookTrialSession } = useSimpleSalesAvailability();
+  const { loading, availableSlots, checkAvailability, bookTrialSession } = useSimpleSalesAvailability();
 
-  // Get date range based on filter
   const getDateRange = () => {
     const now = new Date();
     switch (dateFilter) {
@@ -76,7 +65,6 @@ const SalesHomepage: React.FC = () => {
     }
   };
 
-  // Load sales statistics with date filtering
   useEffect(() => {
     const loadSalesStats = async () => {
       try {
@@ -160,13 +148,13 @@ const SalesHomepage: React.FC = () => {
       toast.error('Please select a date');
       return;
     }
-    console.log('=== ENHANCED SEARCH TRIGGER ===');
+    console.log('=== SIMPLE SEARCH TRIGGER ===');
     console.log('Search parameters:', { selectedDate: selectedDate.toDateString(), timezone, teacherType, selectedHour });
     checkAvailability(selectedDate, timezone, teacherType, selectedHour);
   };
 
   const handleBookNow = (slot: any) => {
-    console.log('=== ENHANCED BOOKING TRIGGER ===');
+    console.log('=== SIMPLE BOOKING TRIGGER ===');
     console.log('Selected slot for booking:', slot);
     setSelectedSlot(slot);
     setIsBookingModalOpen(true);
@@ -175,7 +163,7 @@ const SalesHomepage: React.FC = () => {
   const handleBookingSubmit = async (data: SimpleBookingData, isMultiStudent: boolean) => {
     if (!selectedDate || !selectedSlot) return false;
     
-    console.log('=== ENHANCED BOOKING SUBMISSION ===');
+    console.log('=== SIMPLE BOOKING SUBMISSION ===');
     console.log('Booking data:', { selectedDate: selectedDate.toDateString(), selectedSlot, isMultiStudent });
     
     const success = await bookTrialSession(
@@ -279,12 +267,12 @@ const SalesHomepage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Enhanced Quick Availability Checker */}
+      {/* Simple Quick Availability Checker */}
       <Card className="dashboard-card">
         <CardHeader>
-          <CardTitle>🚀 Enhanced Quick Availability Checker</CardTitle>
+          <CardTitle>Quick Availability Checker</CardTitle>
           <CardDescription>
-            Find both 30-minute slots in your selected hour with teacher counts and timezone displays
+            Search and book available trial session slots for both individual and family bookings
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -339,10 +327,9 @@ const SalesHomepage: React.FC = () => {
                 </Select>
               </div>
 
-              {/* FIXED: Use dateForCalendar for display and proper date selection */}
               <Calendar
                 mode="single"
-                selected={dateForCalendar}
+                selected={selectedDate}
                 onSelect={(date) => {
                   if (date) {
                     const utcDate = new Date(Date.UTC(
@@ -366,30 +353,60 @@ const SalesHomepage: React.FC = () => {
                 className="w-full ayat-button-primary"
                 disabled={loading}
               >
-                {loading ? 'Searching...' : '🔍 Find Available Slots'}
+                {loading ? 'Searching...' : 'Search Available Slots'}
               </Button>
             </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                {/* FIXED: Proper date display using UTC formatting */}
                 <h4 className="font-medium">
-                  Available Slots for {selectedDate ?
-                    new Intl.DateTimeFormat('en-US', {
-                      dateStyle: 'full',
-                      timeZone: 'UTC'
-                    }).format(selectedDate) : ''}
+                  Available 30-Minute Slots for {selectedDate?.toDateString()}
                 </h4>
                 <div className="text-xs text-muted-foreground">
                   Date: {selectedDate?.toISOString().split('T')[0]}
                 </div>
               </div>
               
-              <EnhancedSlotDisplay
-                groupedSlots={groupedSlots}
-                onBookSlot={handleBookNow}
-                loading={loading}
-              />
+              {loading && (
+                <div className="text-center py-8 text-muted-foreground">
+                  Searching for slots on {selectedDate?.toISOString().split('T')[0]}...
+                </div>
+              )}
+              
+              {!loading && availableSlots.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground space-y-2">
+                  <p>No available slots found for {selectedDate?.toDateString()}.</p>
+                  <p className="text-sm">Try selecting a different date or time.</p>
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                {availableSlots.map((slot) => (
+                  <div key={slot.id} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
+                    <div className="space-y-1">
+                      <div className="font-medium text-primary">
+                        {slot.clientTimeDisplay}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Teacher: {slot.teacherName} ({slot.teacherType})
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {slot.egyptTimeDisplay}
+                      </div>
+                      <div className="text-xs text-green-600">
+                        UTC: {slot.utcStartTime} - {slot.utcEndTime}
+                      </div>
+                    </div>
+                    <Button 
+                      size="sm"
+                      className="ayat-button-primary"
+                      onClick={() => handleBookNow(slot)}
+                    >
+                      Book Now
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </CardContent>

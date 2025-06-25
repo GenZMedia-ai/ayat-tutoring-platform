@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { getTimezoneConfig, convertClientTimeToServer } from '@/utils/timezoneUtils';
+import { getTimezoneConfig } from '@/utils/timezoneUtils';
 
 export interface SimpleTimeSlot {
   id: string;
@@ -11,16 +11,6 @@ export interface SimpleTimeSlot {
   utcEndTime: string;
   clientTimeDisplay: string;
   egyptTimeDisplay: string;
-}
-
-export interface GroupedTimeSlot {
-  timeRange: string;
-  clientTimeDisplay: string;
-  egyptTimeDisplay: string;
-  teacherCount: number;
-  teachers: SimpleTimeSlot[];
-  utcStartTime: string;
-  utcEndTime: string;
 }
 
 export class SimpleAvailabilityService {
@@ -37,7 +27,7 @@ export class SimpleAvailabilityService {
         throw new Error(`Invalid timezone: ${timezone}`);
       }
       
-      console.log('🔍 === FIXED AVAILABILITY SEARCH START ===');
+      console.log('🔍 === SIMPLE AVAILABILITY SEARCH START ===');
       console.log('📋 Input Parameters:', { 
         date: date.toString(),
         timezone, 
@@ -45,29 +35,31 @@ export class SimpleAvailabilityService {
         selectedHour 
       });
       
-      // STEP 1: FIXED - Convert client datetime to UTC with proper date handling
-      const { utcHour, utcDateStr } = convertClientTimeToServer(date, selectedHour, timezone);
-      console.log('🌍 FIXED Timezone Conversion:', { 
+      // Simple UTC conversion
+      const utcHour = selectedHour - timezoneConfig.offset;
+      const adjustedUtcHour = utcHour < 0 ? utcHour + 24 : utcHour >= 24 ? utcHour - 24 : utcHour;
+      const utcDateStr = date.toISOString().split('T')[0];
+      
+      console.log('🌍 Simple Timezone Conversion:', { 
         clientHour: selectedHour, 
-        utcHour, 
-        clientDate: date.toISOString().split('T')[0],
-        utcDate: utcDateStr,
+        utcHour: adjustedUtcHour,
         offset: timezoneConfig.offset 
       });
       
-      // STEP 2: Build time slots to search for (both 30-minute slots in the hour)
+      // Build time slots to search for (both 30-minute slots in the hour)
       const timeSlots = [
-        `${String(utcHour).padStart(2, '0')}:00:00`,
-        `${String(utcHour).padStart(2, '0')}:30:00`
+        `${String(adjustedUtcHour).padStart(2, '0')}:00:00`,
+        `${String(adjustedUtcHour).padStart(2, '0')}:30:00`
       ];
+      
       console.log('⏰ Searching for UTC time slots on date:', utcDateStr, timeSlots);
       
-      // STEP 3: Build teacher type filter
+      // Build teacher type filter
       const teacherTypeFilter = this.buildTeacherTypeFilter(teacherType);
       console.log('👥 Teacher types to search:', teacherTypeFilter);
       
-      // STEP 4: FIXED QUERY - Use proper Supabase syntax without join
-      console.log('📊 Executing FIXED availability query...');
+      // Simple query for availability
+      console.log('📊 Executing simple availability query...');
       const { data: availabilityData, error: availabilityError } = await supabase
         .from('teacher_availability')
         .select('*')
@@ -93,7 +85,7 @@ export class SimpleAvailabilityService {
         return [];
       }
       
-      // STEP 5: Get teacher details for available slots
+      // Get teacher details for available slots
       const teacherIds = [...new Set(availabilityData.map(slot => slot.teacher_id))];
       console.log('👥 Getting teacher details for IDs:', teacherIds);
       
@@ -117,7 +109,7 @@ export class SimpleAvailabilityService {
         return [];
       }
       
-      // STEP 6: Build result slots by combining availability and teacher data
+      // Build simple result slots
       const slots: SimpleTimeSlot[] = [];
       
       for (const availSlot of availabilityData) {
@@ -149,14 +141,14 @@ export class SimpleAvailabilityService {
         slots.push(resultSlot);
       }
       
-      console.log('🎯 === FIXED FINAL RESULTS ===');
-      console.log(`✅ Found ${slots.length} available slots with FIXED timezone conversion`);
-      console.log('📋 FIXED final slots:', slots);
+      console.log('🎯 === SIMPLE FINAL RESULTS ===');
+      console.log(`✅ Found ${slots.length} available slots`);
+      console.log('📋 Simple final slots:', slots);
       console.log('🔍 === SEARCH END ===');
       
       return slots;
     } catch (error) {
-      console.error('💥 CRITICAL ERROR in FIXED searchAvailableSlots:', error);
+      console.error('💥 CRITICAL ERROR in simple searchAvailableSlots:', error);
       throw error;
     }
   }
@@ -189,49 +181,5 @@ export class SimpleAvailabilityService {
     };
     
     return new Intl.DateTimeFormat('en-US', options).format(date);
-  }
-  
-  static groupSlotsByTime(slots: SimpleTimeSlot[]): GroupedTimeSlot[] {
-    console.log('📊 Grouping slots by time:', slots.length, 'slots to group');
-    
-    const grouped = new Map<string, SimpleTimeSlot[]>();
-    
-    slots.forEach(slot => {
-      const key = slot.utcStartTime;
-      if (!grouped.has(key)) {
-        grouped.set(key, []);
-      }
-      grouped.get(key)!.push(slot);
-      console.log(`📦 Added slot to group ${key}:`, slot.teacherName);
-    });
-    
-    const result: GroupedTimeSlot[] = [];
-    
-    grouped.forEach((teacherSlots, timeKey) => {
-      const firstSlot = teacherSlots[0];
-      
-      const groupedSlot = {
-        timeRange: firstSlot.clientTimeDisplay,
-        clientTimeDisplay: firstSlot.clientTimeDisplay,
-        egyptTimeDisplay: firstSlot.egyptTimeDisplay,
-        teacherCount: teacherSlots.length,
-        teachers: teacherSlots,
-        utcStartTime: firstSlot.utcStartTime,
-        utcEndTime: firstSlot.utcEndTime
-      };
-      
-      console.log(`📊 Created grouped slot for ${timeKey}:`, {
-        timeRange: groupedSlot.timeRange,
-        teacherCount: groupedSlot.teacherCount,
-        teachers: teacherSlots.map(t => t.teacherName)
-      });
-      
-      result.push(groupedSlot);
-    });
-    
-    const sortedResult = result.sort((a, b) => a.utcStartTime.localeCompare(b.utcStartTime));
-    console.log('📊 Final grouped result:', sortedResult.length, 'time groups');
-    
-    return sortedResult;
   }
 }

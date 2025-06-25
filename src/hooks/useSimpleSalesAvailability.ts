@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { SimpleAvailabilityService, SimpleTimeSlot, GroupedTimeSlot } from '@/services/simpleAvailabilityService';
+import { SimpleAvailabilityService, SimpleTimeSlot } from '@/services/simpleAvailabilityService';
 import { supabase } from '@/integrations/supabase/client';
 import { useFamilyBooking } from '@/hooks/useFamilyBooking';
 
@@ -28,7 +28,6 @@ type SimpleBookingResponse = {
 export const useSimpleSalesAvailability = () => {
   const [loading, setLoading] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<SimpleTimeSlot[]>([]);
-  const [groupedSlots, setGroupedSlots] = useState<GroupedTimeSlot[]>([]);
   const { bookFamilyTrialSession } = useFamilyBooking();
 
   const checkAvailability = async (
@@ -39,15 +38,14 @@ export const useSimpleSalesAvailability = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('=== REAL USER SELECTION SEARCH ===');
-      console.log('Real user selections:', { 
+      console.log('=== SIMPLE AVAILABILITY CHECK ===');
+      console.log('Search parameters:', { 
         date: date.toDateString(), 
         timezone, 
         teacherType, 
         selectedHour 
       });
       
-      // Use only real user selections - no mock data
       const slots = await SimpleAvailabilityService.searchAvailableSlots(
         date,
         timezone,
@@ -55,19 +53,12 @@ export const useSimpleSalesAvailability = () => {
         selectedHour
       );
       
-      console.log(`Found ${slots.length} real available slots from user selections`);
-      
-      // Group real slots by time
-      const grouped = SimpleAvailabilityService.groupSlotsByTime(slots);
-      console.log(`Grouped into ${grouped.length} real time slots`);
-      
+      console.log(`Found ${slots.length} available slots`);
       setAvailableSlots(slots);
-      setGroupedSlots(grouped);
     } catch (error) {
-      console.error('Real availability check error:', error);
+      console.error('Availability check error:', error);
       toast.error('Failed to check availability');
       setAvailableSlots([]);
-      setGroupedSlots([]);
     } finally {
       setLoading(false);
     }
@@ -82,14 +73,14 @@ export const useSimpleSalesAvailability = () => {
   ): Promise<boolean> => {
     // Use family booking for multi-student sessions
     if (isMultiStudent) {
-      console.log('Routing to real family booking system');
+      console.log('Routing to family booking system');
       return await bookFamilyTrialSession(bookingData, selectedDate, selectedSlot, teacherType);
     }
 
-    // Single student booking with real data
+    // Single student booking
     try {
-      console.log('=== REAL SINGLE STUDENT BOOKING ===');
-      console.log('Real booking details:', { 
+      console.log('=== SIMPLE SINGLE STUDENT BOOKING ===');
+      console.log('Booking details:', { 
         date: selectedDate.toDateString(),
         slotId: selectedSlot.id,
         teacherId: selectedSlot.teacherId,
@@ -99,7 +90,6 @@ export const useSimpleSalesAvailability = () => {
       
       const bookingDateString = selectedDate.toISOString().split('T')[0];
       
-      // Use real selected data for booking
       const { data, error } = await supabase.rpc('simple_book_trial_session', {
         p_booking_data: bookingData,
         p_is_multi_student: isMultiStudent,
@@ -110,7 +100,7 @@ export const useSimpleSalesAvailability = () => {
       });
 
       if (error) {
-        console.error('Real booking error:', error);
+        console.error('Booking error:', error);
         toast.error(`Booking failed: ${error.message}`);
         return false;
       }
@@ -134,7 +124,7 @@ export const useSimpleSalesAvailability = () => {
         return false;
       }
     } catch (error) {
-      console.error('Real booking exception:', error);
+      console.error('Booking exception:', error);
       toast.error('Booking failed due to system error');
       return false;
     }
@@ -143,7 +133,6 @@ export const useSimpleSalesAvailability = () => {
   return {
     loading,
     availableSlots,
-    groupedSlots,
     checkAvailability,
     bookTrialSession
   };
