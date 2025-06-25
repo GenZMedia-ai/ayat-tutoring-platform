@@ -215,123 +215,6 @@ export type Database = {
         }
         Relationships: []
       }
-      notification_logs: {
-        Row: {
-          created_at: string
-          error_message: string | null
-          id: string
-          notification_id: string | null
-          notification_type: string
-          payload: Json
-          recipient_name: string | null
-          recipient_phone: string
-          recipient_role: string | null
-          sent_at: string | null
-          status: string
-        }
-        Insert: {
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          notification_id?: string | null
-          notification_type: string
-          payload: Json
-          recipient_name?: string | null
-          recipient_phone: string
-          recipient_role?: string | null
-          sent_at?: string | null
-          status?: string
-        }
-        Update: {
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          notification_id?: string | null
-          notification_type?: string
-          payload?: Json
-          recipient_name?: string | null
-          recipient_phone?: string
-          recipient_role?: string | null
-          sent_at?: string | null
-          status?: string
-        }
-        Relationships: []
-      }
-      notification_queue: {
-        Row: {
-          attempts: number | null
-          created_at: string
-          id: string
-          max_attempts: number | null
-          notification_type: string
-          payload: Json
-          processed_at: string | null
-          recipient_name: string | null
-          recipient_phone: string
-          recipient_role: string | null
-          scheduled_for: string
-          status: string
-        }
-        Insert: {
-          attempts?: number | null
-          created_at?: string
-          id?: string
-          max_attempts?: number | null
-          notification_type: string
-          payload: Json
-          processed_at?: string | null
-          recipient_name?: string | null
-          recipient_phone: string
-          recipient_role?: string | null
-          scheduled_for: string
-          status?: string
-        }
-        Update: {
-          attempts?: number | null
-          created_at?: string
-          id?: string
-          max_attempts?: number | null
-          notification_type?: string
-          payload?: Json
-          processed_at?: string | null
-          recipient_name?: string | null
-          recipient_phone?: string
-          recipient_role?: string | null
-          scheduled_for?: string
-          status?: string
-        }
-        Relationships: []
-      }
-      notification_settings: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          setting_key: string
-          setting_value: string
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          setting_key: string
-          setting_value: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          setting_key?: string
-          setting_value?: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
       packages: {
         Row: {
           created_at: string
@@ -938,10 +821,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
-      get_notification_setting: {
-        Args: { p_setting_key: string }
-        Returns: string
-      }
       get_teacher_paid_students: {
         Args: { p_teacher_id: string }
         Returns: {
@@ -988,19 +867,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      log_notification: {
-        Args: {
-          p_notification_type: string
-          p_recipient_phone: string
-          p_recipient_name: string
-          p_recipient_role: string
-          p_payload: Json
-          p_status?: string
-          p_error_message?: string
-          p_notification_id?: string
-        }
-        Returns: string
-      }
       log_whatsapp_contact: {
         Args: {
           p_student_id: string
@@ -1009,17 +875,6 @@ export type Database = {
           p_notes?: string
         }
         Returns: Json
-      }
-      queue_notification: {
-        Args: {
-          p_notification_type: string
-          p_recipient_phone: string
-          p_recipient_name: string
-          p_recipient_role: string
-          p_payload: Json
-          p_scheduled_for?: string
-        }
-        Returns: string
       }
       search_available_teachers: {
         Args: {

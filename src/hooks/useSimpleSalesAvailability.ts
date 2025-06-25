@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { SimpleAvailabilityService, SimpleTimeSlot } from '@/services/simpleAvailabilityService';
 import { supabase } from '@/integrations/supabase/client';
+import { useFamilyBooking } from '@/hooks/useFamilyBooking';
 
 export type SimpleBookingData = {
   studentName?: string;
@@ -15,20 +16,20 @@ export type SimpleBookingData = {
   students?: { name: string; age: number }[];
 };
 
-// Type for the booking response
-type BookingResponse = {
+// Type for the simple booking response
+type SimpleBookingResponse = {
   success: boolean;
   teacher_name: string;
   teacher_id: string;
   session_id: string;
   student_names: string;
   booked_time_slot: string;
-  notifications_sent?: boolean;
 };
 
 export const useSimpleSalesAvailability = () => {
   const [loading, setLoading] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<SimpleTimeSlot[]>([]);
+  const { bookFamilyTrialSession } = useFamilyBooking();
 
   const checkAvailability = async (
     date: Date,
@@ -72,9 +73,17 @@ export const useSimpleSalesAvailability = () => {
     teacherType: string,
     isMultiStudent: boolean
   ): Promise<boolean> => {
+    // Use family booking for multi-student sessions
+    if (isMultiStudent) {
+      console.log('=== PHASE 4: ROUTING TO FAMILY BOOKING SYSTEM ===');
+      console.log('Selected date preservation:', selectedDate.toDateString());
+      return await bookFamilyTrialSession(bookingData, selectedDate, selectedSlot, teacherType);
+    }
+
+    // Single student booking with date preservation
     try {
-      console.log('=== PHASE 1: BOOKING WITH NOTIFICATIONS START ===');
-      console.log('Booking parameters:', { 
+      console.log('=== PHASE 4: SINGLE STUDENT BOOKING START ===');
+      console.log('Booking parameters with date preservation:', { 
         selectedDate: selectedDate.toDateString(),
         selectedDateISO: selectedDate.toISOString().split('T')[0],
         slotId: selectedSlot.id,
@@ -83,25 +92,23 @@ export const useSimpleSalesAvailability = () => {
         isMultiStudent 
       });
       
+      // PHASE 4: Use the selected date directly (no conversion)
       const bookingDateString = selectedDate.toISOString().split('T')[0];
+      console.log('Date being sent to booking function:', bookingDateString);
       
-      // PHASE 1: Use enhanced edge function with notifications
-      const { data, error } = await supabase.functions.invoke('enhanced-simple-book-trial', {
-        body: {
-          bookingData,
-          isMultiStudent,
-          selectedDate: bookingDateString,
-          utcStartTime: selectedSlot.utcStartTime,
-          teacherType,
-          teacherId: selectedSlot.teacherId,
-          isFamily: false
-        }
+      const { data, error } = await supabase.rpc('simple_book_trial_session', {
+        p_booking_data: bookingData,
+        p_is_multi_student: isMultiStudent,
+        p_selected_date: bookingDateString, // Preserve original selected date
+        p_utc_start_time: selectedSlot.utcStartTime,
+        p_teacher_type: teacherType,
+        p_teacher_id: selectedSlot.teacherId
       });
 
-      console.log('Enhanced booking response:', { data, error });
+      console.log('Single student booking response:', { data, error });
 
       if (error) {
-        console.error('Enhanced booking error:', error);
+        console.error('Single student booking error:', error);
         
         let errorMessage = 'Booking failed - please try again';
         
@@ -123,38 +130,35 @@ export const useSimpleSalesAvailability = () => {
         return false;
       }
 
-      const bookingResult = data as BookingResponse;
+      const bookingResult = data as SimpleBookingResponse;
 
       if (bookingResult?.success) {
         const teacherName = bookingResult.teacher_name || 'Unknown Teacher';
         const studentNames = bookingResult.student_names || '';
         
-        console.log('Enhanced booking success:', {
+        console.log('Single student booking success with date preservation:', {
           teacherName,
           studentNames,
           sessionId: bookingResult.session_id,
           originalDate: selectedDate.toDateString(),
-          bookedDate: bookingDateString,
-          notificationsSent: bookingResult.notifications_sent
+          bookedDate: bookingDateString
         });
         
         toast.success(
           `✅ Trial session booked successfully with ${teacherName} for ${studentNames}`,
           {
             duration: 5000,
-            description: `Date: ${selectedDate.toDateString()} • Time: ${selectedSlot.clientTimeDisplay}${
-              bookingResult.notifications_sent ? ' • Teacher notified' : ''
-            }`
+            description: `Date: ${selectedDate.toDateString()} • Time: ${selectedSlot.clientTimeDisplay}`
           }
         );
         return true;
       } else {
-        console.error('Enhanced booking failed - no success flag');
+        console.error('Single student booking failed - no success flag');
         toast.error('Booking failed - please try again');
         return false;
       }
     } catch (error) {
-      console.error('Enhanced booking exception:', error);
+      console.error('Single student booking exception:', error);
       
       let errorMessage = 'Booking failed due to system error';
       

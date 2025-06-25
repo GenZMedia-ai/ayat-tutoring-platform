@@ -18,35 +18,27 @@ export const useFamilyBooking = () => {
     setLoading(true);
     
     try {
-      console.log('=== PHASE 1: FAMILY BOOKING WITH NOTIFICATIONS START ===');
+      console.log('=== FAMILY BOOKING START ===');
       console.log('Family booking parameters:', {
-        selectedDate: selectedDate.toDateString(),
-        selectedDateISO: selectedDate.toISOString().split('T')[0],
+        selectedDate,
         slotId: selectedSlot.id,
         teacherId: selectedSlot.teacherId,
         teacherType,
         studentCount: bookingData.students?.length || 0
       });
 
-      const bookingDateString = selectedDate.toISOString().split('T')[0];
-
-      // PHASE 1: Use enhanced edge function with family flag
-      const { data, error } = await supabase.functions.invoke('enhanced-simple-book-trial', {
-        body: {
-          bookingData,
-          isMultiStudent: true,
-          selectedDate: bookingDateString,
-          utcStartTime: selectedSlot.utcStartTime,
-          teacherType,
-          teacherId: selectedSlot.teacherId,
-          isFamily: true
-        }
+      const { data, error } = await supabase.rpc('book_family_trial_session', {
+        p_booking_data: bookingData,
+        p_selected_date: selectedDate.toISOString().split('T')[0],
+        p_utc_start_time: selectedSlot.utcStartTime,
+        p_teacher_type: teacherType,
+        p_teacher_id: selectedSlot.teacherId
       });
 
-      console.log('Enhanced family booking response:', { data, error });
+      console.log('Family booking response:', { data, error });
 
       if (error) {
-        console.error('Enhanced family booking error:', error);
+        console.error('Family booking error:', error);
         
         let errorMessage = 'Family booking failed - please try again';
         
@@ -76,32 +68,29 @@ export const useFamilyBooking = () => {
         const studentNames = bookingResult.student_names || '';
         const studentCount = bookingResult.student_count || 0;
         
-        console.log('Enhanced family booking success:', {
+        console.log('Family booking success:', {
           teacherName,
           studentNames,
           studentCount,
           familyId: bookingResult.family_group_id,
-          familyUniqueId: bookingResult.family_unique_id,
-          notificationsSent: bookingResult.notifications_sent
+          familyUniqueId: bookingResult.family_unique_id
         });
         
         toast.success(
           `✅ Family trial session booked successfully with ${teacherName}`,
           {
             duration: 5000,
-            description: `Family: ${bookingData.parentName} • Students: ${studentNames} (${studentCount} children) • Time: ${selectedSlot.clientTimeDisplay}${
-              bookingResult.notifications_sent ? ' • Teacher notified' : ''
-            }`
+            description: `Family: ${bookingData.parentName} • Students: ${studentNames} (${studentCount} children) • Time: ${selectedSlot.clientTimeDisplay}`
           }
         );
         return true;
       } else {
-        console.error('Enhanced family booking failed - no success flag');
+        console.error('Family booking failed - no success flag');
         toast.error('Family booking failed - please try again');
         return false;
       }
     } catch (error) {
-      console.error('Enhanced family booking exception:', error);
+      console.error('Family booking exception:', error);
       
       let errorMessage = 'Family booking failed due to system error';
       
