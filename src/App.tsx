@@ -18,8 +18,26 @@ const SettingsManagement = () => <div className="p-6">Settings Management - Comi
 const SalesAvailability = () => <div className="p-6">Sales Availability - Coming Soon</div>;
 const SupervisorOverview = () => <div className="p-6">Supervisor Overview - Coming Soon</div>;
 
+// Loading component
+const LoadingScreen = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-center">
+      <div className="brand-gradient w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4">
+        <span className="text-white font-bold text-2xl">AW</span>
+      </div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+      <p className="text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
+
 const App: React.FC = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  // Show loading screen while authentication is being determined
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <Router>
@@ -61,7 +79,7 @@ const App: React.FC = () => {
           <Route path="*" element={<Navigate to="/supervisor/overview" />} />
         </Route>
 
-        {/* Default route - redirects to auth if not authenticated, otherwise to teacher homepage for teachers */}
+        {/* Default route - redirects to auth if not authenticated, otherwise to appropriate dashboard */}
         <Route
           path="/"
           element={
