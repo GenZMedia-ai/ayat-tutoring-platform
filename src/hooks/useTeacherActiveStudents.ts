@@ -13,8 +13,8 @@ interface StudentProgress {
   platform: string;
   parentName?: string;
   notes?: string;
-  totalPaidSessions: number;
-  completedPaidSessions: number;
+  totalSessions: number;
+  completedSessions: number;
   sessionsRemaining: number;
   nextSessionDate?: string;
   nextSessionTime?: string;
@@ -29,7 +29,6 @@ interface SessionHistory {
   actualMinutes?: number;
   notes?: string;
   completedAt?: string;
-  isTrialSession: boolean;
 }
 
 export const useTeacherActiveStudents = () => {
@@ -78,50 +77,31 @@ export const useTeacherActiveStudents = () => {
               actual_minutes,
               notes,
               completed_at,
-              trial_outcome,
               session_students!inner(student_id)
             `)
             .eq('session_students.student_id', student.id)
             .order('session_number');
 
           const sessions = sessionData || [];
-          
-          // CRITICAL FIX: Separate trial and paid sessions
-          const paidSessions = sessions.filter(s => s.trial_outcome === null);
-          const trialSessions = sessions.filter(s => s.trial_outcome !== null);
-          
-          // Use package_session_count for total paid sessions (not counting trials)
-          const totalPaidSessions = student.package_session_count || 8;
-          const completedPaidSessions = paidSessions.filter(s => s.status === 'completed').length;
-          const sessionsRemaining = totalPaidSessions - completedPaidSessions;
-          
-          // Calculate total minutes from completed paid sessions only
-          const totalMinutes = paidSessions
+          const totalSessions = sessions.length;
+          const completedSessions = sessions.filter(s => s.status === 'completed').length;
+          const sessionsRemaining = totalSessions - completedSessions;
+          const totalMinutes = sessions
             .filter(s => s.status === 'completed' && s.actual_minutes)
             .reduce((sum, s) => sum + (s.actual_minutes || 0), 0);
 
-          // Find next scheduled paid session (not trial)
-          const nextPaidSession = paidSessions.find(s => s.status === 'scheduled');
+          // Find next scheduled session
+          const nextSession = sessions.find(s => s.status === 'scheduled');
 
-          // Build comprehensive session history including both trial and paid sessions
+          // Build session history
           const sessionHistory: SessionHistory[] = sessions.map(s => ({
             sessionNumber: s.session_number,
             date: s.scheduled_date,
             status: s.status,
             actualMinutes: s.actual_minutes,
             notes: s.notes,
-            completedAt: s.completed_at,
-            isTrialSession: s.trial_outcome !== null
+            completedAt: s.completed_at
           }));
-
-          console.log(`📊 Student ${student.name} progress:`, {
-            totalSessions: sessions.length,
-            paidSessions: paidSessions.length,
-            trialSessions: trialSessions.length,
-            totalPaidSessions,
-            completedPaidSessions,
-            sessionsRemaining
-          });
 
           return {
             studentId: student.id,
@@ -133,18 +113,18 @@ export const useTeacherActiveStudents = () => {
             platform: student.platform,
             parentName: student.parent_name,
             notes: student.notes,
-            totalPaidSessions,
-            completedPaidSessions,
+            totalSessions,
+            completedSessions,
             sessionsRemaining,
-            nextSessionDate: nextPaidSession?.scheduled_date,
-            nextSessionTime: nextPaidSession?.scheduled_time,
+            nextSessionDate: nextSession?.scheduled_date,
+            nextSessionTime: nextSession?.scheduled_time,
             sessionHistory,
             totalMinutes
           };
         })
       );
 
-      console.log('📊 Students with corrected progress:', studentsWithProgress);
+      console.log('📊 Students with progress:', studentsWithProgress);
       setStudents(studentsWithProgress);
     } catch (error) {
       console.error('❌ Error in fetchActiveStudents:', error);
