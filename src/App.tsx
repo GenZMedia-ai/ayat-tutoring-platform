@@ -8,6 +8,7 @@ import SalesDashboard from '@/components/dashboard/SalesDashboard';
 import TeacherDashboard from '@/components/dashboard/TeacherDashboard';
 import SupervisorDashboard from '@/components/dashboard/SupervisorDashboard';
 import AdminNotificationsRoute from '@/components/routes/AdminNotificationsRoute';
+import TeacherHomepage from '@/components/dashboard/teacher/TeacherHomepage';
 
 // Create simple placeholder components for missing routes
 const TrialAppointments = () => <div className="p-6">Trial Appointments - Coming Soon</div>;
@@ -44,8 +45,14 @@ const App: React.FC = () => {
 
         {/* Teacher Routes */}
         <Route path="/teacher" element={user ? <TeacherDashboard /> : <Navigate to="/auth" />}>
+          <Route path="homepage" element={<TeacherHomepage />} />
           <Route path="availability" element={<div className="p-6">Teacher Availability - Coming Soon</div>} />
-          <Route path="*" element={<Navigate to="/teacher/availability" />} />
+          <Route path="trials" element={<div className="p-6">Teacher Trials - Coming Soon</div>} />
+          <Route path="paid-registration" element={<div className="p-6">Paid Registration - Coming Soon</div>} />
+          <Route path="session-management" element={<div className="p-6">Session Management - Coming Soon</div>} />
+          <Route path="students" element={<div className="p-6">Teacher Students - Coming Soon</div>} />
+          <Route path="revenue" element={<div className="p-6">Teacher Revenue - Coming Soon</div>} />
+          <Route path="*" element={<Navigate to="/teacher/homepage" />} />
         </Route>
 
         {/* Supervisor Routes */}
@@ -54,10 +61,18 @@ const App: React.FC = () => {
           <Route path="*" element={<Navigate to="/supervisor/overview" />} />
         </Route>
 
-        {/* Default route - redirects to auth if not authenticated, otherwise to sales */}
+        {/* Default route - redirects to auth if not authenticated, otherwise to teacher homepage for teachers */}
         <Route
           path="/"
-          element={user ? <Navigate to="/sales/availability" /> : <Navigate to="/auth" />}
+          element={
+            user ? (
+              user.role === 'teacher' ? <Navigate to="/teacher/homepage" /> :
+              user.role === 'admin' ? <Navigate to="/admin/trials" /> :
+              user.role === 'sales' ? <Navigate to="/sales/availability" /> :
+              user.role === 'supervisor' ? <Navigate to="/supervisor/overview" /> :
+              <Navigate to="/auth" />
+            ) : <Navigate to="/auth" />
+          }
         />
       </Routes>
     </Router>
