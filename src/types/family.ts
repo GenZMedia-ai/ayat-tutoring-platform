@@ -1,3 +1,4 @@
+
 export interface FamilyGroup {
   id: string;
   unique_id: string;
@@ -37,4 +38,5 @@ export interface FamilyBookingResponse {
   student_names: string;
   student_count: number;
   booked_time_slot: string;
+  notifications_sent?: boolean;
 }
