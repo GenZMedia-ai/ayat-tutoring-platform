@@ -52,12 +52,17 @@ export const convertClientTimeToServer = (clientDate: Date, clientHour: number, 
     offset: tzConfig.offset 
   });
 
-  // Build complete datetime in client timezone
-  const clientDateTime = new Date(clientDate);
-  clientDateTime.setHours(clientHour, 0, 0, 0);
+  // Get UTC date components to avoid server timezone dependency
+  const year = clientDate.getUTCFullYear();
+  const month = clientDate.getUTCMonth();
+  const day = clientDate.getUTCDate();
 
-  // Convert to UTC by subtracting offset hours (handles day boundaries correctly)
-  const utcDateTime = new Date(clientDateTime.getTime() - (tzConfig.offset * 60 * 60 * 1000));
+  // Create date at client hour in UTC
+  const tempUtcDate = new Date(Date.UTC(year, month, day, clientHour, 0, 0));
+
+  // Adjust for client timezone offset
+  const correctUtcTimestamp = tempUtcDate.getTime() - (tzConfig.offset * 60 * 60 * 1000);
+  const utcDateTime = new Date(correctUtcTimestamp);
 
   // Extract the correct UTC date and hour
   const utcDateStr = utcDateTime.toISOString().split('T')[0];
@@ -70,7 +75,7 @@ export const convertClientTimeToServer = (clientDate: Date, clientHour: number, 
   };
 
   console.log('FIXED Conversion Result:', {
-    clientDateTime: clientDateTime.toISOString(),
+    clientDateTime: tempUtcDate.toISOString(),
     utcDateTime: utcDateTime.toISOString(),
     utcDate: result.utcDateStr,
     utcHour: result.utcHour,

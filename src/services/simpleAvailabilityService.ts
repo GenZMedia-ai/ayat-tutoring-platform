@@ -1,6 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { getTimezoneConfig } from '@/utils/timezoneUtils';
+import { getTimezoneConfig, convertClientTimeToServer } from '@/utils/timezoneUtils';
 
 export interface SimpleTimeSlot {
   id: string;
@@ -35,21 +34,20 @@ export class SimpleAvailabilityService {
         selectedHour 
       });
       
-      // Simple UTC conversion
-      const utcHour = selectedHour - timezoneConfig.offset;
-      const adjustedUtcHour = utcHour < 0 ? utcHour + 24 : utcHour >= 24 ? utcHour - 24 : utcHour;
-      const utcDateStr = date.toISOString().split('T')[0];
+      // Use the robust UTC conversion utility
+      const { utcDateStr, utcHour } = convertClientTimeToServer(date, selectedHour, timezone);
       
-      console.log('🌍 Simple Timezone Conversion:', { 
-        clientHour: selectedHour, 
-        utcHour: adjustedUtcHour,
-        offset: timezoneConfig.offset 
+      console.log('🌍 Correct Timezone Conversion:', {
+        clientHour: selectedHour,
+        utcHour: utcHour,
+        utcDate: utcDateStr,
+        offset: timezoneConfig.offset
       });
       
       // Build time slots to search for (both 30-minute slots in the hour)
       const timeSlots = [
-        `${String(adjustedUtcHour).padStart(2, '0')}:00:00`,
-        `${String(adjustedUtcHour).padStart(2, '0')}:30:00`
+        `${String(utcHour).padStart(2, '0')}:00:00`,
+        `${String(utcHour).padStart(2, '0')}:30:00`
       ];
       
       console.log('⏰ Searching for UTC time slots on date:', utcDateStr, timeSlots);
