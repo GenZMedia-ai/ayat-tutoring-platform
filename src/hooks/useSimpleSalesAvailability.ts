@@ -16,6 +16,7 @@ export type SimpleBookingData = {
   students?: { name: string; age: number }[];
 };
 
+// Type for the simple booking response
 type SimpleBookingResponse = {
   success: boolean;
   teacher_name: string;
@@ -38,8 +39,8 @@ export const useSimpleSalesAvailability = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('=== SIMPLE AVAILABILITY CHECK ===');
-      console.log('Search parameters:', { 
+      console.log('=== PHASE 4: SIMPLIFIED AVAILABILITY CHECK START ===');
+      console.log('Request Parameters:', { 
         date: date.toDateString(), 
         timezone, 
         teacherType, 
@@ -53,10 +54,11 @@ export const useSimpleSalesAvailability = () => {
         selectedHour
       );
       
-      console.log(`Found ${slots.length} available slots`);
+      console.log('Simplified slots received:', slots.length);
+      console.log('Date preservation check: All slots should be for date:', date.toDateString());
       setAvailableSlots(slots);
     } catch (error) {
-      console.error('Availability check error:', error);
+      console.error('Simplified availability check error:', error);
       toast.error('Failed to check availability');
       setAvailableSlots([]);
     } finally {
@@ -73,35 +75,58 @@ export const useSimpleSalesAvailability = () => {
   ): Promise<boolean> => {
     // Use family booking for multi-student sessions
     if (isMultiStudent) {
-      console.log('Routing to family booking system');
+      console.log('=== PHASE 4: ROUTING TO FAMILY BOOKING SYSTEM ===');
+      console.log('Selected date preservation:', selectedDate.toDateString());
       return await bookFamilyTrialSession(bookingData, selectedDate, selectedSlot, teacherType);
     }
 
-    // Single student booking
+    // Single student booking with date preservation
     try {
-      console.log('=== SIMPLE SINGLE STUDENT BOOKING ===');
-      console.log('Booking details:', { 
-        date: selectedDate.toDateString(),
+      console.log('=== PHASE 4: SINGLE STUDENT BOOKING START ===');
+      console.log('Booking parameters with date preservation:', { 
+        selectedDate: selectedDate.toDateString(),
+        selectedDateISO: selectedDate.toISOString().split('T')[0],
         slotId: selectedSlot.id,
         teacherId: selectedSlot.teacherId,
         teacherType, 
         isMultiStudent 
       });
       
+      // PHASE 4: Use the selected date directly (no conversion)
       const bookingDateString = selectedDate.toISOString().split('T')[0];
+      console.log('Date being sent to booking function:', bookingDateString);
       
       const { data, error } = await supabase.rpc('simple_book_trial_session', {
         p_booking_data: bookingData,
         p_is_multi_student: isMultiStudent,
-        p_selected_date: bookingDateString,
+        p_selected_date: bookingDateString, // Preserve original selected date
         p_utc_start_time: selectedSlot.utcStartTime,
         p_teacher_type: teacherType,
         p_teacher_id: selectedSlot.teacherId
       });
 
+      console.log('Single student booking response:', { data, error });
+
       if (error) {
-        console.error('Booking error:', error);
-        toast.error(`Booking failed: ${error.message}`);
+        console.error('Single student booking error:', error);
+        
+        let errorMessage = 'Booking failed - please try again';
+        
+        if (error.message?.includes('Cannot modify availability for today')) {
+          errorMessage = 'Unable to book for today due to schedule protection. Please try a future date or contact support.';
+        } else if (error.message?.includes('Time slot no longer available')) {
+          errorMessage = 'This time slot was just booked by someone else. Please select another time.';
+        } else if (error.message?.includes('Teacher not found')) {
+          errorMessage = 'Teacher information is unavailable. Please refresh and try again.';
+        } else if (error.message?.includes('Authentication required')) {
+          errorMessage = 'Please log in again to complete the booking.';
+        } else if (error.message?.includes('Access denied')) {
+          errorMessage = 'You do not have permission to book sessions. Please contact your administrator.';
+        } else if (error.message) {
+          errorMessage = `Booking failed: ${error.message}`;
+        }
+        
+        toast.error(errorMessage);
         return false;
       }
 
@@ -110,6 +135,14 @@ export const useSimpleSalesAvailability = () => {
       if (bookingResult?.success) {
         const teacherName = bookingResult.teacher_name || 'Unknown Teacher';
         const studentNames = bookingResult.student_names || '';
+        
+        console.log('Single student booking success with date preservation:', {
+          teacherName,
+          studentNames,
+          sessionId: bookingResult.session_id,
+          originalDate: selectedDate.toDateString(),
+          bookedDate: bookingDateString
+        });
         
         toast.success(
           `✅ Trial session booked successfully with ${teacherName} for ${studentNames}`,
@@ -120,12 +153,26 @@ export const useSimpleSalesAvailability = () => {
         );
         return true;
       } else {
+        console.error('Single student booking failed - no success flag');
         toast.error('Booking failed - please try again');
         return false;
       }
     } catch (error) {
-      console.error('Booking exception:', error);
-      toast.error('Booking failed due to system error');
+      console.error('Single student booking exception:', error);
+      
+      let errorMessage = 'Booking failed due to system error';
+      
+      if (error instanceof Error) {
+        if (error.message?.includes('network') || error.message?.includes('fetch')) {
+          errorMessage = 'Network error - please check your connection and try again';
+        } else if (error.message?.includes('timeout')) {
+          errorMessage = 'Request timed out - please try again';
+        } else {
+          errorMessage = `System error: ${error.message}`;
+        }
+      }
+      
+      toast.error(errorMessage);
       return false;
     }
   };

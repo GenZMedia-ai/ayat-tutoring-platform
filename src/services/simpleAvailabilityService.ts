@@ -1,4 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
+import { toZonedTime, format } from 'date-fns-tz';
 import { getTimezoneConfig, convertClientTimeToServer } from '@/utils/timezoneUtils';
 
 export interface SimpleTimeSlot {
@@ -20,74 +22,53 @@ export class SimpleAvailabilityService {
     selectedHour: number
   ): Promise<SimpleTimeSlot[]> {
     try {
+      const dateStr = date.toISOString().split('T')[0];
       const timezoneConfig = getTimezoneConfig(timezone);
       
       if (!timezoneConfig) {
         throw new Error(`Invalid timezone: ${timezone}`);
       }
       
-      console.log('🔍 === SIMPLE AVAILABILITY SEARCH START ===');
-      console.log('📋 Input Parameters:', { 
-        date: date.toString(),
-        timezone, 
-        teacherType, 
-        selectedHour 
-      });
+      const serverTime = convertClientTimeToServer(date, selectedHour, timezone);
       
-      // Use the robust UTC conversion utility
-      const { utcDateStr, utcHour } = convertClientTimeToServer(date, selectedHour, timezone);
-      
-      console.log('🌍 Correct Timezone Conversion:', {
-        clientHour: selectedHour,
-        utcHour: utcHour,
-        utcDate: utcDateStr,
-        offset: timezoneConfig.offset
-      });
-      
-      // Build time slots to search for (both 30-minute slots in the hour)
-      const timeSlots = [
-        `${String(utcHour).padStart(2, '0')}:00:00`,
-        `${String(utcHour).padStart(2, '0')}:30:00`
-      ];
-      
-      console.log('⏰ Searching for UTC time slots on date:', utcDateStr, timeSlots);
+      // Search for the selected hour and the next 30 minutes
+      const baseUtcHour = serverTime.utcHour;
+      const startTime = `${String(baseUtcHour).padStart(2, '0')}:00:00`;
+      const endTime = `${String(baseUtcHour + 1).padStart(2, '0')}:00:00`;
       
       // Build teacher type filter
-      const teacherTypeFilter = this.buildTeacherTypeFilter(teacherType);
-      console.log('👥 Teacher types to search:', teacherTypeFilter);
+      let teacherTypeFilter: string[];
+      if (teacherType === 'mixed') {
+        teacherTypeFilter = ['kids', 'adult', 'mixed', 'expert'];
+      } else {
+        teacherTypeFilter = [teacherType, 'mixed'];
+      }
       
-      // Simple query for availability
-      console.log('📊 Executing simple availability query...');
-      const { data: availabilityData, error: availabilityError } = await supabase
+      // Query database for available slots
+      const { data: availability, error: availabilityError } = await supabase
         .from('teacher_availability')
-        .select('*')
-        .eq('date', utcDateStr)
+        .select('id, time_slot, teacher_id')
+        .eq('date', dateStr)
         .eq('is_available', true)
         .eq('is_booked', false)
-        .in('time_slot', timeSlots);
+        .gte('time_slot', startTime)
+        .lt('time_slot', endTime)
+        .order('time_slot');
       
       if (availabilityError) {
-        console.error('❌ Availability query error:', availabilityError);
+        console.error('Database query error:', availabilityError);
         throw availabilityError;
       }
       
-      console.log('📋 Raw availability data:', {
-        dateQueried: utcDateStr,
-        timeSlotsQueried: timeSlots,
-        rawResults: availabilityData,
-        resultCount: availabilityData?.length || 0
-      });
-      
-      if (!availabilityData || availabilityData.length === 0) {
-        console.log('⚠️ NO AVAILABILITY FOUND');
+      if (!availability || availability.length === 0) {
         return [];
       }
       
-      // Get teacher details for available slots
-      const teacherIds = [...new Set(availabilityData.map(slot => slot.teacher_id))];
-      console.log('👥 Getting teacher details for IDs:', teacherIds);
+      // Get unique teacher IDs
+      const teacherIds = [...new Set(availability.map(slot => slot.teacher_id))];
       
-      const { data: teachersData, error: teachersError } = await supabase
+      // Get teacher profiles
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, full_name, teacher_type, status, role')
         .in('id', teacherIds)
@@ -95,89 +76,62 @@ export class SimpleAvailabilityService {
         .eq('role', 'teacher')
         .in('teacher_type', teacherTypeFilter);
       
-      if (teachersError) {
-        console.error('❌ Teachers query error:', teachersError);
-        throw teachersError;
+      if (profilesError) {
+        console.error('Profiles query error:', profilesError);
+        throw profilesError;
       }
       
-      console.log('👥 Teacher data:', teachersData);
-      
-      if (!teachersData || teachersData.length === 0) {
-        console.log('⚠️ NO MATCHING TEACHERS FOUND');
+      if (!profiles || profiles.length === 0) {
         return [];
       }
       
-      // Build simple result slots
-      const slots: SimpleTimeSlot[] = [];
+      // Create a map of teacher profiles for quick lookup
+      const profileMap = new Map(profiles.map(profile => [profile.id, profile]));
       
-      for (const availSlot of availabilityData) {
-        const teacher = teachersData.find(t => t.id === availSlot.teacher_id);
-        if (!teacher) continue;
-        
-        console.log(`✅ Building slot for ${teacher.full_name} at ${availSlot.time_slot}`);
-        
-        // Create UTC date for this slot
-        const utcSlotDate = new Date(`${utcDateStr}T${availSlot.time_slot}.000Z`);
-        const utcEndDate = new Date(utcSlotDate.getTime() + 30 * 60 * 1000);
-        
-        // Format times for display
-        const clientDisplay = this.formatTimePair(utcSlotDate, utcEndDate, timezoneConfig.iana);
-        const egyptDisplay = this.formatTimePair(utcSlotDate, utcEndDate, 'Africa/Cairo') + ' (Egypt)';
-        
-        const resultSlot = {
-          id: availSlot.id,
-          teacherId: availSlot.teacher_id,
-          teacherName: teacher.full_name,
-          teacherType: teacher.teacher_type,
-          utcStartTime: availSlot.time_slot,
-          utcEndTime: this.formatTime(utcEndDate, 'UTC'),
-          clientTimeDisplay: clientDisplay,
-          egyptTimeDisplay: egyptDisplay
-        };
-        
-        console.log('📦 Built slot:', resultSlot);
-        slots.push(resultSlot);
-      }
-      
-      console.log('🎯 === SIMPLE FINAL RESULTS ===');
-      console.log(`✅ Found ${slots.length} available slots`);
-      console.log('📋 Simple final slots:', slots);
-      console.log('🔍 === SEARCH END ===');
+      // Process results
+      const slots: SimpleTimeSlot[] = availability
+        .filter(slot => profileMap.has(slot.teacher_id))
+        .map(slot => {
+          const profile = profileMap.get(slot.teacher_id)!;
+          const timeSlotStr = slot.time_slot;
+          
+          // Create UTC date for this slot
+          const utcSlotDate = new Date(`${dateStr}T${timeSlotStr}.000Z`);
+          const utcEndDate = new Date(utcSlotDate.getTime() + 30 * 60 * 1000);
+          
+          // Format times for client timezone
+          const clientStartTime = this.formatTimeInTimezone(utcSlotDate, timezoneConfig.iana);
+          const clientEndTime = this.formatTimeInTimezone(utcEndDate, timezoneConfig.iana);
+          
+          // Format times for Egypt timezone
+          const egyptStartTime = this.formatTimeInTimezone(utcSlotDate, 'Africa/Cairo');
+          const egyptEndTime = this.formatTimeInTimezone(utcEndDate, 'Africa/Cairo');
+          
+          return {
+            id: slot.id,
+            teacherId: slot.teacher_id,
+            teacherName: profile.full_name,
+            teacherType: profile.teacher_type,
+            utcStartTime: timeSlotStr,
+            utcEndTime: format(utcEndDate, 'HH:mm:ss', { timeZone: 'UTC' }),
+            clientTimeDisplay: `${clientStartTime}-${clientEndTime}`,
+            egyptTimeDisplay: `${egyptStartTime}-${egyptEndTime} (Egypt)`
+          };
+        });
       
       return slots;
     } catch (error) {
-      console.error('💥 CRITICAL ERROR in simple searchAvailableSlots:', error);
+      console.error('Availability search error:', error);
       throw error;
     }
   }
   
-  private static buildTeacherTypeFilter(teacherType: string): string[] {
-    const filter = teacherType === 'mixed' 
-      ? ['kids', 'adult', 'mixed', 'expert']
-      : [teacherType, 'mixed'];
-    
-    console.log(`🎯 Teacher type filter: ${teacherType} -> ${JSON.stringify(filter)}`);
-    return filter;
-  }
-  
-  private static formatTimePair(startDate: Date, endDate: Date, timeZone: string): string {
-    const startTime = this.formatTime(startDate, timeZone);
-    const endTime = this.formatTime(endDate, timeZone);
-    return `${startTime}-${endTime}`;
-  }
-  
-  private static formatTime(date: Date, timeZone: string): string {
-    if (timeZone === 'UTC') {
-      return date.toISOString().slice(11, 19);
-    }
-    
-    const options: Intl.DateTimeFormatOptions = {
-      timeZone,
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    };
-    
-    return new Intl.DateTimeFormat('en-US', options).format(date);
+  private static formatTimeInTimezone(date: Date, timeZone: string): string {
+    const zonedDate = toZonedTime(date, timeZone);
+    const hour = zonedDate.getHours();
+    const minutes = zonedDate.getMinutes();
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+    return `${displayHour}:${String(minutes).padStart(2, '0')} ${period}`;
   }
 }

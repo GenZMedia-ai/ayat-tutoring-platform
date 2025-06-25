@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,21 +17,11 @@ import { FamilyCard } from '@/components/family/FamilyCard';
 import { supabase } from '@/integrations/supabase/client';
 
 const SimpleSalesDashboard: React.FC = () => {
-  // FIXED: Dynamic date initialization instead of hardcoded date
+  // FIXED: Use UTC date to prevent timezone conversion issues
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
-    const now = new Date();
-    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const utcDate = new Date(Date.UTC(2025, 5, 22)); // Month is 0-indexed, June 22nd
+    return utcDate;
   });
-  
-  // FIXED: Add display date for Calendar to handle timezone display correctly
-  const dateForCalendar = selectedDate
-    ? new Date(
-        selectedDate.getUTCFullYear(),
-        selectedDate.getUTCMonth(),
-        selectedDate.getUTCDate()
-      )
-    : undefined;
-  
   const [timezone, setTimezone] = useState('qatar');
   const [teacherType, setTeacherType] = useState('mixed');
   const [selectedHour, setSelectedHour] = useState(14);
@@ -116,8 +107,6 @@ const SimpleSalesDashboard: React.FC = () => {
       return;
     }
     
-    console.log('=== SIMPLE SEARCH TRIGGER ===');
-    console.log('Search parameters:', { selectedDate: selectedDate.toDateString(), timezone, teacherType, selectedHour });
     checkAvailability(selectedDate, timezone, teacherType, selectedHour);
   };
 
@@ -218,16 +207,16 @@ const SimpleSalesDashboard: React.FC = () => {
       {/* Main Content with Tabs */}
       <Tabs defaultValue="booking" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="booking">Simple Quick Checker</TabsTrigger>
+          <TabsTrigger value="booking">Quick Availability Checker</TabsTrigger>
           <TabsTrigger value="families">Family Groups</TabsTrigger>
         </TabsList>
 
         <TabsContent value="booking" className="space-y-4">
           <Card className="dashboard-card">
             <CardHeader>
-              <CardTitle>Simple Quick Availability Checker</CardTitle>
+              <CardTitle>Quick Availability Checker</CardTitle>
               <CardDescription>
-                Find available slots with simple display
+                Search and book available trial session slots for both individual and family bookings
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -282,12 +271,12 @@ const SimpleSalesDashboard: React.FC = () => {
                     </Select>
                   </div>
 
-                  {/* FIXED: Use dateForCalendar for display and proper date selection */}
                   <Calendar
                     mode="single"
-                    selected={dateForCalendar}
+                    selected={selectedDate}
                     onSelect={(date) => {
                       if (date) {
+                        // Convert selected date to UTC to prevent timezone issues
                         const utcDate = new Date(Date.UTC(
                           date.getFullYear(),
                           date.getMonth(),
@@ -297,11 +286,7 @@ const SimpleSalesDashboard: React.FC = () => {
                       }
                     }}
                     className="rounded-md border"
-                    disabled={(date) => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      return date < today;
-                    }}
+                    disabled={(date) => date < new Date('2025-06-21')}
                   />
 
                   <Button 
@@ -309,19 +294,14 @@ const SimpleSalesDashboard: React.FC = () => {
                     className="w-full ayat-button-primary"
                     disabled={loading}
                   >
-                    {loading ? 'Searching...' : 'Find Available Slots'}
+                    {loading ? 'Searching...' : 'Search Available Slots'}
                   </Button>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    {/* FIXED: Proper date display using UTC formatting */}
                     <h4 className="font-medium">
-                      Available Slots for {selectedDate ?
-                        new Intl.DateTimeFormat('en-US', {
-                          dateStyle: 'full',
-                          timeZone: 'UTC'
-                        }).format(selectedDate) : ''}
+                      Available 30-Minute Slots for {selectedDate?.toDateString()}
                     </h4>
                     <div className="text-xs text-muted-foreground">
                       Date: {selectedDate?.toISOString().split('T')[0]}
@@ -330,13 +310,13 @@ const SimpleSalesDashboard: React.FC = () => {
                   
                   {loading && (
                     <div className="text-center py-8 text-muted-foreground">
-                      Searching for available slots...
+                      Searching for slots on {selectedDate?.toISOString().split('T')[0]}...
                     </div>
                   )}
                   
                   {!loading && availableSlots.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No available slots found.</p>
+                    <div className="text-center py-8 text-muted-foreground space-y-2">
+                      <p>No available slots found for {selectedDate?.toDateString()}.</p>
                       <p className="text-sm">Try selecting a different date or time.</p>
                     </div>
                   )}
@@ -349,10 +329,13 @@ const SimpleSalesDashboard: React.FC = () => {
                             {slot.clientTimeDisplay}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            Teacher: {slot.teacherName} ({slot.teacherType})
+                            Teacher: {slot.teacherName}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {slot.egyptTimeDisplay}
+                          </div>
+                          <div className="text-xs text-green-600">
+                            UTC: {slot.utcStartTime} - {slot.utcEndTime}
                           </div>
                         </div>
                         <Button 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,19 +13,18 @@ import { TEACHER_TYPES } from '@/constants/teacherTypes';
 import { HOURLY_TIME_SLOTS, TIMEZONES } from '@/constants/timeSlots';
 import { BookingModal } from '@/components/booking/BookingModal';
 import { supabase } from '@/integrations/supabase/client';
-import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 
 const SalesHomepage: React.FC = () => {
   // Date filtering
   const [dateFilter, setDateFilter] = useState('today');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | null>(null);
   
-  // FIXED: Dynamic date initialization instead of hardcoded date
+  // Quick Availability Checker state
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
-    const now = new Date();
-    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const utcDate = new Date(Date.UTC(2025, 5, 22));
+    return utcDate;
   });
-  
   const [timezone, setTimezone] = useState('qatar');
   const [teacherType, setTeacherType] = useState('mixed');
   const [selectedHour, setSelectedHour] = useState(14);
@@ -41,6 +41,7 @@ const SalesHomepage: React.FC = () => {
 
   const { loading, availableSlots, checkAvailability, bookTrialSession } = useSimpleSalesAvailability();
 
+  // Get date range based on filter
   const getDateRange = () => {
     const now = new Date();
     switch (dateFilter) {
@@ -65,6 +66,7 @@ const SalesHomepage: React.FC = () => {
     }
   };
 
+  // Load sales statistics with date filtering
   useEffect(() => {
     const loadSalesStats = async () => {
       try {
@@ -148,23 +150,16 @@ const SalesHomepage: React.FC = () => {
       toast.error('Please select a date');
       return;
     }
-    console.log('=== SIMPLE SEARCH TRIGGER ===');
-    console.log('Search parameters:', { selectedDate: selectedDate.toDateString(), timezone, teacherType, selectedHour });
     checkAvailability(selectedDate, timezone, teacherType, selectedHour);
   };
 
   const handleBookNow = (slot: any) => {
-    console.log('=== SIMPLE BOOKING TRIGGER ===');
-    console.log('Selected slot for booking:', slot);
     setSelectedSlot(slot);
     setIsBookingModalOpen(true);
   };
 
   const handleBookingSubmit = async (data: SimpleBookingData, isMultiStudent: boolean) => {
     if (!selectedDate || !selectedSlot) return false;
-    
-    console.log('=== SIMPLE BOOKING SUBMISSION ===');
-    console.log('Booking data:', { selectedDate: selectedDate.toDateString(), selectedSlot, isMultiStudent });
     
     const success = await bookTrialSession(
       data,
@@ -267,7 +262,7 @@ const SalesHomepage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Simple Quick Availability Checker */}
+      {/* Quick Availability Checker */}
       <Card className="dashboard-card">
         <CardHeader>
           <CardTitle>Quick Availability Checker</CardTitle>
@@ -341,11 +336,7 @@ const SalesHomepage: React.FC = () => {
                   }
                 }}
                 className="rounded-md border"
-                disabled={(date) => {
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  return date < today;
-                }}
+                disabled={(date) => date < new Date('2025-06-21')}
               />
 
               <Button 
@@ -388,7 +379,7 @@ const SalesHomepage: React.FC = () => {
                         {slot.clientTimeDisplay}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Teacher: {slot.teacherName} ({slot.teacherType})
+                        Teacher: {slot.teacherName}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {slot.egyptTimeDisplay}
