@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import TelegramLinkingModal from '@/components/telegram/TelegramLinkingModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const Index = () => {
@@ -86,26 +87,48 @@ const Index = () => {
     );
   }
 
-  // Redirect approved users to their role-specific dashboard
-  switch (user.role) {
-    case 'admin':
-      return <Navigate to="/admin" replace />;
-    case 'supervisor':
-      return <Navigate to="/supervisor" replace />;
-    case 'sales':
-      return <Navigate to="/sales" replace />;
-    case 'teacher':
-      return <Navigate to="/teacher" replace />;
-    default:
-      return (
-        <div className="min-h-screen bg-gray-50">
-          <DashboardHeader />
-          <div className="p-6">
-            <p>Unknown role: {user.role}</p>
-          </div>
-        </div>
-      );
+  // Show Telegram linking modal if user is approved but not Telegram verified
+  if (user.status === 'approved' && !user.telegramVerified) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <DashboardHeader />
+        <TelegramLinkingModal isOpen={true} />
+      </div>
+    );
   }
+
+  // Redirect approved and Telegram-verified users to their role-specific dashboard
+  if (user.status === 'approved' && user.telegramVerified) {
+    switch (user.role) {
+      case 'admin':
+        return <Navigate to="/admin" replace />;
+      case 'supervisor':
+        return <Navigate to="/supervisor" replace />;
+      case 'sales':
+        return <Navigate to="/sales" replace />;
+      case 'teacher':
+        return <Navigate to="/teacher" replace />;
+      default:
+        return (
+          <div className="min-h-screen bg-gray-50">
+            <DashboardHeader />
+            <div className="p-6">
+              <p>Unknown role: {user.role}</p>
+            </div>
+          </div>
+        );
+    }
+  }
+
+  // Fallback for any edge cases
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <DashboardHeader />
+      <div className="p-6">
+        <p>Loading dashboard...</p>
+      </div>
+    </div>
+  );
 };
 
 export default Index;

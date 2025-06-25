@@ -63,7 +63,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         createdAt: profile.created_at,
         teacherType: profile.teacher_type as TeacherType | undefined,
         approvedBy: profile.approved_by,
-        approvedAt: profile.approved_at
+        approvedAt: profile.approved_at,
+        telegramChatId: profile.telegram_chat_id,
+        telegramUserId: profile.telegram_user_id,
+        telegramUsername: profile.telegram_username,
+        telegramVerified: profile.telegram_verified,
+        telegramLinkedAt: profile.telegram_linked_at
       };
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);

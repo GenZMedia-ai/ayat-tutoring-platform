@@ -339,6 +339,11 @@ export type Database = {
           role: string
           status: string
           teacher_type: string | null
+          telegram_chat_id: string | null
+          telegram_linked_at: string | null
+          telegram_user_id: string | null
+          telegram_username: string | null
+          telegram_verified: boolean | null
           updated_at: string
         }
         Insert: {
@@ -354,6 +359,11 @@ export type Database = {
           role: string
           status?: string
           teacher_type?: string | null
+          telegram_chat_id?: string | null
+          telegram_linked_at?: string | null
+          telegram_user_id?: string | null
+          telegram_username?: string | null
+          telegram_verified?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -369,6 +379,11 @@ export type Database = {
           role?: string
           status?: string
           teacher_type?: string | null
+          telegram_chat_id?: string | null
+          telegram_linked_at?: string | null
+          telegram_user_id?: string | null
+          telegram_username?: string | null
+          telegram_verified?: boolean | null
           updated_at?: string
         }
         Relationships: []
@@ -682,6 +697,41 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_verification_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          used: boolean | null
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          used?: boolean | null
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          used?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_verification_codes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trial_outcomes: {
         Row: {
           created_at: string
@@ -788,6 +838,10 @@ export type Database = {
         Args: { p_student_id: string }
         Returns: Json
       }
+      check_telegram_verification_status: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       complete_session_with_details: {
         Args: {
           p_session_id: string
@@ -799,6 +853,15 @@ export type Database = {
       }
       complete_student_registration: {
         Args: { p_student_id: string; p_session_data: Json }
+        Returns: Json
+      }
+      complete_telegram_setup: {
+        Args: {
+          p_token: string
+          p_telegram_id: string
+          p_chat_id?: number
+          p_username?: string
+        }
         Returns: Json
       }
       confirm_trial: {
@@ -815,6 +878,10 @@ export type Database = {
       }
       generate_student_unique_id: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_telegram_verification_code: {
+        Args: { p_user_id: string }
         Returns: string
       }
       get_egypt_current_date: {

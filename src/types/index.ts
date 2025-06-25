@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   email: string;
@@ -11,6 +10,11 @@ export interface User {
   createdAt: string;
   approvedBy?: string;
   approvedAt?: string;
+  telegramChatId?: string;
+  telegramUserId?: string;
+  telegramUsername?: string;
+  telegramVerified?: boolean;
+  telegramLinkedAt?: string;
 }
 
 export type UserRole = 'admin' | 'sales' | 'teacher' | 'supervisor';
