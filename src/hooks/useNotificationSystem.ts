@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 export const useNotificationSystem = () => {
   useEffect(() => {
-    console.log('🔔 Setting up notification system real-time listener');
+    console.log('🔔 Setting up enhanced notification system real-time listener');
     
     // Set up real-time listener for notification logs to show admin notifications
     const channel = supabase
@@ -19,36 +19,46 @@ export const useNotificationSystem = () => {
         },
         (payload) => {
           const notification = payload.new;
-          console.log('📨 Real-time notification received:', notification);
+          console.log('📨 Enhanced real-time notification received:', notification);
           
-          // Show toast for failed notifications (admin monitoring)
+          // Parse enriched notification data
+          const notificationData = notification.notification_data || {};
+          const recipient = notificationData.recipient || {};
+          const communicationChannels = notificationData.communication_channels || {};
+          const studentData = notificationData.student_data || {};
+          
+          // Show enhanced toast notifications with Telegram and enriched context
           if (!notification.success) {
             toast.error(`Notification failed: ${notification.event_type}`, {
-              description: notification.error_message,
+              description: `${notification.error_message} | Recipient: ${recipient.full_name || 'Unknown'}`,
               duration: 5000
             });
           } else {
-            // Show success toast for successful notifications
-            toast.success(`Notification sent: ${notification.event_type}`, {
-              description: `Sent to ${notification.recipient_phone}`,
+            // Show success toast with enriched information
+            const description = `Sent to ${recipient.full_name || 'Unknown'} via ${communicationChannels.preferred_channel || 'phone'}${
+              communicationChannels.has_telegram ? ' (Telegram available)' : ''
+            }`;
+            
+            toast.success(`Enhanced notification sent: ${notification.event_type}`, {
+              description,
               duration: 3000
             });
           }
         }
       )
       .subscribe((status) => {
-        console.log('🔔 Notification channel status:', status);
+        console.log('🔔 Enhanced notification channel status:', status);
       });
 
     return () => {
-      console.log('🔔 Cleaning up notification system listener');
+      console.log('🔔 Cleaning up enhanced notification system listener');
       supabase.removeChannel(channel);
     };
   }, []);
 
   const testNotification = async (eventType: string, testData: any) => {
     try {
-      console.log('🧪 Testing notification:', { eventType, testData });
+      console.log('🧪 Testing enhanced notification:', { eventType, testData });
       
       const { data, error } = await supabase.functions.invoke('n8n-notification-sender', {
         body: {
@@ -62,8 +72,10 @@ export const useNotificationSystem = () => {
         throw error;
       }
 
-      console.log('✅ Test notification response:', data);
-      toast.success('Test notification sent successfully');
+      console.log('✅ Enhanced test notification response:', data);
+      toast.success('Enhanced test notification sent successfully', {
+        description: `Includes ${data.enriched_data_available ? 'full profile data with Telegram details' : 'basic data only'}`
+      });
       return data;
     } catch (error) {
       console.error('❌ Test notification failed:', error);
@@ -74,7 +86,7 @@ export const useNotificationSystem = () => {
 
   const getNotificationLogs = async (limit = 50) => {
     try {
-      console.log('📋 Fetching notification logs, limit:', limit);
+      console.log('📋 Fetching enhanced notification logs, limit:', limit);
       
       const { data, error } = await supabase
         .from('notification_logs')
@@ -87,7 +99,7 @@ export const useNotificationSystem = () => {
         throw error;
       }
       
-      console.log('✅ Fetched notification logs:', data?.length || 0, 'records');
+      console.log('✅ Fetched enhanced notification logs:', data?.length || 0, 'records');
       return data;
     } catch (error) {
       console.error('❌ Failed to fetch notification logs:', error);
@@ -143,10 +155,30 @@ export const useNotificationSystem = () => {
     }
   };
 
+  const testEnhancedNotification = async (recipientPhone: string, recipientType: 'teacher' | 'sales' | 'supervisor', studentName?: string) => {
+    try {
+      console.log('🧪 Testing enhanced notification with enriched data');
+      
+      const testPayload = {
+        recipient_type: recipientType,
+        [`${recipientType}_phone`]: recipientPhone,
+        student_name: studentName || 'Test Student',
+        test_notification: true,
+        enhanced_features_test: true
+      };
+
+      return await testNotification('enhanced_test_notification', testPayload);
+    } catch (error) {
+      console.error('❌ Enhanced test notification failed:', error);
+      throw error;
+    }
+  };
+
   return {
     testNotification,
     getNotificationLogs,
     getNotificationSettings,
-    updateNotificationSetting
+    updateNotificationSetting,
+    testEnhancedNotification
   };
 };

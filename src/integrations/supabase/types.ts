@@ -947,11 +947,19 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: string
       }
+      get_complete_user_profile: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       get_egypt_current_date: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
       get_enriched_student_data: {
+        Args: { p_student_id: string }
+        Returns: Json
+      }
+      get_enriched_student_data_v2: {
         Args: { p_student_id: string }
         Returns: Json
       }
@@ -1011,6 +1019,15 @@ export type Database = {
           p_contact_type?: string
           p_success?: boolean
           p_notes?: string
+        }
+        Returns: Json
+      }
+      prepare_notification_payload: {
+        Args: {
+          p_event_type: string
+          p_recipient_user_id: string
+          p_student_id?: string
+          p_additional_data?: Json
         }
         Returns: Json
       }
