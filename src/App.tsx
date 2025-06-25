@@ -40,6 +40,7 @@ import AdminSessions from "./components/dashboard/admin/AdminSessions";
 import AdminSettings from "./components/dashboard/admin/AdminSettings";
 import AdminPackages from "./components/dashboard/admin/AdminPackages";
 import AdminCurrencies from "./components/dashboard/admin/AdminCurrencies";
+import NotificationCenter from "./components/notifications/NotificationCenter";
 
 // Supervisor Tab Components
 import SupervisorHomepage from "./components/dashboard/supervisor/SupervisorHomepage";
@@ -98,6 +99,7 @@ const App = () => (
               <Route path="settings" element={<AdminSettings />} />
               <Route path="settings/packages" element={<AdminPackages />} />
               <Route path="settings/currencies" element={<AdminCurrencies />} />
+              <Route path="notifications" element={<NotificationCenter />} />
               <Route index element={<Navigate to="homepage" replace />} />
             </Route>
 
