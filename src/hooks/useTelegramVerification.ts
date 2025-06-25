@@ -37,7 +37,7 @@ export const useTelegramVerification = (): TelegramVerificationHook => {
 
       if (error) throw error;
 
-      const statusData = data as TelegramStatusResponse;
+      const statusData = data as unknown as TelegramStatusResponse;
       setIsVerified(statusData.verified);
     } catch (error) {
       console.error('Error checking Telegram status:', error);
