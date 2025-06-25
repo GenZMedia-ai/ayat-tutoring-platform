@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -126,11 +125,11 @@ const AdminNotifications: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/telegram-notifications`, {
+      const response = await fetch(`https://aqxmhzgnsngxgdfshlkn.supabase.co/functions/v1/telegram-notifications`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.supabaseKey}`
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFxeG1oemduc25neGdkZnNobGtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAzMDgzMTYsImV4cCI6MjA2NTg4NDMxNn0.xpiBH3hBcPoyuEnTghqPoAks8vfFApW03NzB61qQdLE`
         },
         body: JSON.stringify({
           notification_type: 'system_config',

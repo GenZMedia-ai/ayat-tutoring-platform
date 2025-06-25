@@ -16,14 +16,15 @@ export type SimpleBookingData = {
   students?: { name: string; age: number }[];
 };
 
-// Type for the simple booking response
-type SimpleBookingResponse = {
+// Type for the enhanced booking response
+type EnhancedBookingResponse = {
   success: boolean;
   teacher_name: string;
   teacher_id: string;
   session_id: string;
   student_names: string;
   booked_time_slot: string;
+  notifications_sent: boolean;
 };
 
 export const useSimpleSalesAvailability = () => {
@@ -80,10 +81,10 @@ export const useSimpleSalesAvailability = () => {
       return await bookFamilyTrialSession(bookingData, selectedDate, selectedSlot, teacherType);
     }
 
-    // Single student booking with date preservation
+    // Single student booking using enhanced edge function
     try {
-      console.log('=== PHASE 4: SINGLE STUDENT BOOKING START ===');
-      console.log('Booking parameters with date preservation:', { 
+      console.log('=== ENHANCED BOOKING: SINGLE STUDENT START ===');
+      console.log('Booking parameters with enhanced notifications:', { 
         selectedDate: selectedDate.toDateString(),
         selectedDateISO: selectedDate.toISOString().split('T')[0],
         slotId: selectedSlot.id,
@@ -92,23 +93,26 @@ export const useSimpleSalesAvailability = () => {
         isMultiStudent 
       });
       
-      // PHASE 4: Use the selected date directly (no conversion)
       const bookingDateString = selectedDate.toISOString().split('T')[0];
-      console.log('Date being sent to booking function:', bookingDateString);
+      console.log('Date being sent to enhanced booking function:', bookingDateString);
       
-      const { data, error } = await supabase.rpc('simple_book_trial_session', {
-        p_booking_data: bookingData,
-        p_is_multi_student: isMultiStudent,
-        p_selected_date: bookingDateString, // Preserve original selected date
-        p_utc_start_time: selectedSlot.utcStartTime,
-        p_teacher_type: teacherType,
-        p_teacher_id: selectedSlot.teacherId
+      // Call enhanced booking edge function that sends notifications
+      const { data, error } = await supabase.functions.invoke('enhanced-simple-book-trial', {
+        body: {
+          bookingData,
+          isMultiStudent,
+          selectedDate: bookingDateString,
+          utcStartTime: selectedSlot.utcStartTime,
+          teacherType,
+          teacherId: selectedSlot.teacherId,
+          isFamily: false
+        }
       });
 
-      console.log('Single student booking response:', { data, error });
+      console.log('Enhanced booking response:', { data, error });
 
       if (error) {
-        console.error('Single student booking error:', error);
+        console.error('Enhanced booking error:', error);
         
         let errorMessage = 'Booking failed - please try again';
         
@@ -130,35 +134,36 @@ export const useSimpleSalesAvailability = () => {
         return false;
       }
 
-      const bookingResult = data as SimpleBookingResponse;
+      const bookingResult = data as EnhancedBookingResponse;
 
       if (bookingResult?.success) {
         const teacherName = bookingResult.teacher_name || 'Unknown Teacher';
         const studentNames = bookingResult.student_names || '';
         
-        console.log('Single student booking success with date preservation:', {
+        console.log('Enhanced booking success with notifications:', {
           teacherName,
           studentNames,
           sessionId: bookingResult.session_id,
           originalDate: selectedDate.toDateString(),
-          bookedDate: bookingDateString
+          bookedDate: bookingDateString,
+          notificationsSent: bookingResult.notifications_sent
         });
         
         toast.success(
           `✅ Trial session booked successfully with ${teacherName} for ${studentNames}`,
           {
             duration: 5000,
-            description: `Date: ${selectedDate.toDateString()} • Time: ${selectedSlot.clientTimeDisplay}`
+            description: `Date: ${selectedDate.toDateString()} • Time: ${selectedSlot.clientTimeDisplay} • Notifications sent: ${bookingResult.notifications_sent ? 'Yes' : 'No'}`
           }
         );
         return true;
       } else {
-        console.error('Single student booking failed - no success flag');
+        console.error('Enhanced booking failed - no success flag');
         toast.error('Booking failed - please try again');
         return false;
       }
     } catch (error) {
-      console.error('Single student booking exception:', error);
+      console.error('Enhanced booking exception:', error);
       
       let errorMessage = 'Booking failed due to system error';
       
