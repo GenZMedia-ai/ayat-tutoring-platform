@@ -1,14 +1,14 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTeacherPaidStudents } from '@/hooks/useTeacherPaidStudents';
 import { useWhatsAppContact } from '@/hooks/useWhatsAppContact';
-import { SmartSchedulingModal } from './SmartSchedulingModal';
-import { MinimalStudentCard } from './MinimalStudentCard';
+import { CompleteRegistrationModal } from './CompleteRegistrationModal';
 import { LoadingSpinner } from './LoadingSpinner';
 import { DateRange } from '@/components/teacher/DateFilter';
-import { DollarSign, GraduationCap } from 'lucide-react';
+import { Calendar, Clock, DollarSign, Phone, User, Package } from 'lucide-react';
 
 interface PaidStudentsSectionProps {
   dateRange?: DateRange;
@@ -63,7 +63,7 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
   const handleContactStudent = async (studentId: string, phone: string) => {
     try {
       openWhatsApp(phone);
-      await logContact(studentId, 'follow_up', true, 'WhatsApp contact for registration setup');
+      await logContact(studentId, 'follow_up', true, 'WhatsApp contact for payment confirmation');
       await refreshPaidStudents();
     } catch (error) {
       console.error('Error handling contact:', error);
@@ -71,7 +71,7 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
   };
 
   const handleCompleteRegistration = (student: any) => {
-    console.log('🎯 Opening smart scheduling modal for student:', {
+    console.log('🎯 Opening registration modal for student:', {
       name: student.name,
       sessionCount: student.packageSessionCount,
       isFamilyMember: student.isFamilyMember
@@ -100,18 +100,15 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
 
   if (loading) {
     return (
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/50">
+      <Card className="dashboard-card">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <GraduationCap className="h-6 w-6 text-primary" />
-            Students Awaiting Schedule Setup
-          </CardTitle>
-          <CardDescription>Students who have completed payment and need session scheduling</CardDescription>
+          <CardTitle>Paid Students Requiring Registration</CardTitle>
+          <CardDescription>Students who have paid and need session scheduling</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-8">
             <LoadingSpinner />
-            <span className="ml-3 text-muted-foreground">Loading students...</span>
+            <span className="ml-2 text-muted-foreground">Loading paid students...</span>
           </div>
         </CardContent>
       </Card>
@@ -120,63 +117,136 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
 
   return (
     <>
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/50">
+      <Card className="dashboard-card">
         <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-xl">
-              <GraduationCap className="h-6 w-6 text-primary" />
-            </div>
-            Students Awaiting Schedule Setup
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-green-600" />
+            Paid Students Requiring Registration
             {dateRange && dateRange !== 'all-time' && (
-              <Badge variant="outline" className="ml-2 border-primary/20 text-primary">
+              <Badge variant="outline" className="ml-2">
                 {getDateRangeDisplayText(dateRange)}
               </Badge>
             )}
           </CardTitle>
           <CardDescription>
-            Students who have completed payment and need their session schedule configured
+            Students who have paid and need their complete session schedule set up
             {filteredStudents.length !== paidStudents.length && (
-              <span className="block mt-1 text-primary font-medium">
-                Showing {filteredStudents.length} of {paidStudents.length} students
+              <span className="block mt-1">
+                Showing {filteredStudents.length} of {paidStudents.length} paid students
               </span>
             )}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {filteredStudents.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit mx-auto mb-4">
-                <GraduationCap className="h-8 w-8 text-slate-400 mx-auto" />
-              </div>
-              <p className="text-slate-600 dark:text-slate-400 text-lg font-medium mb-2">
+            <div className="text-center py-8">
+              <p className="text-muted-foreground text-lg font-medium">
                 {paidStudents.length === 0 
-                  ? "No students awaiting schedule setup" 
-                  : `No students found for ${getDateRangeDisplayText(dateRange).toLowerCase()}`
+                  ? "No paid students requiring registration" 
+                  : `No paid students found for ${getDateRangeDisplayText(dateRange).toLowerCase()}`
                 }
               </p>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground mt-2">
                 {paidStudents.length === 0 
-                  ? "New paid students will appear here for session scheduling"
+                  ? "Students will appear here after payment confirmation"
                   : "Try adjusting the date filter to see more students"
                 }
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-4">
               {filteredStudents.map((student) => (
-                <MinimalStudentCard
-                  key={student.id}
-                  student={student}
-                  onContact={() => handleContactStudent(student.id, student.phone)}
-                  onCompleteRegistration={() => handleCompleteRegistration(student)}
-                />
+                <div key={student.id} className="p-4 border border-border rounded-lg bg-green-50 dark:bg-green-900/20">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-3 flex-1">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <h4 className="font-medium text-lg">{student.name}</h4>
+                        <Badge className="bg-green-100 text-green-800 border-green-200">PAID</Badge>
+                        {student.isFamilyMember && (
+                          <Badge variant="outline" className="text-xs">Family Member</Badge>
+                        )}
+                        {student.paymentDate && (
+                          <Badge variant="outline" className="text-xs">
+                            Paid: {new Date(student.paymentDate).toLocaleDateString()}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Age:</span>
+                          <span className="font-medium">{student.age}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          <span className="font-medium text-primary">
+                            {student.packageSessionCount} sessions
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="h-3 w-3 text-muted-foreground" />
+                          <span className="font-medium">
+                            {student.paymentAmount} {student.paymentCurrency?.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Platform:</span>
+                          <span className="font-medium capitalize">{student.platform}</span>
+                        </div>
+                      </div>
+
+                      {student.packageName && (
+                        <div className="flex items-center gap-1 text-sm">
+                          <Package className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-muted-foreground">Package:</span>
+                          <span className="font-medium">{student.packageName}</span>
+                        </div>
+                      )}
+                      
+                      {student.parentName && (
+                        <div className="flex items-center gap-1 text-sm">
+                          <span className="text-muted-foreground">Parent:</span>
+                          <span className="font-medium">{student.parentName}</span>
+                        </div>
+                      )}
+                      
+                      {student.notes && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Notes:</span>
+                          <p className="mt-1 text-gray-700 dark:text-gray-300">{student.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-col gap-2 ml-4">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="flex items-center gap-1"
+                        onClick={() => handleContactStudent(student.id, student.phone)}
+                      >
+                        <Phone className="h-3 w-3" />
+                        Contact
+                      </Button>
+                      <Button 
+                        size="sm"
+                        className="ayat-button-primary flex items-center gap-1"
+                        onClick={() => handleCompleteRegistration(student)}
+                      >
+                        <Clock className="h-3 w-3" />
+                        Complete Registration
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
 
-      <SmartSchedulingModal
+      <CompleteRegistrationModal
         student={selectedStudent}
         open={!!selectedStudent}
         onClose={() => setSelectedStudent(null)}
