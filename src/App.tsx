@@ -1,23 +1,24 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { useUser } from '@supabase/auth-helpers-react';
+import { useAuth } from '@/contexts/AuthContext';
 import Auth from '@/components/auth/Auth';
 import AdminDashboard from '@/components/dashboard/AdminDashboard';
 import SalesDashboard from '@/components/dashboard/SalesDashboard';
 import TeacherDashboard from '@/components/dashboard/TeacherDashboard';
 import SupervisorDashboard from '@/components/dashboard/SupervisorDashboard';
-import TrialAppointments from '@/components/dashboard/admin/TrialAppointments';
-import StudentManagement from '@/components/dashboard/admin/StudentManagement';
-import SessionManagement from '@/components/dashboard/admin/SessionManagement';
-import SettingsManagement from '@/components/dashboard/admin/SettingsManagement';
-import SalesAvailability from '@/components/dashboard/sales/SalesAvailability';
-import TeacherAvailability from '@/components/dashboard/teacher/TeacherAvailability';
-import SupervisorOverview from '@/components/dashboard/supervisor/SupervisorOverview';
-import AdminNotifications from '@/components/dashboard/admin/AdminNotifications';
 import AdminNotificationsRoute from '@/components/routes/AdminNotificationsRoute';
 
+// Create simple placeholder components for missing routes
+const TrialAppointments = () => <div className="p-6">Trial Appointments - Coming Soon</div>;
+const StudentManagement = () => <div className="p-6">Student Management - Coming Soon</div>;
+const SessionManagement = () => <div className="p-6">Session Management - Coming Soon</div>;
+const SettingsManagement = () => <div className="p-6">Settings Management - Coming Soon</div>;
+const SalesAvailability = () => <div className="p-6">Sales Availability - Coming Soon</div>;
+const SupervisorOverview = () => <div className="p-6">Supervisor Overview - Coming Soon</div>;
+
 const App: React.FC = () => {
-  const user = useUser();
+  const { user } = useAuth();
 
   return (
     <Router>
@@ -43,7 +44,7 @@ const App: React.FC = () => {
 
         {/* Teacher Routes */}
         <Route path="/teacher" element={user ? <TeacherDashboard /> : <Navigate to="/auth" />}>
-          <Route path="availability" element={<TeacherAvailability />} />
+          <Route path="availability" element={<div className="p-6">Teacher Availability - Coming Soon</div>} />
           <Route path="*" element={<Navigate to="/teacher/availability" />} />
         </Route>
 
