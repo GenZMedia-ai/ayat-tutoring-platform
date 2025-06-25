@@ -215,30 +215,6 @@ export type Database = {
         }
         Relationships: []
       }
-      notification_errors: {
-        Row: {
-          created_at: string
-          error_message: string
-          event_type: string
-          id: string
-          payload: Json
-        }
-        Insert: {
-          created_at?: string
-          error_message: string
-          event_type: string
-          id?: string
-          payload: Json
-        }
-        Update: {
-          created_at?: string
-          error_message?: string
-          event_type?: string
-          id?: string
-          payload?: Json
-        }
-        Relationships: []
-      }
       packages: {
         Row: {
           created_at: string
@@ -914,10 +890,6 @@ export type Database = {
           time_slot: string
           availability_id: string
         }[]
-      }
-      send_notification_safe: {
-        Args: { p_event_type: string; p_payload: Json }
-        Returns: boolean
       }
       simple_book_trial_session: {
         Args: {

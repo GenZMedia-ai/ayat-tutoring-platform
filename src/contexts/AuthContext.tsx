@@ -72,45 +72,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   useEffect(() => {
-    let mounted = true;
-
-    // Check for existing session first
-    const initializeAuth = async () => {
-      try {
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
-        
-        if (existingSession?.user && mounted) {
-          setSession(existingSession);
-          const profile = await fetchUserProfile(existingSession.user.id);
-          if (mounted) {
-            setUser(profile);
-          }
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
-        
-        if (!mounted) return;
-
         setSession(session);
         
         if (session?.user) {
-          setLoading(true);
-          const profile = await fetchUserProfile(session.user.id);
-          if (mounted) {
+          // Use setTimeout to defer Supabase calls and prevent deadlock
+          setTimeout(async () => {
+            const profile = await fetchUserProfile(session.user.id);
             setUser(profile);
             setLoading(false);
-          }
+          }, 0);
         } else {
           setUser(null);
           setLoading(false);
@@ -118,12 +92,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
-    initializeAuth();
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        setTimeout(async () => {
+          const profile = await fetchUserProfile(session.user.id);
+          setUser(profile);
+          setLoading(false);
+        }, 0);
+      } else {
+        setLoading(false);
+      }
+    });
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -151,12 +134,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async (): Promise<void> => {
     try {
-      setLoading(true);
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

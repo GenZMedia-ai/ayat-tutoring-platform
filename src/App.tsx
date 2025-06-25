@@ -1,100 +1,127 @@
 
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import Auth from '@/components/auth/Auth';
-import AdminDashboard from '@/components/dashboard/AdminDashboard';
-import SalesDashboard from '@/components/dashboard/SalesDashboard';
-import TeacherDashboard from '@/components/dashboard/TeacherDashboard';
-import SupervisorDashboard from '@/components/dashboard/SupervisorDashboard';
-import AdminNotificationsRoute from '@/components/routes/AdminNotificationsRoute';
-import TeacherHomepage from '@/components/dashboard/teacher/TeacherHomepage';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
 
-// Create simple placeholder components for missing routes
-const TrialAppointments = () => <div className="p-6">Trial Appointments - Coming Soon</div>;
-const StudentManagement = () => <div className="p-6">Student Management - Coming Soon</div>;
-const SessionManagement = () => <div className="p-6">Session Management - Coming Soon</div>;
-const SettingsManagement = () => <div className="p-6">Settings Management - Coming Soon</div>;
-const SalesAvailability = () => <div className="p-6">Sales Availability - Coming Soon</div>;
-const SupervisorOverview = () => <div className="p-6">Supervisor Overview - Coming Soon</div>;
+// Dashboard Components
+import TeacherDashboard from "./components/dashboard/TeacherDashboard";
+import SalesDashboard from "./components/dashboard/SalesDashboard";
+import AdminDashboard from "./components/dashboard/AdminDashboard";
+import SupervisorDashboard from "./components/dashboard/SupervisorDashboard";
 
-// Loading component
-const LoadingScreen = () => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div className="text-center">
-      <div className="brand-gradient w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4">
-        <span className="text-white font-bold text-2xl">AW</span>
-      </div>
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-      <p className="text-muted-foreground">Loading...</p>
-    </div>
-  </div>
+// Teacher Tab Components
+import TeacherHomepage from "./components/dashboard/teacher/TeacherHomepage";
+import TeacherAvailability from "./components/dashboard/teacher/TeacherAvailability";
+import TeacherTrials from "./components/dashboard/teacher/TeacherTrials";
+import TeacherStudents from "./components/dashboard/teacher/TeacherStudents";
+import TeacherSessions from "./components/dashboard/teacher/TeacherSessions";
+import TeacherRevenue from "./components/dashboard/teacher/TeacherRevenue";
+import TeacherPaidRegistration from "./components/dashboard/teacher/TeacherPaidRegistration";
+import TeacherSessionManagement from "./components/dashboard/teacher/TeacherSessionManagement";
+
+// Sales Tab Components - FIXED IMPORTS
+import SalesHomepage from "./components/dashboard/sales/SalesHomepage";
+import SalesTrialAppointments from "./components/dashboard/sales/SalesTrialAppointments";
+import SalesPaymentLinks from "./components/dashboard/sales/SalesPaymentLinks";
+import SalesFollowup from "./components/dashboard/sales/SalesFollowup";
+import SalesStudents from "./components/dashboard/sales/SalesStudents";
+import SalesAnalytics from "./components/dashboard/sales/SalesAnalytics";
+
+// Admin Tab Components
+import AdminHomepage from "./components/dashboard/admin/AdminHomepage";
+import AdminTrials from "./components/dashboard/admin/AdminTrials";
+import AdminStudents from "./components/dashboard/admin/AdminStudents";
+import AdminSessions from "./components/dashboard/admin/AdminSessions";
+import AdminSettings from "./components/dashboard/admin/AdminSettings";
+import AdminPackages from "./components/dashboard/admin/AdminPackages";
+import AdminCurrencies from "./components/dashboard/admin/AdminCurrencies";
+
+// Supervisor Tab Components
+import SupervisorHomepage from "./components/dashboard/supervisor/SupervisorHomepage";
+import SupervisorAlerts from "./components/dashboard/supervisor/SupervisorAlerts";
+import SupervisorTeam from "./components/dashboard/supervisor/SupervisorTeam";
+import SupervisorQuality from "./components/dashboard/supervisor/SupervisorQuality";
+import SupervisorReassignment from "./components/dashboard/supervisor/SupervisorReassignment";
+import SupervisorStudents from "./components/dashboard/supervisor/SupervisorStudents";
+import SupervisorSessions from "./components/dashboard/supervisor/SupervisorSessions";
+import SupervisorAnalysis from "./components/dashboard/supervisor/SupervisorAnalysis";
+
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <AuthProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            
+            {/* Teacher Routes */}
+            <Route path="/teacher" element={<Navigate to="/teacher/homepage" replace />} />
+            <Route path="/teacher/*" element={<TeacherDashboard />}>
+              <Route path="homepage" element={<TeacherHomepage />} />
+              <Route path="availability" element={<TeacherAvailability />} />
+              <Route path="trials" element={<TeacherTrials />} />
+              <Route path="students" element={<TeacherStudents />} />
+              <Route path="revenue" element={<TeacherRevenue />} />
+              <Route path="paid-registration" element={<TeacherPaidRegistration />} />
+              <Route path="session-management" element={<TeacherSessionManagement />} />
+              <Route index element={<Navigate to="homepage" replace />} />
+            </Route>
+
+            {/* Sales Routes - FIXED */}
+            <Route path="/sales" element={<Navigate to="/sales/homepage" replace />} />
+            <Route path="/sales/*" element={<SalesDashboard />}>
+              <Route path="homepage" element={<SalesHomepage />} />
+              <Route path="trials" element={<SalesTrialAppointments />} />
+              <Route path="payment-links" element={<SalesPaymentLinks />} />
+              <Route path="followup" element={<SalesFollowup />} />
+              <Route path="students" element={<SalesStudents />} />
+              <Route path="analytics" element={<SalesAnalytics />} />
+              <Route index element={<Navigate to="homepage" replace />} />
+            </Route>
+
+            {/* Admin Routes */}
+            <Route path="/admin" element={<Navigate to="/admin/homepage" replace />} />
+            <Route path="/admin/*" element={<AdminDashboard />}>
+              <Route path="homepage" element={<AdminHomepage />} />
+              <Route path="trials" element={<AdminTrials />} />
+              <Route path="students" element={<AdminStudents />} />
+              <Route path="sessions" element={<AdminSessions />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="settings/packages" element={<AdminPackages />} />
+              <Route path="settings/currencies" element={<AdminCurrencies />} />
+              <Route index element={<Navigate to="homepage" replace />} />
+            </Route>
+
+            {/* Supervisor Routes */}
+            <Route path="/supervisor" element={<Navigate to="/supervisor/homepage" replace />} />
+            <Route path="/supervisor/*" element={<SupervisorDashboard />}>
+              <Route path="homepage" element={<SupervisorHomepage />} />
+              <Route path="alerts" element={<SupervisorAlerts />} />
+              <Route path="team" element={<SupervisorTeam />} />
+              <Route path="quality" element={<SupervisorQuality />} />
+              <Route path="reassignment" element={<SupervisorReassignment />} />
+              <Route path="students" element={<SupervisorStudents />} />
+              <Route path="sessions" element={<SupervisorSessions />} />
+              <Route path="analysis" element={<SupervisorAnalysis />} />
+              <Route index element={<Navigate to="homepage" replace />} />
+            </Route>
+
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </TooltipProvider>
+  </QueryClientProvider>
 );
-
-const App: React.FC = () => {
-  const { user, loading } = useAuth();
-
-  // Show loading screen while authentication is being determined
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  return (
-    <Router>
-      <Routes>
-        {/* Public route for authentication */}
-        <Route path="/auth" element={<Auth />} />
-
-        {/* Admin Routes */}
-        <Route path="/admin" element={user ? <AdminDashboard /> : <Navigate to="/auth" />}>
-          <Route path="homepage" element={<Navigate to="/admin/trials" />} />
-          <Route path="trials" element={<TrialAppointments />} />
-          <Route path="students" element={<StudentManagement />} />
-          <Route path="sessions" element={<SessionManagement />} />
-          <Route path="notifications" element={<AdminNotificationsRoute />} />
-          <Route path="settings" element={<SettingsManagement />} />
-        </Route>
-
-        {/* Sales Routes */}
-        <Route path="/sales" element={user ? <SalesDashboard /> : <Navigate to="/auth" />}>
-          <Route path="availability" element={<SalesAvailability />} />
-          <Route path="*" element={<Navigate to="/sales/availability" />} />
-        </Route>
-
-        {/* Teacher Routes */}
-        <Route path="/teacher" element={user ? <TeacherDashboard /> : <Navigate to="/auth" />}>
-          <Route path="homepage" element={<TeacherHomepage />} />
-          <Route path="availability" element={<div className="p-6">Teacher Availability - Coming Soon</div>} />
-          <Route path="trials" element={<div className="p-6">Teacher Trials - Coming Soon</div>} />
-          <Route path="paid-registration" element={<div className="p-6">Paid Registration - Coming Soon</div>} />
-          <Route path="session-management" element={<div className="p-6">Session Management - Coming Soon</div>} />
-          <Route path="students" element={<div className="p-6">Teacher Students - Coming Soon</div>} />
-          <Route path="revenue" element={<div className="p-6">Teacher Revenue - Coming Soon</div>} />
-          <Route path="*" element={<Navigate to="/teacher/homepage" />} />
-        </Route>
-
-        {/* Supervisor Routes */}
-         <Route path="/supervisor" element={user ? <SupervisorDashboard /> : <Navigate to="/auth" />}>
-          <Route path="overview" element={<SupervisorOverview />} />
-          <Route path="*" element={<Navigate to="/supervisor/overview" />} />
-        </Route>
-
-        {/* Default route - redirects to auth if not authenticated, otherwise to appropriate dashboard */}
-        <Route
-          path="/"
-          element={
-            user ? (
-              user.role === 'teacher' ? <Navigate to="/teacher/homepage" /> :
-              user.role === 'admin' ? <Navigate to="/admin/trials" /> :
-              user.role === 'sales' ? <Navigate to="/sales/availability" /> :
-              user.role === 'supervisor' ? <Navigate to="/supervisor/overview" /> :
-              <Navigate to="/auth" />
-            ) : <Navigate to="/auth" />
-          }
-        />
-      </Routes>
-    </Router>
-  );
-};
 
 export default App;
