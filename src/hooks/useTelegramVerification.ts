@@ -67,7 +67,7 @@ export const useTelegramVerification = (): TelegramVerificationHook => {
 
   const openTelegramBot = () => {
     // Replace with your actual bot username
-    const botUsername = 'YourTutorFlowBot'; // Update this with your actual bot username
+    const botUsername = 'tutorflow_assistant_bot'; // Update this with your actual bot username
     const telegramUrl = `https://t.me/${botUsername}`;
     window.open(telegramUrl, '_blank');
   };
