@@ -13,6 +13,14 @@ interface TelegramVerificationHook {
   openTelegramBot: () => void;
 }
 
+interface TelegramStatusResponse {
+  verified: boolean;
+  chat_id?: string;
+  username?: string;
+  linked_at?: string;
+  error?: string;
+}
+
 export const useTelegramVerification = (): TelegramVerificationHook => {
   const { user } = useAuth();
   const [isVerified, setIsVerified] = useState(false);
@@ -29,7 +37,8 @@ export const useTelegramVerification = (): TelegramVerificationHook => {
 
       if (error) throw error;
 
-      setIsVerified(data.verified);
+      const statusData = data as TelegramStatusResponse;
+      setIsVerified(statusData.verified);
     } catch (error) {
       console.error('Error checking Telegram status:', error);
     }
@@ -46,7 +55,7 @@ export const useTelegramVerification = (): TelegramVerificationHook => {
 
       if (error) throw error;
 
-      setVerificationCode(data);
+      setVerificationCode(data as string);
       toast.success('Verification code generated successfully');
     } catch (error) {
       console.error('Error generating code:', error);
