@@ -215,6 +215,69 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_logs: {
+        Row: {
+          error_message: string | null
+          event_type: string
+          id: string
+          notification_data: Json
+          notification_id: string | null
+          recipient_phone: string | null
+          recipient_type: string
+          sent_at: string | null
+          success: boolean | null
+        }
+        Insert: {
+          error_message?: string | null
+          event_type: string
+          id?: string
+          notification_data: Json
+          notification_id?: string | null
+          recipient_phone?: string | null
+          recipient_type: string
+          sent_at?: string | null
+          success?: boolean | null
+        }
+        Update: {
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          notification_data?: Json
+          notification_id?: string | null
+          recipient_phone?: string | null
+          recipient_type?: string
+          sent_at?: string | null
+          success?: boolean | null
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       packages: {
         Row: {
           created_at: string
@@ -888,6 +951,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_enriched_student_data: {
+        Args: { p_student_id: string }
+        Returns: Json
+      }
+      get_notification_setting: {
+        Args: { p_setting_key: string }
+        Returns: string
+      }
       get_teacher_paid_students: {
         Args: { p_teacher_id: string }
         Returns: {
@@ -957,6 +1028,10 @@ export type Database = {
           time_slot: string
           availability_id: string
         }[]
+      }
+      send_n8n_notification: {
+        Args: { p_event_type: string; p_notification_data: Json }
+        Returns: Json
       }
       simple_book_trial_session: {
         Args: {
