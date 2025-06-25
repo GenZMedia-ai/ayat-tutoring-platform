@@ -126,13 +126,8 @@ const AdminNotifications: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/telegram-notifications`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.supabaseKey}`
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('telegram-notifications', {
+        body: {
           notification_type: 'system_config',
           recipient_phone: testPhone,
           recipient_name: 'Test User',
@@ -144,18 +139,16 @@ const AdminNotifications: React.FC = () => {
             changed_by: 'Admin'
           },
           priority: 'low'
-        })
+        }
       });
 
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Test notification sent successfully",
-        });
-        loadNotificationLogs(); // Refresh logs
-      } else {
-        throw new Error('Failed to send test notification');
-      }
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Test notification sent successfully",
+      });
+      loadNotificationLogs(); // Refresh logs
     } catch (error) {
       console.error('Error sending test notification:', error);
       toast({
