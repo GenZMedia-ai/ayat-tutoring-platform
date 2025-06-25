@@ -7,6 +7,30 @@ const logStep = (step: string, details?: any) => {
   console.log(`[N8N-WEBHOOK-HANDLER] ${step}${detailsStr}`);
 };
 
+const sendTelegramNotification = async (payload: any) => {
+  try {
+    const response = await fetch(
+      `${Deno.env.get("SUPABASE_URL")}/functions/v1/telegram-notifications`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+    
+    if (!response.ok) {
+      logStep("⚠️ Failed to send notification", { status: response.status });
+    } else {
+      logStep("✅ Notification sent successfully", { type: payload.notification_type });
+    }
+  } catch (error) {
+    logStep("❌ Notification error", { error: error.message });
+  }
+};
+
 serve(async (req) => {
   try {
     logStep("N8N webhook received");
@@ -96,7 +120,12 @@ serve(async (req) => {
       // Get all students in family
       const { data: familyStudents, error: studentsError } = await supabaseClient
         .from('students')
-        .select('*')
+        .select(`
+          *, 
+          assigned_teacher_id,
+          profiles!assigned_teacher_id(full_name, phone),
+          sales_profiles:profiles!assigned_sales_agent_id(full_name, phone)
+        `)
         .eq('family_group_id', familyGroup.id);
 
       if (studentsError) {
@@ -192,7 +221,12 @@ serve(async (req) => {
       // Find student by unique_id
       const { data: student, error: studentError } = await supabaseClient
         .from('students')
-        .select('*')
+        .select(`
+          *, 
+          assigned_teacher_id,
+          profiles!assigned_teacher_id(full_name, phone),
+          sales_profiles:profiles!assigned_sales_agent_id(full_name, phone)
+        `)
         .eq('unique_id', student_unique_id)
         .single();
 
@@ -241,6 +275,79 @@ serve(async (req) => {
         count: updatedStudents?.length || 0,
         students: updatedStudents?.map(s => ({ id: s.id, name: s.name, status: s.status }))
       });
+
+      // Send payment confirmation notifications
+      for (const student of studentsToUpdate) {
+        // Send to teacher
+        if (student.profiles && student.profiles.phone) {
+          const teacherNotificationPayload = {
+            notification_type: 'teacher_payment_confirmed',
+            recipient_phone: student.profiles.phone,
+            recipient_name: student.profiles.full_name,
+            recipient_role: 'teacher',
+            data: {
+              student_name: student.name,
+              payment_amount: student.payment_amount || parseInt(total_amount || '0'),
+              payment_currency: currency,
+              session_count: student.package_session_count || parseInt(package_session_count || '8'),
+              is_family: payment_type === 'family_group'
+            },
+            priority: 'high'
+          };
+
+          sendTelegramNotification(teacherNotificationPayload);
+        }
+
+        // Send to sales agent
+        if (student.sales_profiles && student.sales_profiles.phone) {
+          const salesNotificationPayload = {
+            notification_type: 'sales_payment_received',
+            recipient_phone: student.sales_profiles.phone,
+            recipient_name: student.sales_profiles.full_name,
+            recipient_role: 'sales',
+            data: {
+              student_name: student.name,
+              payment_amount: student.payment_amount || parseInt(total_amount || '0'),
+              payment_currency: currency,
+              teacher_name: student.profiles?.full_name || 'Unknown'
+            },
+            priority: 'high'
+          };
+
+          sendTelegramNotification(salesNotificationPayload);
+        }
+
+        // Send to supervisor
+        const { data: supervisorData } = await supabaseClient
+          .from('profiles')
+          .select('full_name, phone')
+          .eq('role', 'supervisor')
+          .eq('status', 'approved')
+          .limit(1)
+          .single();
+
+        if (supervisorData && supervisorData.phone) {
+          const supervisorNotificationPayload = {
+            notification_type: 'supervisor_new_paid',
+            recipient_phone: supervisorData.phone,
+            recipient_name: supervisorData.full_name,
+            recipient_role: 'supervisor',
+            data: {
+              student_name: student.name,
+              teacher_name: student.profiles?.full_name || 'Unknown',
+              payment_amount: student.payment_amount || parseInt(total_amount || '0'),
+              payment_currency: currency
+            },
+            priority: 'medium'
+          };
+
+          sendTelegramNotification(supervisorNotificationPayload);
+        }
+      }
+
+      logStep("💰 Payment confirmation notifications sent", { 
+        count: studentsToUpdate.length 
+      });
     }
 
     // Update payment link status
@@ -263,14 +370,16 @@ serve(async (req) => {
     logStep("Payment processing completed successfully", {
       payment_type,
       students_updated: studentsToUpdate.length,
-      family_payment: payment_type === 'family_group'
+      family_payment: payment_type === 'family_group',
+      notifications_sent: true
     });
 
     return new Response(JSON.stringify({ 
       success: true, 
       message: 'Payment processed successfully',
       students_updated: studentsToUpdate.length,
-      payment_type
+      payment_type,
+      notifications_sent: true
     }), {
       headers: { 
         "Content-Type": "application/json",
