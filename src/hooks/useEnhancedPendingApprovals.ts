@@ -112,7 +112,7 @@ export const useEnhancedPendingApprovals = () => {
         throw error;
       }
 
-      const result = data as ApprovalResult;
+      const result = data as unknown as ApprovalResult;
       if (!result.success) {
         throw new Error(result.error || 'Failed to approve user');
       }
@@ -145,7 +145,7 @@ export const useEnhancedPendingApprovals = () => {
         throw error;
       }
 
-      const result = data as RejectionResult;
+      const result = data as unknown as RejectionResult;
       if (!result.success) {
         throw new Error(result.error || 'Failed to reject user');
       }

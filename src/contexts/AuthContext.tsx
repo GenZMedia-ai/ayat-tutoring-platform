@@ -335,7 +335,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.error('⚠️ Failed to record invitation code usage:', usageError);
           // Don't fail registration for this, but log it
         } else if (usageResult) {
-          const typedResult = usageResult as InvitationCodeUsageResult;
+          const typedResult = usageResult as unknown as InvitationCodeUsageResult;
           if (typedResult.success) {
             console.log('✅ Invitation code usage recorded:', typedResult);
           }
