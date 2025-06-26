@@ -3,15 +3,17 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, CreditCard } from 'lucide-react';
+import { MessageCircle, CreditCard, Calendar } from 'lucide-react';
 import { useMixedStudentData } from '@/hooks/useMixedStudentData';
 import { PaymentLinkModal } from './PaymentLinkModal';
+import { ScheduleFollowupModal } from './ScheduleFollowupModal';
 import { TrialSessionFlowStudent } from '@/types/trial';
 import { FamilyGroup } from '@/types/family';
 
 export const FollowUpManagementTab: React.FC = () => {
-  const { items, loading } = useMixedStudentData();
+  const { items, loading, refetchData } = useMixedStudentData();
   const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<TrialSessionFlowStudent | FamilyGroup | null>(null);
+  const [selectedStudentForFollowup, setSelectedStudentForFollowup] = useState<any>(null);
 
   // Filter students that are trial-completed and need follow-up
   const trialCompletedStudents = items.filter(item => {
@@ -52,6 +54,11 @@ export const FollowUpManagementTab: React.FC = () => {
     
     // Set the actual student data (not the wrapper item)
     setSelectedStudentForPayment(studentData);
+  };
+
+  const handleScheduleFollowup = (item: any) => {
+    console.log('📅 Opening schedule followup modal for item:', item);
+    setSelectedStudentForFollowup(item.data);
   };
 
   const getName = (item: any) => {
@@ -175,7 +182,16 @@ export const FollowUpManagementTab: React.FC = () => {
                       className="flex-1"
                     >
                       <MessageCircle className="h-4 w-4 mr-2" />
-                      WhatsApp Follow-up
+                      WhatsApp Contact
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleScheduleFollowup(item)}
+                      className="flex-1"
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Schedule Follow-up
                     </Button>
                     <Button
                       size="sm"
@@ -200,7 +216,19 @@ export const FollowUpManagementTab: React.FC = () => {
           onClose={() => setSelectedStudentForPayment(null)}
           onSuccess={() => {
             setSelectedStudentForPayment(null);
-            // Refresh data would be called here
+            refetchData();
+          }}
+        />
+      )}
+
+      {selectedStudentForFollowup && (
+        <ScheduleFollowupModal
+          student={selectedStudentForFollowup}
+          open={!!selectedStudentForFollowup}
+          onClose={() => setSelectedStudentForFollowup(null)}
+          onSuccess={() => {
+            setSelectedStudentForFollowup(null);
+            refetchData();
           }}
         />
       )}

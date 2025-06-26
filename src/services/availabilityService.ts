@@ -1,8 +1,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { GranularTimeSlot } from '@/types/availability';
-import { fromZonedTime, toZonedTime, format } from 'date-fns-tz';
-import { getTimezoneConfig } from '@/utils/timezoneUtils';
+import { toZonedTime, format } from 'date-fns-tz';
+import { getTimezoneConfig, convertClientHourToUTCPreservingDate } from '@/utils/timezoneUtils';
 
 export class AvailabilityService {
   static async searchAvailableSlots(
@@ -11,7 +11,7 @@ export class AvailabilityService {
     teacherType: string,
     selectedHour: number
   ): Promise<GranularTimeSlot[]> {
-    console.log('=== AVAILABILITY SERVICE START (Enhanced with date-fns-tz) ===');
+    console.log('=== AVAILABILITY SERVICE START (Fixed Date Preservation) ===');
     console.log('Search Parameters:', { 
       date: date.toDateString(), 
       dateStr: date.toISOString().split('T')[0],
@@ -29,26 +29,18 @@ export class AvailabilityService {
     
     console.log('Timezone Config:', timezoneConfig);
     
-    // Use date-fns-tz for proper timezone conversion with DST handling
-    const clientDateTime = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      selectedHour,
-      0,
-      0
-    );
+    // FIXED: Use date-preserving conversion
+    const conversion = convertClientHourToUTCPreservingDate(selectedHour, date, timezone);
+    const utcHour = conversion.utcHour;
+    const utcMinutes = conversion.utcMinutes;
     
-    // Convert to UTC using date-fns-tz
-    const utcDateTime = fromZonedTime(clientDateTime, timezoneConfig.iana);
-    const utcHour = utcDateTime.getUTCHours();
-    const utcMinutes = utcDateTime.getUTCMinutes();
-    
-    console.log('Enhanced timezone conversion:', { 
-      clientDateTime: clientDateTime.toISOString(),
-      utcDateTime: utcDateTime.toISOString(),
+    console.log('Fixed timezone conversion (date preserved):', { 
+      originalDate: dateStr,
+      searchDate: conversion.utcDateString,
+      clientHour: selectedHour,
       utcHour,
-      utcMinutes
+      utcMinutes,
+      datePreserved: dateStr === conversion.utcDateString
     });
     
     // Build teacher type filter
@@ -63,9 +55,9 @@ export class AvailabilityService {
     
     console.log('Teacher Type Filter:', teacherTypeFilter);
     
-    // Search for 30-minute slots in a 2-hour window
+    // FIXED: Search using the preserved date
     const slots = await this.searchUsingSecureRPC(
-      dateStr,
+      conversion.utcDateString, // Use preserved date string
       utcHour,
       teacherTypeFilter,
       selectedHour,
@@ -73,7 +65,7 @@ export class AvailabilityService {
     );
     
     console.log('Final available slots:', slots.length);
-    console.log('=== AVAILABILITY SERVICE END ===');
+    console.log('=== AVAILABILITY SERVICE END (Date Preserved) ===');
     
     return slots;
   }
@@ -85,7 +77,7 @@ export class AvailabilityService {
     clientHour: number,
     timezoneConfig: any
   ): Promise<GranularTimeSlot[]> {
-    console.log('--- SECURE RPC SEARCH (Enhanced with precise timing) ---');
+    console.log('--- SECURE RPC SEARCH (Fixed Date Handling) ---');
     console.log('RPC Parameters:', { dateStr, baseUtcHour, teacherTypeFilter, clientHour });
     
     // Create a wider search window to catch all 30-minute slots
@@ -96,12 +88,12 @@ export class AvailabilityService {
     const startTime = `${String(searchStartHour).padStart(2, '0')}:00:00`;
     const endTime = `${String(searchEndHour).padStart(2, '0')}:00:00`;
     
-    console.log('Enhanced UTC Time Range for RPC:', { startTime, endTime });
+    console.log('Fixed UTC Time Range for RPC:', { startTime, endTime, searchDate: dateStr });
     
-    // Call the secure RPC function
+    // Call the secure RPC function with the FIXED date
     const { data: rpcResults, error: rpcError } = await supabase
       .rpc('search_available_teachers', {
-        p_date: dateStr,
+        p_date: dateStr, // FIXED: Use preserved date
         p_start_time: startTime,
         p_end_time: endTime,
         p_teacher_types: teacherTypeFilter
