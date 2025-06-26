@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, ExternalLink, Copy, RefreshCw, DollarSign } from 'lucide-react';
+import { Search, Filter, ExternalLink, Copy, RefreshCw, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
@@ -13,8 +13,6 @@ import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 interface PaymentLink {
   id: string;
   student_ids: string[];
-  amount: number;
-  currency: string;
   status: string;
   created_at: string;
   expires_at: string;
@@ -146,18 +144,25 @@ const SalesPaymentLinks: React.FC = () => {
     }
   };
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'clicked':
+        return <Clock className="h-4 w-4" />;
+      case 'expired':
+        return <XCircle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
+
   const copyPaymentLink = (sessionId: string) => {
     if (sessionId) {
       const url = `https://checkout.stripe.com/pay/${sessionId}`;
       navigator.clipboard.writeText(url);
       toast.success('Payment link copied to clipboard');
     }
-  };
-
-  const getTotalRevenue = () => {
-    return filteredLinks
-      .filter(link => link.status === 'paid')
-      .reduce((sum, link) => sum + link.amount, 0);
   };
 
   if (loading) {
@@ -192,7 +197,7 @@ const SalesPaymentLinks: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - No amounts shown */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4">
@@ -227,10 +232,10 @@ const SalesPaymentLinks: React.FC = () => {
         <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                ${getTotalRevenue()}
+              <div className="text-2xl font-bold text-primary">
+                {filteredLinks.length}
               </div>
-              <div className="text-sm text-muted-foreground">Revenue Generated</div>
+              <div className="text-sm text-muted-foreground">Total Links</div>
             </div>
           </CardContent>
         </Card>
@@ -293,12 +298,12 @@ const SalesPaymentLinks: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Payment Links List */}
+      {/* Payment Links List - No amounts displayed */}
       {filteredLinks.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">
-              <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-muted-foreground mb-2">
                 No payment links found
               </h3>
@@ -318,25 +323,23 @@ const SalesPaymentLinks: React.FC = () => {
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
+                    {getStatusIcon(link.status)}
                     <Badge className={getStatusColor(link.status)}>
                       {link.status.toUpperCase()}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {link.currency.toUpperCase()}
                     </Badge>
                     <Badge variant="outline" className="text-xs">
                       {link.payment_type === 'family' ? 'Family' : 'Individual'}
                     </Badge>
                   </div>
-                  <div className="text-lg font-semibold text-primary">
-                    ${link.amount}
+                  <div className="text-sm text-muted-foreground">
+                    {link.package_session_count} sessions
                   </div>
                 </div>
                 <CardTitle className="text-lg">
                   {link.student_names?.join(', ') || 'Unknown Student'}
                 </CardTitle>
                 <CardDescription>
-                  Payment Link ID: {link.id.slice(0, 8)}... • {link.package_session_count} sessions
+                  Payment Link ID: {link.id.slice(0, 8)}...
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">

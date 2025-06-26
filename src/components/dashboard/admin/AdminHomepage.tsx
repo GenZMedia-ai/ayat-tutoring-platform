@@ -1,19 +1,34 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import FinancialOverview from './financial/FinancialOverview';
+import TransactionHistory from './financial/TransactionHistory';
 import { usePackageManagement } from '@/hooks/usePackageManagement';
 import { useCurrencyManagement } from '@/hooks/useCurrencyManagement';
+import { TrendingUp, Settings, Users, CreditCard } from 'lucide-react';
 
 const AdminHomepage: React.FC = () => {
   const { packages } = usePackageManagement();
   const { currencies } = useCurrencyManagement();
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-primary mb-2">Financial Dashboard</h1>
+        <p className="text-muted-foreground">
+          Comprehensive financial overview with real-time metrics and transaction analysis
+        </p>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="dashboard-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Active Packages</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <CreditCard className="h-4 w-4" />
+              Active Packages
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{packages.filter(p => p.is_active).length}</div>
@@ -23,7 +38,10 @@ const AdminHomepage: React.FC = () => {
 
         <Card className="dashboard-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Enabled Currencies</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Settings className="h-4 w-4" />
+              Currencies
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{currencies.filter(c => c.is_enabled).length}</div>
@@ -33,26 +51,55 @@ const AdminHomepage: React.FC = () => {
 
         <Card className="dashboard-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Packages</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Users className="h-4 w-4" />
+              Total Packages
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{packages.length}</div>
             <p className="text-xs text-muted-foreground">Created packages</p>
           </CardContent>
         </Card>
+
+        <Card className="dashboard-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <TrendingUp className="h-4 w-4" />
+              System Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">Active</div>
+            <p className="text-xs text-muted-foreground">All systems operational</p>
+          </CardContent>
+        </Card>
       </div>
 
+      {/* Financial Overview Section */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Financial Overview</h2>
+        <FinancialOverview />
+      </div>
+
+      {/* Transaction History Section */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Recent Transactions</h2>
+        <TransactionHistory />
+      </div>
+
+      {/* System Information */}
       <Card className="dashboard-card">
         <CardHeader>
-          <CardTitle>System Overview</CardTitle>
+          <CardTitle>System Configuration</CardTitle>
           <CardDescription>
-            Welcome to the Ayat w Bian administrative panel. Manage users, packages, and system settings.
+            Core system settings and operational parameters
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
-              <h4 className="font-medium">Quick Stats</h4>
+              <h4 className="font-medium">Payment System</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Active Packages:</span>
@@ -63,16 +110,17 @@ const AdminHomepage: React.FC = () => {
                   <span className="font-medium">{currencies.filter(c => c.is_enabled).length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Total Packages:</span>
-                  <span className="font-medium">{packages.length}</span>
+                  <span>Stripe Integration:</span>
+                  <span className="font-medium text-green-600">Active</span>
                 </div>
               </div>
             </div>
             <div className="space-y-2">
-              <h4 className="font-medium">Payment System</h4>
+              <h4 className="font-medium">Financial Processing</h4>
               <div className="text-sm text-muted-foreground">
-                <p>Configure packages and currencies for the payment processing workflow.</p>
-                <p className="mt-2">Sales agents can create payment links for completed trials.</p>
+                <p>All amounts converted to USD for unified reporting.</p>
+                <p className="mt-2">Stripe fees: 2.9% + $0.30 per transaction</p>
+                <p>Teacher compensation: 100 EGP per hour taught</p>
               </div>
             </div>
           </div>
