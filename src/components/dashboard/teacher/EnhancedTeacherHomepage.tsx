@@ -17,10 +17,7 @@ import {
   AlertTriangle,
   Calendar,
   ArrowRight,
-  User,
-  TrendingUp,
-  Target,
-  Award
+  User
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format, toZonedTime } from 'date-fns-tz';
@@ -31,13 +28,19 @@ const EGYPT_TIMEZONE = 'Africa/Cairo';
 const EnhancedTeacherHomepage: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange>('today');
   
+  // PHASE 3 FIX: Use improved statistics hook
   const { stats, loading: statsLoading, refreshStats } = useTeacherStatistics(dateRange);
   const { sessions, loading: sessionsLoading, refreshSessions } = useTodayPaidSessions();
   const { completeSession, loading: completingSession } = useSessionCompletion();
 
+  // PHASE 3: Add debugging for data display
   useEffect(() => {
     console.log('🏠 HOMEPAGE: Stats updated:', { dateRange, stats, loading: statsLoading });
   }, [stats, statsLoading, dateRange]);
+
+  useEffect(() => {
+    console.log('🏠 HOMEPAGE: Sessions updated:', { sessions, loading: sessionsLoading });
+  }, [sessions, sessionsLoading]);
 
   const formatTime = (timeStr: string) => {
     try {
@@ -62,36 +65,46 @@ const EnhancedTeacherHomepage: React.FC = () => {
 
   const statCards = [
     {
-      title: 'Active Students',
+      title: 'Current Capacity',
       value: stats.currentCapacity,
       icon: Users,
-      gradient: 'from-blue-500 to-cyan-600',
-      bgGradient: 'from-blue-50 to-cyan-50',
-      textColor: 'text-blue-700'
+      color: 'text-blue-600',
+      bg: 'bg-blue-50'
     },
     {
       title: 'Pending Trials',
       value: stats.pendingTrials,
       icon: Clock,
-      gradient: 'from-orange-500 to-amber-600',
-      bgGradient: 'from-orange-50 to-amber-50',
-      textColor: 'text-orange-700'
+      color: 'text-orange-600',
+      bg: 'bg-orange-50'
     },
     {
       title: 'Confirmed Trials',
       value: stats.confirmedTrials,
       icon: CheckCircle,
-      gradient: 'from-green-500 to-emerald-600',
-      bgGradient: 'from-green-50 to-emerald-50',
-      textColor: 'text-green-700'
+      color: 'text-green-600',
+      bg: 'bg-green-50'
     },
     {
       title: 'Completed Trials',
       value: stats.completedTrials,
-      icon: Award,
-      gradient: 'from-emerald-500 to-teal-600',
-      bgGradient: 'from-emerald-50 to-teal-50',
-      textColor: 'text-emerald-700'
+      icon: CheckCircle,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50'
+    },
+    {
+      title: 'Rescheduled',
+      value: stats.rescheduledTrials,
+      icon: RotateCcw,
+      color: 'text-yellow-600',
+      bg: 'bg-yellow-50'
+    },
+    {
+      title: 'Ghosted',
+      value: stats.ghostedTrials,
+      icon: XCircle,
+      color: 'text-red-600',
+      bg: 'bg-red-50'
     }
   ];
 
@@ -100,46 +113,37 @@ const EnhancedTeacherHomepage: React.FC = () => {
       title: 'Paid Registration',
       description: 'Complete student registration',
       path: '/teacher/paid-registration',
-      icon: Users,
-      gradient: 'from-purple-500 to-indigo-600'
+      icon: Users
     },
     {
       title: 'Session Management',
       description: 'Manage scheduled sessions',
       path: '/teacher/session-management',
-      icon: Calendar,
-      gradient: 'from-green-500 to-emerald-600'
+      icon: Calendar
     },
     {
       title: 'Trial Appointments',
       description: 'Manage trial sessions',
       path: '/teacher/trials',
-      icon: Clock,
-      gradient: 'from-blue-500 to-cyan-600'
+      icon: Clock
     }
   ];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Date Filter */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
-            <TrendingUp className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Teaching Dashboard
-            </h1>
-            <p className="text-muted-foreground">Welcome back! Here's your teaching overview</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-primary">Teacher Dashboard</h1>
+          <p className="text-muted-foreground">Overview of your teaching activities</p>
         </div>
+        {/* PHASE 3 FIX: Date filter properly connected */}
         <DateFilter value={dateRange} onChange={setDateRange} />
       </div>
 
-      {/* Date Range Info */}
+      {/* PHASE 3: Enhanced debugging display */}
       {dateRange !== 'today' && (
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-3">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <p className="text-sm text-blue-800">
             📅 Showing data for: <strong>{dateRange.replace('-', ' ').toUpperCase()}</strong>
             {statsLoading && ' (Loading...)'}
@@ -148,14 +152,15 @@ const EnhancedTeacherHomepage: React.FC = () => {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {statCards.map((stat) => (
-          <Card key={stat.title} className={`border-0 shadow-lg bg-gradient-to-br ${stat.bgGradient} hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`}>
-            <CardContent className="p-6">
+          <Card key={stat.title} className="dashboard-card">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">{stat.title}</p>
-                  <p className={`text-2xl font-bold ${stat.textColor}`}>
+                  <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                  {/* PHASE 3 FIX: Better loading state display */}
+                  <p className="text-2xl font-bold">
                     {statsLoading ? (
                       <span className="text-muted-foreground">...</span>
                     ) : (
@@ -163,8 +168,8 @@ const EnhancedTeacherHomepage: React.FC = () => {
                     )}
                   </p>
                 </div>
-                <div className={`p-3 bg-gradient-to-r ${stat.gradient} rounded-xl shadow-lg`}>
-                  <stat.icon className="h-5 w-5 text-white" />
+                <div className={`p-2 rounded-full ${stat.bg}`}>
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
                 </div>
               </div>
             </CardContent>
@@ -172,22 +177,17 @@ const EnhancedTeacherHomepage: React.FC = () => {
         ))}
       </div>
 
-      {/* Main Content Grid */}
+      {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's Paid Sessions */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/50">
+        <Card className="dashboard-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg">
-                <Calendar className="h-5 w-5 text-white" />
-              </div>
+              <Calendar className="h-5 w-5" />
               Today's Paid Sessions
-              <Badge variant="outline" className="ml-2 border-green-200 text-green-700">
-                {sessions.length} sessions
-              </Badge>
             </CardTitle>
             <CardDescription>
-              Today's scheduled paid sessions only (trials excluded)
+              Sessions scheduled for today only
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -198,47 +198,42 @@ const EnhancedTeacherHomepage: React.FC = () => {
               </div>
             ) : sessions.length === 0 ? (
               <div className="text-center py-8">
-                <div className="p-4 bg-gray-100 rounded-xl w-fit mx-auto mb-4">
-                  <Calendar className="h-8 w-8 text-gray-400 mx-auto" />
-                </div>
-                <p className="text-gray-600 text-lg font-medium mb-2">No paid sessions today</p>
-                <p className="text-sm text-gray-500">
+                <p className="text-muted-foreground">No paid sessions scheduled for today</p>
+                <p className="text-sm text-muted-foreground mt-1">
                   Check the Paid Registration tab for students ready to schedule
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
                 {sessions.map((session) => (
-                  <Card key={session.id} className="border border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full">
-                            <User className="h-4 w-4 text-white" />
+                  <div key={session.id} className="p-3 border border-border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-full">
+                          <User className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium">{session.studentName}</h4>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>Session {session.sessionNumber}</span>
+                            <span>•</span>
+                            <span>{formatTime(session.scheduledTime)}</span>
                           </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">{session.studentName}</h4>
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <span>Session {session.sessionNumber}</span>
-                              <span>•</span>
-                              <span>{formatTime(session.scheduledTime)}</span>
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              Progress: {session.completedSessions}/{session.totalSessions} sessions
-                            </div>
+                          <div className="text-xs text-muted-foreground">
+                            Progress: {session.completedSessions}/{session.totalSessions} sessions
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
-                          onClick={() => handleCompleteSession(session.id, session.studentName)}
-                          disabled={completingSession}
-                        >
-                          {completingSession ? 'Marking...' : 'Complete'}
-                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <Button
+                        size="sm"
+                        className="ayat-button-primary"
+                        onClick={() => handleCompleteSession(session.id, session.studentName)}
+                        disabled={completingSession}
+                      >
+                        {completingSession ? 'Marking...' : 'Mark Complete'}
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -246,14 +241,9 @@ const EnhancedTeacherHomepage: React.FC = () => {
         </Card>
 
         {/* Quick Actions */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-slate-50/50">
+        <Card className="dashboard-card">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg">
-                <Target className="h-5 w-5 text-white" />
-              </div>
-              Quick Actions
-            </CardTitle>
+            <CardTitle>Quick Actions</CardTitle>
             <CardDescription>
               Navigate to key sections quickly
             </CardDescription>
@@ -262,19 +252,19 @@ const EnhancedTeacherHomepage: React.FC = () => {
             <div className="space-y-3">
               {quickActions.map((action) => (
                 <Link key={action.path} to={action.path}>
-                  <Card className="border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all cursor-pointer group">
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 bg-gradient-to-r ${action.gradient} rounded-lg group-hover:scale-110 transition-transform`}>
-                            <action.icon className="h-4 w-4 text-white" />
+                          <div className="p-2 bg-primary/10 rounded-full">
+                            <action.icon className="h-4 w-4 text-primary" />
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-900 group-hover:text-gray-700">{action.title}</h4>
-                            <p className="text-sm text-gray-600">{action.description}</p>
+                            <h4 className="font-medium">{action.title}</h4>
+                            <p className="text-sm text-muted-foreground">{action.description}</p>
                           </div>
                         </div>
-                        <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1 transition-all" />
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
                       </div>
                     </CardContent>
                   </Card>
@@ -284,6 +274,29 @@ const EnhancedTeacherHomepage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* PHASE 3: Debug information (can be removed in production) */}
+      {process.env.NODE_ENV === 'development' && (
+        <Card className="bg-gray-50 border-dashed">
+          <CardHeader>
+            <CardTitle className="text-sm">Debug Information</CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <strong>Statistics Loading:</strong> {statsLoading ? 'Yes' : 'No'}<br/>
+                <strong>Sessions Loading:</strong> {sessionsLoading ? 'Yes' : 'No'}<br/>
+                <strong>Date Range:</strong> {dateRange}
+              </div>
+              <div>
+                <strong>Total Stats:</strong> {Object.values(stats).reduce((a, b) => a + b, 0)}<br/>
+                <strong>Sessions Count:</strong> {sessions.length}<br/>
+                <strong>Current Time:</strong> {new Date().toLocaleTimeString()}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
