@@ -1,10 +1,6 @@
-// Enhanced time slots starting from 8 AM to 10 PM for comprehensive availability
+
+// Simple 1-hour time slots for availability checking
 export const HOURLY_TIME_SLOTS = [
-  { value: 8, label: '8:00 AM', utcHour: 8 },
-  { value: 9, label: '9:00 AM', utcHour: 9 },
-  { value: 10, label: '10:00 AM', utcHour: 10 },
-  { value: 11, label: '11:00 AM', utcHour: 11 },
-  { value: 12, label: '12:00 PM', utcHour: 12 },
   { value: 13, label: '1:00 PM', utcHour: 13 },
   { value: 14, label: '2:00 PM', utcHour: 14 },
   { value: 15, label: '3:00 PM', utcHour: 15 },
@@ -14,7 +10,8 @@ export const HOURLY_TIME_SLOTS = [
   { value: 19, label: '7:00 PM', utcHour: 19 },
   { value: 20, label: '8:00 PM', utcHour: 20 },
   { value: 21, label: '9:00 PM', utcHour: 21 },
-  { value: 22, label: '10:00 PM', utcHour: 22 }
+  { value: 22, label: '10:00 PM', utcHour: 22 },
+  { value: 23, label: '11:00 PM', utcHour: 23 }
 ] as const;
 
 // Timezone configurations with UTC offsets and IANA identifiers
