@@ -3,10 +3,10 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useFinancialData } from '@/hooks/useFinancialData';
-import { DollarSign, TrendingUp, CreditCard, Target, Coins, Calculator } from 'lucide-react';
+import { DollarSign, TrendingUp, CreditCard, Target, Coins, Calculator, AlertCircle } from 'lucide-react';
 
 const FinancialOverview: React.FC = () => {
-  const { metrics, loading } = useFinancialData();
+  const { metrics, loading, error } = useFinancialData();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -19,6 +19,19 @@ const FinancialOverview: React.FC = () => {
   const formatPercentage = (value: number) => {
     return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
   };
+
+  if (error) {
+    return (
+      <Card className="dashboard-card">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-2 text-red-600">
+            <AlertCircle className="h-5 w-5" />
+            <p>Error loading financial data: {error}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
@@ -92,7 +105,7 @@ const FinancialOverview: React.FC = () => {
               {formatCurrency(metrics.teacherCosts)}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Salaries + bonuses
+              100 EGP per hour taught
             </p>
           </CardContent>
         </Card>

@@ -8,9 +8,10 @@ interface ExchangeRates {
 export const useExchangeRates = () => {
   const [rates, setRates] = useState<ExchangeRates>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // For now, using static rates - in production, integrate with exchange rate API
+  // Static rates with proper fallbacks
   const staticRates: ExchangeRates = {
     USD: 1.00,
     EUR: 0.85,
@@ -24,32 +25,58 @@ export const useExchangeRates = () => {
   };
 
   useEffect(() => {
-    // Simulate API call
     const fetchRates = async () => {
-      setLoading(true);
-      // In production, fetch from exchange rate API
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setRates(staticRates);
-      setLastUpdated(new Date());
-      setLoading(false);
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Simulate API call with timeout
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        setRates(staticRates);
+        setLastUpdated(new Date());
+        console.log('Exchange rates loaded:', staticRates);
+      } catch (err) {
+        console.error('Failed to fetch exchange rates:', err);
+        setError('Failed to load exchange rates');
+        // Use static rates as fallback
+        setRates(staticRates);
+        setLastUpdated(new Date());
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchRates();
-    // Update rates every hour in production
-    const interval = setInterval(fetchRates, 3600000);
-    return () => clearInterval(interval);
   }, []);
 
+  // Stable conversion function that doesn't depend on loading state
   const convertToUSD = (amount: number, fromCurrency: string): number => {
-    if (fromCurrency.toUpperCase() === 'USD') return amount;
-    const rate = rates[fromCurrency.toUpperCase()];
-    if (!rate) return amount; // Fallback to original amount
-    return amount / rate;
+    if (!amount || amount === 0) return 0;
+    
+    const currency = fromCurrency.toUpperCase();
+    console.log(`Converting ${amount} ${currency} to USD`);
+    
+    if (currency === 'USD') return amount;
+    
+    // Use current rates or fallback to static rates
+    const currentRates = Object.keys(rates).length > 0 ? rates : staticRates;
+    const rate = currentRates[currency];
+    
+    if (!rate) {
+      console.warn(`No exchange rate found for ${currency}, using original amount`);
+      return amount;
+    }
+    
+    const converted = amount / rate;
+    console.log(`Converted ${amount} ${currency} = ${converted} USD (rate: ${rate})`);
+    return converted;
   };
 
   return {
-    rates,
+    rates: Object.keys(rates).length > 0 ? rates : staticRates,
     loading,
+    error,
     lastUpdated,
     convertToUSD
   };

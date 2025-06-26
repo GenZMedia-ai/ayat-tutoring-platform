@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFinancialData } from '@/hooks/useFinancialData';
 import { format } from 'date-fns';
-import { Search, DollarSign, Receipt } from 'lucide-react';
+import { Search, DollarSign, Receipt, AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const TransactionHistory: React.FC = () => {
-  const { transactions, loading } = useFinancialData();
+  const { transactions, loading, error, refetch } = useFinancialData();
   const [searchTerm, setSearchTerm] = useState('');
   const [currencyFilter, setCurrencyFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -42,6 +43,32 @@ const TransactionHistory: React.FC = () => {
 
   const uniqueCurrencies = [...new Set(transactions.map(t => t.currency))];
   const uniqueTypes = [...new Set(transactions.map(t => t.paymentType))];
+
+  if (error) {
+    return (
+      <Card className="dashboard-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Receipt className="w-5 h-5" />
+            Transaction History
+          </CardTitle>
+          <CardDescription>Error loading transaction data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              <p>{error}</p>
+            </div>
+            <Button onClick={refetch} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
