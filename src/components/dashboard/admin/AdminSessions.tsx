@@ -109,14 +109,14 @@ const AdminSessions: React.FC = () => {
   const filteredSessions = sessions.filter(session => {
     const studentName = session.student?.name || '';
     const studentId = session.student?.unique_id || '';
-    const teacherName = session.student?.assigned_teacher || '';
+    const teacherName = session.student?.assigned_teacher_id || '';
     
     const matchesSearch = studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          teacherName.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || session.status === statusFilter;
-    const matchesTeacher = teacherFilter === 'all' || session.student?.assigned_teacher === teacherFilter;
+    const matchesTeacher = teacherFilter === 'all' || session.student?.assigned_teacher_id === teacherFilter;
     
     // Date filtering
     let matchesDate = true;
@@ -400,7 +400,7 @@ const AdminSessions: React.FC = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Teacher:</span>
-                        <span>{session.student?.assigned_teacher || 'Not assigned'}</span>
+                        <span>{session.student?.assigned_teacher_id || 'Not assigned'}</span>
                       </div>
                       {session.actualMinutes && (
                         <div className="flex justify-between">
