@@ -10,6 +10,17 @@
   left: auto;
 }
 
+/* Fix Shadcn Sidebar positioning for RTL */
+.rtl [data-side="right"] {
+  right: 0;
+  left: auto;
+}
+
+.rtl [data-side="right"] + [data-sidebar="inset"] {
+  margin-right: 16rem;
+  margin-left: 0;
+}
+
 .rtl .sidebar-inset {
   margin-right: 0;
   margin-left: 16rem;
@@ -79,10 +90,30 @@
   left: 0.25rem;
 }
 
+/* Sidebar-specific RTL fixes */
+.rtl [data-sidebar="sidebar"] {
+  border-left: none;
+  border-right: 1px solid hsl(var(--border));
+}
+
+.rtl [data-sidebar="trigger"] {
+  transform: scaleX(-1);
+}
+
+/* SidebarInset RTL positioning */
+.rtl [data-sidebar="inset"] {
+  margin-left: 0;
+  margin-right: var(--sidebar-width);
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .rtl .sidebar-inset {
     margin-left: 0;
+    margin-right: 0;
+  }
+  
+  .rtl [data-sidebar="inset"] {
     margin-right: 0;
   }
 }

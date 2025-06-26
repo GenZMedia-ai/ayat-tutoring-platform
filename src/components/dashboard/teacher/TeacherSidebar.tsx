@@ -73,7 +73,7 @@ export function TeacherSidebar() {
   };
 
   return (
-    <Sidebar className={isRTL ? 'rtl' : ''}>
+    <Sidebar side={isRTL ? "right" : "left"} className={isRTL ? 'rtl' : ''}>
       <SidebarHeader className="border-b border-border px-6 py-4">
         <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -90,7 +90,7 @@ export function TeacherSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>{t('sidebar.navigation')}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (

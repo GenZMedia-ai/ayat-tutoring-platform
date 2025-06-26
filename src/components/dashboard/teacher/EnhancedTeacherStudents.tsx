@@ -1,5 +1,7 @@
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTeacherActiveStudents } from '@/hooks/useTeacherActiveStudents';
 import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
@@ -15,6 +17,8 @@ interface EditingSession {
 const EnhancedTeacherStudents: React.FC = () => {
   const { students, loading, refreshStudents } = useTeacherActiveStudents();
   const [editingSession, setEditingSession] = useState<EditingSession | null>(null);
+  const { t } = useTranslation();
+  const { isRTL } = useLanguage();
 
   const handleEditSession = (sessionData: any, studentName: string, studentId: string) => {
     console.log('Edit session:', sessionData);
@@ -33,14 +37,16 @@ const EnhancedTeacherStudents: React.FC = () => {
   if (loading) {
     return (
       <Card className="dashboard-card">
-        <CardHeader>
-          <CardTitle>Active Students</CardTitle>
-          <CardDescription>View and manage your active students and their progress</CardDescription>
+        <CardHeader className={isRTL ? 'text-right' : 'text-left'}>
+          <CardTitle>{t('students.title')}</CardTitle>
+          <CardDescription>{t('students.viewAndManage')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-8">
+          <div className={`flex items-center justify-center py-8 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <LoadingSpinner />
-            <span className="ml-2 text-muted-foreground">Loading students...</span>
+            <span className={`text-muted-foreground ${isRTL ? 'mr-2' : 'ml-2'}`}>
+              {t('students.loadingStudents')}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -48,19 +54,19 @@ const EnhancedTeacherStudents: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-primary">Active Students</h1>
-        <p className="text-muted-foreground">Manage your active students and track their progress</p>
+    <div className={`space-y-6 ${isRTL ? 'rtl' : ''}`}>
+      <div className={isRTL ? 'text-right' : 'text-left'}>
+        <h1 className="text-2xl font-bold text-primary">{t('students.title')}</h1>
+        <p className="text-muted-foreground">{t('students.subtitle')}</p>
       </div>
 
       {students.length === 0 ? (
         <Card className="dashboard-card">
           <CardContent className="py-8">
-            <div className="text-center">
-              <p className="text-muted-foreground text-lg font-medium">No active students found</p>
+            <div className={`text-center ${isRTL ? 'text-right' : 'text-left'}`}>
+              <p className="text-muted-foreground text-lg font-medium">{t('students.noActiveStudents')}</p>
               <p className="text-sm text-muted-foreground mt-2">
-                Students will appear here once they complete registration and start their sessions
+                {t('students.studentsWillAppear')}
               </p>
             </div>
           </CardContent>

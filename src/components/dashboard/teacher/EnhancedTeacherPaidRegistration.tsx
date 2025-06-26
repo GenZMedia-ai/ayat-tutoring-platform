@@ -1,23 +1,25 @@
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { DateFilter, DateRange } from '@/components/teacher/DateFilter';
 import PaidStudentsSection from '@/components/teacher/PaidStudentsSection';
 
 const EnhancedTeacherPaidRegistration: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange>('today');
+  const { t } = useTranslation();
+  const { isRTL } = useLanguage();
 
   return (
-    <div className="space-y-6">
-      {/* Header with Date Filter */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-primary">Paid Registration</h1>
-          <p className="text-muted-foreground">Complete registration for paid students</p>
+    <div className={`space-y-6 ${isRTL ? 'rtl' : ''}`}>
+      <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+        <div className={isRTL ? 'text-right' : 'text-left'}>
+          <h1 className="text-2xl font-bold text-primary">{t('paidRegistration.title')}</h1>
+          <p className="text-muted-foreground">{t('paidRegistration.subtitle')}</p>
         </div>
         <DateFilter value={dateRange} onChange={setDateRange} />
       </div>
 
-      {/* Paid Students Section with Date Filter */}
       <PaidStudentsSection dateRange={dateRange} />
     </div>
   );
