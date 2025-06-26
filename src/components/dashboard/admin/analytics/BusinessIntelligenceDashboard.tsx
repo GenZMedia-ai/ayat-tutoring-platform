@@ -265,7 +265,7 @@ const BusinessIntelligenceDashboard: React.FC = () => {
                       <span className={`font-medium ${getStatusColor(metrics.monthlyGrowth, 15)}`}>
                         {formatPercentage(metrics.monthlyGrowth)}
                       </span>
-                      <Badge variant={metrics.monthlyGrowth >= 15 ? "default" : "destructive"} size="sm">
+                      <Badge variant={metrics.monthlyGrowth >= 15 ? "default" : "destructive"}>
                         {metrics.monthlyGrowth >= 15 ? 'On Track' : 'Below Target'}
                       </Badge>
                     </div>
@@ -276,7 +276,7 @@ const BusinessIntelligenceDashboard: React.FC = () => {
                       <span className={`font-medium ${getStatusColor(metrics.profitMargin, 70)}`}>
                         {formatPercentage(metrics.profitMargin)}
                       </span>
-                      <Badge variant={metrics.profitMargin >= 70 ? "default" : "secondary"} size="sm">
+                      <Badge variant={metrics.profitMargin >= 70 ? "default" : "secondary"}>
                         {metrics.profitMargin >= 70 ? 'Excellent' : 'Good'}
                       </Badge>
                     </div>
@@ -297,7 +297,7 @@ const BusinessIntelligenceDashboard: React.FC = () => {
                       <span className={`font-medium ${getStatusColor(metrics.teacherUtilization, 80)}`}>
                         {formatPercentage(metrics.teacherUtilization)}
                       </span>
-                      <Badge variant={metrics.teacherUtilization >= 80 ? "default" : "destructive"} size="sm">
+                      <Badge variant={metrics.teacherUtilization >= 80 ? "default" : "destructive"}>
                         {metrics.teacherUtilization >= 80 ? 'Optimal' : 'Needs Improvement'}
                       </Badge>
                     </div>
@@ -308,7 +308,7 @@ const BusinessIntelligenceDashboard: React.FC = () => {
                       <span className={`font-medium ${getStatusColor(metrics.conversionRate, 65)}`}>
                         {formatPercentage(metrics.conversionRate)}
                       </span>
-                      <Badge variant={metrics.conversionRate >= 65 ? "default" : "destructive"} size="sm">
+                      <Badge variant={metrics.conversionRate >= 65 ? "default" : "destructive"}>
                         {metrics.conversionRate >= 65 ? 'Strong' : 'Needs Focus'}
                       </Badge>
                     </div>
