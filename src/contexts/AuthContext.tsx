@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -11,7 +10,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   register: (userData: RegisterData) => Promise<boolean>;
-  validateInvitationCode: (code: string) => Promise<{ valid: boolean; role?: string }>;
+  validateInvitationCode: (code: string) => Promise<{ valid: boolean; role?: string; error?: string }>;
 }
 
 interface RegisterData {
@@ -152,7 +151,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // First validate the invitation code and get the role
       const codeValidation = await validateInvitationCode(userData.invitationCode);
       if (!codeValidation.valid || !codeValidation.role) {
-        throw new Error('Invalid invitation code');
+        throw new Error(codeValidation.error || 'Invalid invitation code');
       }
 
       // Create the user with Supabase Auth
@@ -201,8 +200,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const validateInvitationCode = async (code: string): Promise<{ valid: boolean; role?: string }> => {
+  const validateInvitationCode = async (code: string): Promise<{ valid: boolean; role?: string; error?: string }> => {
     try {
+      console.log('🔍 Validating invitation code:', code);
+      
       const { data: invitationCode, error } = await supabase
         .from('invitation_codes')
         .select('*')
@@ -210,24 +211,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .eq('is_active', true)
         .single();
 
-      if (error || !invitationCode) {
-        return { valid: false };
+      console.log('📋 Query result:', { data: invitationCode, error });
+
+      if (error) {
+        console.error('❌ Database error:', error);
+        if (error.code === 'PGRST116') {
+          return { valid: false, error: 'Invitation code not found' };
+        }
+        return { valid: false, error: 'Failed to validate invitation code' };
+      }
+
+      if (!invitationCode) {
+        return { valid: false, error: 'Invitation code not found' };
       }
 
       // Check if code is expired
       if (invitationCode.expires_at && new Date(invitationCode.expires_at) < new Date()) {
-        return { valid: false };
+        return { valid: false, error: 'Invitation code has expired' };
       }
 
       // Check if usage limit is reached
       if (invitationCode.usage_limit && (invitationCode.used_count || 0) >= invitationCode.usage_limit) {
-        return { valid: false };
+        return { valid: false, error: 'Invitation code usage limit reached' };
       }
 
+      console.log('✅ Code validation successful:', invitationCode.role);
       return { valid: true, role: invitationCode.role };
     } catch (error) {
-      console.error('Error validating invitation code:', error);
-      return { valid: false };
+      console.error('❌ Error validating invitation code:', error);
+      return { valid: false, error: 'Failed to validate invitation code' };
     }
   };
 

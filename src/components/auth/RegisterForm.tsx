@@ -36,13 +36,20 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onBackToLogin }) => {
       return;
     }
 
+    console.log('🔧 Starting code validation for:', formData.invitationCode);
+    
     const result = await validateInvitationCode(formData.invitationCode);
+    
+    console.log('📋 Validation result:', result);
+    
     if (result.valid && result.role) {
       setRoleFromCode(result.role);
       setStep('form');
       toast.success(`Code validated! Registering as ${result.role}`);
     } else {
-      toast.error('Invalid or expired invitation code');
+      const errorMessage = result.error || 'Invalid or expired invitation code';
+      console.error('❌ Code validation failed:', errorMessage);
+      toast.error(errorMessage);
     }
   };
 
