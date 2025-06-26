@@ -41,6 +41,8 @@ import AdminSettings from "./components/dashboard/admin/AdminSettings";
 import AdminPackages from "./components/dashboard/admin/AdminPackages";
 import AdminCurrencies from "./components/dashboard/admin/AdminCurrencies";
 import AdminUserManagement from "./components/dashboard/admin/AdminUserManagement";
+import BusinessIntelligenceDashboard from "./components/dashboard/admin/analytics/BusinessIntelligenceDashboard";
+import SystemConfigurationPanel from "./components/dashboard/admin/configuration/SystemConfigurationPanel";
 import NotificationCenter from "./components/notifications/NotificationCenter";
 
 // Supervisor Tab Components
@@ -95,6 +97,8 @@ const App = () => (
             <Route path="/admin/*" element={<AdminDashboard />}>
               <Route path="homepage" element={<AdminHomepage />} />
               <Route path="user-management" element={<AdminUserManagement />} />
+              <Route path="analytics" element={<BusinessIntelligenceDashboard />} />
+              <Route path="configuration" element={<SystemConfigurationPanel />} />
               <Route path="trials" element={<AdminTrials />} />
               <Route path="students" element={<AdminStudents />} />
               <Route path="sessions" element={<AdminSessions />} />
