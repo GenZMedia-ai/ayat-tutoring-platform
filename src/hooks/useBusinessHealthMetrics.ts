@@ -68,15 +68,20 @@ export const useBusinessHealthMetrics = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch all students with payment data
+      // Fetch students data
       const { data: students, error: studentsError } = await supabase
         .from('students')
-        .select(`
-          *,
-          payment_links!inner(amount, currency, status, paid_at)
-        `);
+        .select('*');
 
       if (studentsError) throw studentsError;
+
+      // Fetch payment links data separately 
+      const { data: paymentLinks, error: paymentLinksError } = await supabase
+        .from('payment_links')
+        .select('*')
+        .eq('status', 'paid');
+
+      if (paymentLinksError) throw paymentLinksError;
 
       // Fetch all sessions
       const { data: sessions, error: sessionsError } = await supabase
@@ -116,12 +121,20 @@ export const useBusinessHealthMetrics = () => {
         expert: students?.filter(s => s.teacher_type === 'expert').length || 0,
       };
 
-      // Financial metrics
-      const paidPayments = students?.filter(s => s.payment_links?.some((p: any) => p.status === 'paid')) || [];
-      const totalRevenue = paidPayments.reduce((sum, student) => {
-        const paidLink = student.payment_links?.find((p: any) => p.status === 'paid');
-        return sum + (paidLink?.amount || 0);
-      }, 0);
+      // Financial metrics - match payment links with students
+      const studentIdsWithPayment = new Set();
+      let totalRevenue = 0;
+
+      paymentLinks?.forEach(paymentLink => {
+        if (paymentLink.student_ids && Array.isArray(paymentLink.student_ids)) {
+          paymentLink.student_ids.forEach((studentId: string) => {
+            studentIdsWithPayment.add(studentId);
+          });
+          totalRevenue += paymentLink.amount || 0;
+        }
+      });
+
+      const paidStudentsCount = studentIdsWithPayment.size;
 
       // Session metrics
       const totalSessions = sessions?.length || 0;
@@ -168,7 +181,7 @@ export const useBusinessHealthMetrics = () => {
         teacherTypeBreakdown,
         totalRevenue,
         monthlyRecurringRevenue: Math.round(totalRevenue * 0.8), // Estimated MRR
-        averageRevenuePerStudent: paidPayments.length > 0 ? Math.round(totalRevenue / paidPayments.length) : 0,
+        averageRevenuePerStudent: paidStudentsCount > 0 ? Math.round(totalRevenue / paidStudentsCount) : 0,
         outstandingPayments: statusBreakdown.awaitingPayment,
         trialConversionRate,
         paymentConversionRate,

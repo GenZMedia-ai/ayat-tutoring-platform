@@ -37,9 +37,10 @@ interface SessionRecord {
   completedAt?: string;
   rescheduleCount: number;
   student?: {
+    id: string;
     name: string;
     unique_id: string;
-    assigned_teacher?: string;
+    assigned_teacher_id?: string;
   };
 }
 
@@ -60,6 +61,7 @@ const AdminSessions: React.FC = () => {
           *,
           session_students!inner(
             student:students(
+              id,
               name,
               unique_id,
               assigned_teacher_id
@@ -83,9 +85,10 @@ const AdminSessions: React.FC = () => {
         completedAt: session.completed_at,
         rescheduleCount: session.reschedule_count,
         student: session.session_students[0]?.student ? {
+          id: session.session_students[0].student.id,
           name: session.session_students[0].student.name,
           unique_id: session.session_students[0].student.unique_id,
-          assigned_teacher: session.session_students[0].student.assigned_teacher_id
+          assigned_teacher_id: session.session_students[0].student.assigned_teacher_id
         } : undefined
       }));
       
