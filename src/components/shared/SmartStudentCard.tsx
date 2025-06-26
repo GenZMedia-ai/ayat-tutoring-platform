@@ -10,7 +10,8 @@ import {
   MapPin, 
   User, 
   Video,
-  Users
+  Users,
+  AlertCircle
 } from 'lucide-react';
 import { useStudentJourneyNotes } from '@/hooks/useStudentJourneyNotes';
 import { StudentNotesDisplay } from './StudentNotesDisplay';
@@ -36,10 +37,19 @@ export const SmartStudentCard: React.FC<SmartStudentCardProps> = ({
   const isFamily = type === 'family';
   const studentId = student.id;
   
-  const { journeyData, loading, getNotesForStatus } = useStudentJourneyNotes(studentId);
+  const { journeyData, loading, error, getNotesForStatus } = useStudentJourneyNotes(studentId);
   
-  // Get relevant notes for current status
-  const currentNotes = journeyData ? getNotesForStatus(student.status) : [];
+  // Get relevant notes for current status (with error handling)
+  const getCurrentNotes = () => {
+    try {
+      return journeyData ? getNotesForStatus(student.status) : [];
+    } catch (error) {
+      console.warn('⚠️ Error getting current notes:', error);
+      return [];
+    }
+  };
+
+  const currentNotes = getCurrentNotes();
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; label: string }> = {
@@ -160,8 +170,18 @@ export const SmartStudentCard: React.FC<SmartStudentCardProps> = ({
           </div>
         </div>
 
+        {/* Error State for Notes */}
+        {error && (
+          <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <p className="text-sm text-red-800">Unable to load journey notes</p>
+            </div>
+          </div>
+        )}
+
         {/* Smart Notes Display - Shows notes relevant to current status */}
-        {!loading && currentNotes.length > 0 && (
+        {!loading && !error && currentNotes.length > 0 && (
           <div className="pt-2 border-t">
             <StudentNotesDisplay 
               notes={currentNotes}
@@ -169,6 +189,16 @@ export const SmartStudentCard: React.FC<SmartStudentCardProps> = ({
               compact={true}
               showTitle={false}
             />
+          </div>
+        )}
+
+        {/* Loading State for Notes */}
+        {loading && (
+          <div className="pt-2 border-t">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+              <span>Loading notes...</span>
+            </div>
           </div>
         )}
 
