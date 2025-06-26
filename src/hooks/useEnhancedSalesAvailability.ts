@@ -15,6 +15,13 @@ export type EnhancedBookingData = {
   students?: { name: string; age: number }[];
 };
 
+interface BookingResponse {
+  success: boolean;
+  teacher_name?: string;
+  student_names?: string;
+  [key: string]: any;
+}
+
 export const useEnhancedSalesAvailability = () => {
   const [loading, setLoading] = useState(false);
   const [aggregatedSlots, setAggregatedSlots] = useState<AggregatedTimeSlot[]>([]);
@@ -94,9 +101,12 @@ export const useEnhancedSalesAvailability = () => {
         return false;
       }
 
-      if (data?.success) {
-        const teacherName = data.teacher_name || 'Unknown Teacher';
-        const studentNames = data.student_names || '';
+      // Type assertion for the response data
+      const bookingResponse = data as BookingResponse;
+
+      if (bookingResponse?.success) {
+        const teacherName = bookingResponse.teacher_name || 'Unknown Teacher';
+        const studentNames = bookingResponse.student_names || '';
         
         toast.success(
           `✅ Trial session booked successfully with ${teacherName} for ${studentNames}`,
