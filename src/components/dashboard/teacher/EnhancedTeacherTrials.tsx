@@ -3,9 +3,9 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { DateFilter, DateRange } from '@/components/teacher/DateFilter';
-import { EnhancedTeacherTrials as TrialsContent } from '@/components/teacher/EnhancedTeacherTrials';
+import EnhancedTeacherTrials from '@/components/teacher/EnhancedTeacherTrials';
 
-const EnhancedTeacherTrials: React.FC = () => {
+const EnhancedTeacherTrialsPage: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange>('today');
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
@@ -20,9 +20,9 @@ const EnhancedTeacherTrials: React.FC = () => {
         <DateFilter value={dateRange} onChange={setDateRange} />
       </div>
 
-      <TrialsContent dateRange={dateRange} />
+      <EnhancedTeacherTrials dateRange={dateRange} />
     </div>
   );
 };
 
-export default EnhancedTeacherTrials;
+export default EnhancedTeacherTrialsPage;
