@@ -67,7 +67,7 @@ const TeacherAvailability: React.FC = () => {
           Set your available time slots for new bookings (times shown in Egypt time)
           {isSelectedDateToday && (
             <span className="block text-green-600 font-medium mt-1">
-              ✅ You can now edit today's availability (except booked slots)
+              ✅ You can now manage today's availability including adding new slots
             </span>
           )}
         </CardDescription>
@@ -80,12 +80,18 @@ const TeacherAvailability: React.FC = () => {
               selected={selectedDate}
               onSelect={setSelectedDate}
               className="rounded-md border"
-              disabled={(date) => date < new Date()}
+              disabled={(date) => {
+                // Allow today and future dates, prevent past dates only
+                const today = new Date();
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                return date < yesterday;
+              }}
             />
             {isSelectedDateToday && (
               <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-sm text-green-800">
-                  <strong>Today's Schedule Unlocked:</strong> You can now add or remove availability for today. Only booked slots remain protected to prevent disruption of confirmed bookings.
+                  <strong>Today's Availability Unlocked:</strong> You can now manage today's schedule including adding new time slots. Only booked slots remain protected to prevent disruption of confirmed bookings.
                 </p>
               </div>
             )}
@@ -100,7 +106,7 @@ const TeacherAvailability: React.FC = () => {
               <>
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    Click to toggle availability. Hover over available slots to remove them.
+                    Times displayed in 12-hour format (Egypt timezone). Click to toggle availability.
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     {timeSlots.map(renderTimeSlotButton)}
