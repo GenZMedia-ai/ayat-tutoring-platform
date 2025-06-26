@@ -29,8 +29,9 @@ export const useTodayPaidSessions = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      console.log('🔍 Fetching today\'s paid sessions for teacher:', user.id, 'date:', today);
+      console.log('🔍 Fetching today\'s PAID sessions only for teacher:', user.id, 'date:', today);
 
+      // Enhanced query to exclude trial sessions - only get sessions for students who have moved beyond trial phase
       const { data: sessionData, error } = await supabase
         .from('sessions')
         .select(`
@@ -43,24 +44,27 @@ export const useTodayPaidSessions = () => {
             students!inner(
               id,
               name,
-              assigned_teacher_id
+              assigned_teacher_id,
+              status
             )
           )
         `)
         .eq('scheduled_date', today)
         .eq('session_students.students.assigned_teacher_id', user.id)
         .in('status', ['scheduled'])
+        // Critical fix: Only include students who are in paid status (not pending/trial)
+        .in('session_students.students.status', ['paid', 'active', 'completed'])
         .order('scheduled_time');
 
       if (error) {
-        console.error('❌ Error fetching today\'s sessions:', error);
+        console.error('❌ Error fetching today\'s paid sessions:', error);
         return;
       }
 
-      console.log('📋 Raw session data:', sessionData);
+      console.log('📋 Raw paid session data (excluding trials):', sessionData);
 
       if (!sessionData || sessionData.length === 0) {
-        console.log('📅 No sessions found for today');
+        console.log('📅 No paid sessions found for today');
         setSessions([]);
         return;
       }
@@ -70,6 +74,12 @@ export const useTodayPaidSessions = () => {
         sessionData.map(async (session) => {
           const student = session.session_students[0]?.students;
           if (!student) return null;
+
+          // Additional check to ensure this is truly a paid student
+          if (['pending', 'confirmed', 'trial-completed', 'trial-ghosted'].includes(student.status)) {
+            console.log('🚫 Excluding trial/pending student:', student.name, 'status:', student.status);
+            return null;
+          }
 
           // Get total and completed sessions for this student
           const { data: progressData } = await supabase
@@ -98,7 +108,7 @@ export const useTodayPaidSessions = () => {
       );
 
       const validSessions = processedSessions.filter(Boolean) as TodaySession[];
-      console.log('📋 Processed today\'s sessions:', validSessions);
+      console.log('📋 Final processed PAID sessions (trials excluded):', validSessions);
       setSessions(validSessions);
     } catch (error) {
       console.error('❌ Error in fetchTodaySessions:', error);
@@ -115,10 +125,10 @@ export const useTodayPaidSessions = () => {
   useEffect(() => {
     if (!user) return;
 
-    console.log('🔄 Setting up real-time updates for today\'s sessions');
+    console.log('🔄 Setting up real-time updates for today\'s paid sessions');
     
     const channel = supabase
-      .channel('teacher-today-sessions')
+      .channel('teacher-today-paid-sessions')
       .on(
         'postgres_changes',
         {
