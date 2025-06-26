@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,28 +7,26 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { useSimpleSalesAvailability, SimpleBookingData } from '@/hooks/useSimpleSalesAvailability';
+import { useEnhancedSalesAvailability, EnhancedBookingData } from '@/hooks/useEnhancedSalesAvailability';
 import { TEACHER_TYPES } from '@/constants/teacherTypes';
 import { HOURLY_TIME_SLOTS, TIMEZONES } from '@/constants/timeSlots';
 import { BookingModal } from '@/components/booking/BookingModal';
 import { supabase } from '@/integrations/supabase/client';
-import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 
 const SalesHomepage: React.FC = () => {
   // Date filtering
   const [dateFilter, setDateFilter] = useState('today');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | null>(null);
   
-  // Quick Availability Checker state
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
-    const utcDate = new Date(Date.UTC(2025, 5, 22));
-    return utcDate;
-  });
-  const [timezone, setTimezone] = useState('qatar');
+  // Quick Availability Checker state - FIXED: Use current date instead of hardcoded
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [timezone, setTimezone] = useState('saudi'); // FIXED: Default to Saudi Arabia
   const [teacherType, setTeacherType] = useState('mixed');
   const [selectedHour, setSelectedHour] = useState(14);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
 
   // Stats state
   const [salesStats, setSalesStats] = useState({
@@ -39,7 +36,7 @@ const SalesHomepage: React.FC = () => {
     conversions: { count: 0, percentage: 0 }
   });
 
-  const { loading, availableSlots, checkAvailability, bookTrialSession } = useSimpleSalesAvailability();
+  const { loading, aggregatedSlots, selectedTeachers, checkAvailability, selectTeacher, bookTrialSession } = useEnhancedSalesAvailability();
 
   // Get date range based on filter
   const getDateRange = () => {
@@ -153,18 +150,20 @@ const SalesHomepage: React.FC = () => {
     checkAvailability(selectedDate, timezone, teacherType, selectedHour);
   };
 
-  const handleBookNow = (slot: any) => {
+  const handleBookNow = (slot: any, teacherId: string) => {
     setSelectedSlot(slot);
+    setSelectedTeacherId(teacherId);
     setIsBookingModalOpen(true);
   };
 
-  const handleBookingSubmit = async (data: SimpleBookingData, isMultiStudent: boolean) => {
-    if (!selectedDate || !selectedSlot) return false;
+  const handleBookingSubmit = async (data: EnhancedBookingData, isMultiStudent: boolean) => {
+    if (!selectedDate || !selectedSlot || !selectedTeacherId) return false;
     
     const success = await bookTrialSession(
       data,
       selectedDate,
       selectedSlot,
+      selectedTeacherId,
       teacherType,
       isMultiStudent
     );
@@ -262,12 +261,12 @@ const SalesHomepage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Quick Availability Checker */}
+      {/* Enhanced Quick Availability Checker */}
       <Card className="dashboard-card">
         <CardHeader>
           <CardTitle>Quick Availability Checker</CardTitle>
           <CardDescription>
-            Search and book available trial session slots for both individual and family bookings
+            Search and book available trial session slots with enhanced teacher aggregation
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -325,18 +324,9 @@ const SalesHomepage: React.FC = () => {
               <Calendar
                 mode="single"
                 selected={selectedDate}
-                onSelect={(date) => {
-                  if (date) {
-                    const utcDate = new Date(Date.UTC(
-                      date.getFullYear(),
-                      date.getMonth(),
-                      date.getDate()
-                    ));
-                    setSelectedDate(utcDate);
-                  }
-                }}
+                onSelect={setSelectedDate}
                 className="rounded-md border"
-                disabled={(date) => date < new Date('2025-06-21')}
+                disabled={(date) => date < new Date()}
               />
 
               <Button 
@@ -351,50 +341,51 @@ const SalesHomepage: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium">
-                  Available 30-Minute Slots for {selectedDate?.toDateString()}
+                  Available Slots for {selectedDate?.toDateString()}
                 </h4>
                 <div className="text-xs text-muted-foreground">
-                  Date: {selectedDate?.toISOString().split('T')[0]}
+                  Current Date: {new Date().toDateString()}
                 </div>
               </div>
               
               {loading && (
                 <div className="text-center py-8 text-muted-foreground">
-                  Searching for slots on {selectedDate?.toISOString().split('T')[0]}...
+                  Searching for slots...
                 </div>
               )}
               
-              {!loading && availableSlots.length === 0 && (
+              {!loading && aggregatedSlots.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground space-y-2">
-                  <p>No available slots found for {selectedDate?.toDateString()}.</p>
+                  <p>No available slots found.</p>
                   <p className="text-sm">Try selecting a different date or time.</p>
                 </div>
               )}
               
-              <div className="space-y-2">
-                {availableSlots.map((slot) => (
-                  <div key={slot.id} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
-                    <div className="space-y-1">
-                      <div className="font-medium text-primary">
+              <div className="space-y-3">
+                {aggregatedSlots.map((slot) => (
+                  <div key={slot.id} className="border border-border rounded-lg bg-card">
+                    <div className="p-4">
+                      <div className="font-medium text-primary mb-2">
                         {slot.clientTimeDisplay}
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        Teacher: {slot.teacherName}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {slot.egyptTimeDisplay}
-                      </div>
-                      <div className="text-xs text-green-600">
-                        UTC: {slot.utcStartTime} - {slot.utcEndTime}
+                      <div className="space-y-2">
+                        {slot.teachers.map((teacher) => (
+                          <div key={teacher.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                            <div className="text-sm">
+                              <span className="font-medium">{teacher.name}</span>
+                              <span className="text-muted-foreground ml-2">({teacher.type})</span>
+                            </div>
+                            <Button 
+                              size="sm"
+                              className="ayat-button-primary"
+                              onClick={() => handleBookNow(slot, teacher.id)}
+                            >
+                              Book Now
+                            </Button>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <Button 
-                      size="sm"
-                      className="ayat-button-primary"
-                      onClick={() => handleBookNow(slot)}
-                    >
-                      Book Now
-                    </Button>
                   </div>
                 ))}
               </div>
@@ -407,9 +398,7 @@ const SalesHomepage: React.FC = () => {
         isOpen={isBookingModalOpen}
         onClose={() => setIsBookingModalOpen(false)}
         onSubmit={handleBookingSubmit}
-        selectedSlot={selectedSlot ? 
-          `${selectedSlot.clientTimeDisplay} (${selectedSlot.egyptTimeDisplay}) - Teacher: ${selectedSlot.teacherName}` : ''
-        }
+        selectedSlot={selectedSlot ? selectedSlot.clientTimeDisplay : ''}
         selectedDate={selectedDate || new Date()}
       />
     </div>
