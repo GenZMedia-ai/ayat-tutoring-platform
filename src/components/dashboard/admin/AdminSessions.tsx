@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,8 +38,8 @@ interface SessionRecord {
   rescheduleCount: number;
   student?: {
     name: string;
-    uniqueId: string;
-    assignedTeacher?: string;
+    unique_id: string;
+    assigned_teacher?: string;
   };
 }
 
@@ -59,16 +58,38 @@ const AdminSessions: React.FC = () => {
         .from('sessions')
         .select(`
           *,
-          student:students(
-            name,
-            unique_id,
-            assigned_teacher
+          session_students!inner(
+            student:students(
+              name,
+              unique_id,
+              assigned_teacher_id
+            )
           )
         `)
         .order('scheduled_date', { ascending: false });
 
       if (error) throw error;
-      setSessions(data || []);
+      
+      // Transform the data to match our interface
+      const transformedSessions: SessionRecord[] = (data || []).map(session => ({
+        id: session.id,
+        studentId: session.session_students[0]?.student?.id || '',
+        sessionNumber: session.session_number,
+        scheduledDate: session.scheduled_date,
+        scheduledTime: session.scheduled_time,
+        actualMinutes: session.actual_minutes,
+        status: session.status as 'scheduled' | 'completed' | 'cancelled' | 'rescheduled',
+        notes: session.notes,
+        completedAt: session.completed_at,
+        rescheduleCount: session.reschedule_count,
+        student: session.session_students[0]?.student ? {
+          name: session.session_students[0].student.name,
+          unique_id: session.session_students[0].student.unique_id,
+          assigned_teacher: session.session_students[0].student.assigned_teacher_id
+        } : undefined
+      }));
+      
+      setSessions(transformedSessions);
     } catch (error) {
       console.error('Error fetching sessions:', error);
       toast.error('Failed to fetch session data');
@@ -84,15 +105,15 @@ const AdminSessions: React.FC = () => {
   // Advanced filtering with god-mode access
   const filteredSessions = sessions.filter(session => {
     const studentName = session.student?.name || '';
-    const studentId = session.student?.uniqueId || '';
-    const teacherName = session.student?.assignedTeacher || '';
+    const studentId = session.student?.unique_id || '';
+    const teacherName = session.student?.assigned_teacher || '';
     
     const matchesSearch = studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          teacherName.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || session.status === statusFilter;
-    const matchesTeacher = teacherFilter === 'all' || session.student?.assignedTeacher === teacherFilter;
+    const matchesTeacher = teacherFilter === 'all' || session.student?.assigned_teacher === teacherFilter;
     
     // Date filtering
     let matchesDate = true;
@@ -356,7 +377,7 @@ const AdminSessions: React.FC = () => {
                           Session #{session.sessionNumber}
                         </CardTitle>
                         <CardDescription className="text-sm">
-                          {session.student?.name} ({session.student?.uniqueId})
+                          {session.student?.name} ({session.student?.unique_id})
                         </CardDescription>
                       </div>
                       <Badge variant={getStatusBadgeVariant(session.status)}>
@@ -376,7 +397,7 @@ const AdminSessions: React.FC = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Teacher:</span>
-                        <span>{session.student?.assignedTeacher || 'Not assigned'}</span>
+                        <span>{session.student?.assigned_teacher || 'Not assigned'}</span>
                       </div>
                       {session.actualMinutes && (
                         <div className="flex justify-between">

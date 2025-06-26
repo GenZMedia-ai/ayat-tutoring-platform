@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,8 +48,17 @@ const AdminTrials: React.FC = () => {
                          data.phone.includes(searchTerm);
     
     const matchesStatus = statusFilter === 'all' || data.status === statusFilter;
-    const matchesTeacher = teacherFilter === 'all' || data.assignedTeacher === teacherFilter;
-    const matchesSalesAgent = salesAgentFilter === 'all' || data.assignedSalesAgent === salesAgentFilter;
+    
+    // Fixed: Safe property access for teacher and sales agent filtering
+    const assignedTeacher = item.type === 'family' 
+      ? (data as any).assigned_teacher_id 
+      : (data as any).assignedTeacher;
+    const assignedSalesAgent = item.type === 'family' 
+      ? (data as any).assigned_sales_agent_id 
+      : (data as any).assignedSalesAgent;
+    
+    const matchesTeacher = teacherFilter === 'all' || assignedTeacher === teacherFilter;
+    const matchesSalesAgent = salesAgentFilter === 'all' || assignedSalesAgent === salesAgentFilter;
     
     return matchesSearch && matchesStatus && matchesTeacher && matchesSalesAgent;
   });

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,7 +60,24 @@ const AdminStudents: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setStudents(data || []);
+      
+      // Transform the data to match our interface
+      const transformedStudents: StudentRecord[] = (data || []).map(student => ({
+        id: student.id,
+        uniqueId: student.unique_id,
+        name: student.name,
+        age: student.age,
+        phone: student.phone,
+        country: student.country,
+        status: student.status,
+        assignedTeacher: student.assigned_teacher_id,
+        assignedSalesAgent: student.assigned_sales_agent_id,
+        createdAt: student.created_at,
+        familyGroupId: student.family_group_id,
+        sessions: student.sessions
+      }));
+      
+      setStudents(transformedStudents);
     } catch (error) {
       console.error('Error fetching students:', error);
       toast.error('Failed to fetch student data');
