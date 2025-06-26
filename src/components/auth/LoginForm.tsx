@@ -6,37 +6,85 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 interface LoginFormProps {
   onSwitchToRegister: () => void;
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
-  const { login, loading } = useAuth();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.email || !formData.password) {
-      toast.error('Please fill in all fields');
-      return;
-    }
-
-    const success = await login(formData.email, formData.password);
-    if (!success) {
-      toast.error('Invalid email or password');
+  const validateField = (name: string, value: string): string => {
+    switch (name) {
+      case 'email':
+        if (!value) return 'Email is required';
+        const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+        if (!emailRegex.test(value)) return 'Please enter a valid email address';
+        return '';
+      case 'password':
+        if (!value) return 'Password is required';
+        return '';
+      default:
+        return '';
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: value
     }));
+
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate fields
+    const errors: Record<string, string> = {};
+    Object.keys(formData).forEach(key => {
+      const error = validateField(key, formData[key as keyof typeof formData]);
+      if (error) errors[key] = error;
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const result = await login(formData.email, formData.password);
+      
+      if (!result.success) {
+        toast.error(result.error || 'Login failed', {
+          icon: <AlertCircle className="w-4 h-4" />
+        });
+      }
+      // Success is handled by the auth context state change
+    } catch (error) {
+      console.error('❌ Login error:', error);
+      toast.error('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -63,8 +111,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
               placeholder="your.email@example.com"
               value={formData.email}
               onChange={handleChange}
+              disabled={isLoading}
+              className={fieldErrors.email ? 'border-red-500' : ''}
               required
             />
+            {fieldErrors.email && (
+              <p className="text-sm text-red-500">{fieldErrors.email}</p>
+            )}
           </div>
           
           <div className="space-y-2">
@@ -76,16 +129,28 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
               placeholder="Enter your password"
               value={formData.password}
               onChange={handleChange}
+              disabled={isLoading}
+              className={fieldErrors.password ? 'border-red-500' : ''}
               required
             />
+            {fieldErrors.password && (
+              <p className="text-sm text-red-500">{fieldErrors.password}</p>
+            )}
           </div>
           
           <Button 
             type="submit" 
             className="w-full ayat-button-primary"
-            disabled={loading}
+            disabled={isLoading || Object.keys(fieldErrors).some(key => fieldErrors[key])}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              'Sign In'
+            )}
           </Button>
           
           <Button 
@@ -93,6 +158,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
             variant="ghost" 
             className="w-full"
             onClick={onSwitchToRegister}
+            disabled={isLoading}
           >
             Don't have an account? Register
           </Button>
