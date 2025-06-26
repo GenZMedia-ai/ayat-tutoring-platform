@@ -18,7 +18,7 @@ import {
   Video,
   CreditCard,
   BookOpen,
-  Timeline
+  Clock
 } from 'lucide-react';
 import { useStudentJourneyNotes } from '@/hooks/useStudentJourneyNotes';
 import { StudentNotesDisplay } from './StudentNotesDisplay';
@@ -165,7 +165,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             <>
               <div className="space-y-4">
                 <h3 className="font-semibold flex items-center gap-2">
-                  <Timeline className="h-4 w-4" />
+                  <Clock className="h-4 w-4" />
                   Status Timeline
                 </h3>
                 <div className="space-y-3">

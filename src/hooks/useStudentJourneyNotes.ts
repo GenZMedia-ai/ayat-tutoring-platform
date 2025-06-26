@@ -49,6 +49,7 @@ export const useStudentJourneyNotes = (studentId?: string) => {
 
       if (trialOutcomes) {
         trialOutcomes.forEach(outcome => {
+          const outcomeType = outcome.outcome as 'completed' | 'ghosted';
           notes.push({
             id: outcome.id,
             studentId: id,
@@ -56,13 +57,13 @@ export const useStudentJourneyNotes = (studentId?: string) => {
             content: outcome.teacher_notes || 'Trial outcome recorded',
             metadata: {
               sessionId: outcome.session_id,
-              outcomeType: outcome.outcome,
+              outcomeType: outcomeType,
               studentBehavior: outcome.student_behavior,
               recommendedPackage: outcome.recommended_package
             },
             createdBy: outcome.submitted_by,
             createdAt: outcome.created_at,
-            status: outcome.outcome === 'completed' ? 'trial-completed' : 'trial-ghosted'
+            status: outcomeType === 'completed' ? 'trial-completed' : 'trial-ghosted'
           });
         });
       }
@@ -139,8 +140,9 @@ export const useStudentJourneyNotes = (studentId?: string) => {
       // Add trial completion/ghosting to history
       if (trialOutcomes && trialOutcomes.length > 0) {
         const outcome = trialOutcomes[0];
+        const outcomeType = outcome.outcome as 'completed' | 'ghosted';
         statusHistory.push({
-          status: outcome.outcome === 'completed' ? 'trial-completed' : 'trial-ghosted',
+          status: outcomeType === 'completed' ? 'trial-completed' : 'trial-ghosted',
           changedAt: outcome.created_at,
           changedBy: outcome.submitted_by,
           notes: outcome.teacher_notes
