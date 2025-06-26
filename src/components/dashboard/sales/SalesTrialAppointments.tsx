@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -141,7 +140,7 @@ const SalesTrialAppointments: React.FC = () => {
         : (paymentLinkItem.data as TrialSessionFlowStudent).name;
       
       setPaymentSuccessData({
-        url: paymentData.url,
+        paymentLink: paymentData.url,
         amount: paymentData.amount || 0,
         currency: paymentData.currency || 'USD',
         studentName: name,
@@ -355,7 +354,11 @@ const SalesTrialAppointments: React.FC = () => {
           <PaymentLinkSuccessModal
             open={!!paymentSuccessData}
             onClose={() => setPaymentSuccessData(null)}
-            paymentData={paymentSuccessData}
+            paymentLink={paymentSuccessData.paymentLink}
+            studentName={paymentSuccessData.studentName}
+            studentPhone={paymentSuccessData.studentPhone}
+            amount={paymentSuccessData.amount}
+            currency={paymentSuccessData.currency}
           />
         )}
       </div>
