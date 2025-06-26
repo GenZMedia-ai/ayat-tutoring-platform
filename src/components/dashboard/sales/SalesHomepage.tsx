@@ -20,12 +20,9 @@ const SalesHomepage: React.FC = () => {
   const [dateFilter, setDateFilter] = useState('today');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | null>(null);
   
-  // Quick Availability Checker state
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
-    const utcDate = new Date(Date.UTC(2025, 5, 22));
-    return utcDate;
-  });
-  const [timezone, setTimezone] = useState('qatar');
+  // Quick Availability Checker state - Fixed defaults
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [timezone, setTimezone] = useState('saudi');
   const [teacherType, setTeacherType] = useState('mixed');
   const [selectedHour, setSelectedHour] = useState(14);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
@@ -178,6 +175,26 @@ const SalesHomepage: React.FC = () => {
     return success;
   };
 
+  // Group slots by time range and count teachers
+  const groupedSlots = availableSlots.reduce((groups, slot) => {
+    const timeKey = `${slot.clientTimeDisplay}`;
+    if (!groups[timeKey]) {
+      groups[timeKey] = {
+        clientTimeDisplay: slot.clientTimeDisplay,
+        egyptTimeDisplay: slot.egyptTimeDisplay,
+        utcStartTime: slot.utcStartTime,
+        utcEndTime: slot.utcEndTime,
+        teachers: [],
+        count: 0
+      };
+    }
+    groups[timeKey].teachers.push(slot);
+    groups[timeKey].count++;
+    return groups;
+  }, {} as Record<string, any>);
+
+  const groupedSlotsList = Object.values(groupedSlots);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -325,18 +342,9 @@ const SalesHomepage: React.FC = () => {
               <Calendar
                 mode="single"
                 selected={selectedDate}
-                onSelect={(date) => {
-                  if (date) {
-                    const utcDate = new Date(Date.UTC(
-                      date.getFullYear(),
-                      date.getMonth(),
-                      date.getDate()
-                    ));
-                    setSelectedDate(utcDate);
-                  }
-                }}
+                onSelect={setSelectedDate}
                 className="rounded-md border"
-                disabled={(date) => date < new Date('2025-06-21')}
+                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
               />
 
               <Button 
@@ -364,7 +372,7 @@ const SalesHomepage: React.FC = () => {
                 </div>
               )}
               
-              {!loading && availableSlots.length === 0 && (
+              {!loading && groupedSlotsList.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground space-y-2">
                   <p>No available slots found for {selectedDate?.toDateString()}.</p>
                   <p className="text-sm">Try selecting a different date or time.</p>
@@ -372,26 +380,26 @@ const SalesHomepage: React.FC = () => {
               )}
               
               <div className="space-y-2">
-                {availableSlots.map((slot) => (
-                  <div key={slot.id} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
+                {groupedSlotsList.map((group, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
                     <div className="space-y-1">
                       <div className="font-medium text-primary">
-                        {slot.clientTimeDisplay}
+                        {group.clientTimeDisplay}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Teacher: {slot.teacherName}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {slot.egyptTimeDisplay}
+                        {group.egyptTimeDisplay}
                       </div>
                       <div className="text-xs text-green-600">
-                        UTC: {slot.utcStartTime} - {slot.utcEndTime}
+                        {group.count} teacher{group.count > 1 ? 's' : ''} available
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        UTC: {group.utcStartTime} - {group.utcEndTime}
                       </div>
                     </div>
                     <Button 
                       size="sm"
                       className="ayat-button-primary"
-                      onClick={() => handleBookNow(slot)}
+                      onClick={() => handleBookNow(group.teachers[0])}
                     >
                       Book Now
                     </Button>
