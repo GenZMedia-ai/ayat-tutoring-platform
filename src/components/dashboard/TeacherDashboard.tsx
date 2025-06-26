@@ -5,19 +5,23 @@ import { Badge } from '@/components/ui/badge';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { TeacherSidebar } from '@/components/dashboard/teacher/TeacherSidebar';
+import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext';
+import '@/styles/rtl.css';
 
-const TeacherDashboard: React.FC = () => {
+const TeacherDashboardContent: React.FC = () => {
+  const { isRTL } = useLanguage();
+
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className={`min-h-screen flex w-full ${isRTL ? 'rtl' : ''}`}>
         <TeacherSidebar />
         <SidebarInset>
           <div className="min-h-screen bg-gray-50">
             <DashboardHeader />
             <main className="p-6">
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
+                <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <SidebarTrigger />
                     <h2 className="text-3xl font-bold text-primary">Teacher Dashboard</h2>
                   </div>
@@ -33,6 +37,14 @@ const TeacherDashboard: React.FC = () => {
         </SidebarInset>
       </div>
     </SidebarProvider>
+  );
+};
+
+const TeacherDashboard: React.FC = () => {
+  return (
+    <LanguageProvider>
+      <TeacherDashboardContent />
+    </LanguageProvider>
   );
 };
 

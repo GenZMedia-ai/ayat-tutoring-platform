@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +16,6 @@ import {
   CheckCircle, 
   XCircle, 
   RotateCcw, 
-  AlertTriangle,
   Calendar,
   ArrowRight,
   User
@@ -27,13 +28,13 @@ const EGYPT_TIMEZONE = 'Africa/Cairo';
 
 const EnhancedTeacherHomepage: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange>('today');
+  const { t } = useTranslation();
+  const { isRTL } = useLanguage();
   
-  // PHASE 3 FIX: Use improved statistics hook
   const { stats, loading: statsLoading, refreshStats } = useTeacherStatistics(dateRange);
   const { sessions, loading: sessionsLoading, refreshSessions } = useTodayPaidSessions();
   const { completeSession, loading: completingSession } = useSessionCompletion();
 
-  // PHASE 3: Add debugging for data display
   useEffect(() => {
     console.log('🏠 HOMEPAGE: Stats updated:', { dateRange, stats, loading: statsLoading });
   }, [stats, statsLoading, dateRange]);
@@ -65,42 +66,42 @@ const EnhancedTeacherHomepage: React.FC = () => {
 
   const statCards = [
     {
-      title: 'Current Capacity',
+      title: t('homepage.currentCapacity'),
       value: stats.currentCapacity,
       icon: Users,
       color: 'text-blue-600',
       bg: 'bg-blue-50'
     },
     {
-      title: 'Pending Trials',
+      title: t('homepage.pendingTrials'),
       value: stats.pendingTrials,
       icon: Clock,
       color: 'text-orange-600',
       bg: 'bg-orange-50'
     },
     {
-      title: 'Confirmed Trials',
+      title: t('homepage.confirmedTrials'),
       value: stats.confirmedTrials,
       icon: CheckCircle,
       color: 'text-green-600',
       bg: 'bg-green-50'
     },
     {
-      title: 'Completed Trials',
+      title: t('homepage.completedTrials'),
       value: stats.completedTrials,
       icon: CheckCircle,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50'
     },
     {
-      title: 'Rescheduled',
+      title: t('homepage.rescheduled'),
       value: stats.rescheduledTrials,
       icon: RotateCcw,
       color: 'text-yellow-600',
       bg: 'bg-yellow-50'
     },
     {
-      title: 'Ghosted',
+      title: t('homepage.ghosted'),
       value: stats.ghostedTrials,
       icon: XCircle,
       color: 'text-red-600',
@@ -110,20 +111,20 @@ const EnhancedTeacherHomepage: React.FC = () => {
 
   const quickActions = [
     {
-      title: 'Paid Registration',
-      description: 'Complete student registration',
+      title: t('sidebar.paidRegistration'),
+      description: t('homepage.completeRegistration'),
       path: '/teacher/paid-registration',
       icon: Users
     },
     {
-      title: 'Session Management',
-      description: 'Manage scheduled sessions',
+      title: t('sidebar.sessionManagement'),
+      description: t('homepage.manageSessions'),
       path: '/teacher/session-management',
       icon: Calendar
     },
     {
-      title: 'Trial Appointments',
-      description: 'Manage trial sessions',
+      title: t('sidebar.trialAppointments'),
+      description: t('homepage.manageTrials'),
       path: '/teacher/trials',
       icon: Clock
     }
@@ -132,19 +133,17 @@ const EnhancedTeacherHomepage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header with Date Filter */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-primary">Teacher Dashboard</h1>
-          <p className="text-muted-foreground">Overview of your teaching activities</p>
+      <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+        <div className={isRTL ? 'text-right' : 'text-left'}>
+          <h1 className="text-2xl font-bold text-primary">{t('homepage.title')}</h1>
+          <p className="text-muted-foreground">{t('homepage.subtitle')}</p>
         </div>
-        {/* PHASE 3 FIX: Date filter properly connected */}
         <DateFilter value={dateRange} onChange={setDateRange} />
       </div>
 
-      {/* PHASE 3: Enhanced debugging display */}
       {dateRange !== 'today' && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <p className="text-sm text-blue-800">
+          <p className={`text-sm text-blue-800 ${isRTL ? 'text-right' : 'text-left'}`}>
             📅 Showing data for: <strong>{dateRange.replace('-', ' ').toUpperCase()}</strong>
             {statsLoading && ' (Loading...)'}
           </p>
@@ -156,10 +155,9 @@ const EnhancedTeacherHomepage: React.FC = () => {
         {statCards.map((stat) => (
           <Card key={stat.title} className="dashboard-card">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <div className={isRTL ? 'text-right' : 'text-left'}>
                   <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                  {/* PHASE 3 FIX: Better loading state display */}
                   <p className="text-2xl font-bold">
                     {statsLoading ? (
                       <span className="text-muted-foreground">...</span>
@@ -181,40 +179,42 @@ const EnhancedTeacherHomepage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's Paid Sessions */}
         <Card className="dashboard-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className={isRTL ? 'text-right' : 'text-left'}>
+            <CardTitle className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <Calendar className="h-5 w-5" />
-              Today's Paid Sessions
+              {t('homepage.todaysSessions')}
             </CardTitle>
             <CardDescription>
-              Sessions scheduled for today only
+              {t('homepage.sessionsScheduled')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {sessionsLoading ? (
               <div className="flex items-center justify-center py-8">
                 <LoadingSpinner />
-                <span className="ml-2 text-muted-foreground">Loading sessions...</span>
+                <span className={`ml-2 text-muted-foreground ${isRTL ? 'mr-2 ml-0' : ''}`}>
+                  {t('common.loading')}...
+                </span>
               </div>
             ) : sessions.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No paid sessions scheduled for today</p>
+              <div className={`text-center py-8 ${isRTL ? 'text-right' : 'text-left'}`}>
+                <p className="text-muted-foreground">{t('homepage.noSessions')}</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Check the Paid Registration tab for students ready to schedule
+                  {t('homepage.checkRegistration')}
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
                 {sessions.map((session) => (
                   <div key={session.id} className="p-3 border border-border rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                      <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                         <div className="p-2 bg-primary/10 rounded-full">
                           <User className="h-4 w-4 text-primary" />
                         </div>
-                        <div>
+                        <div className={isRTL ? 'text-right' : 'text-left'}>
                           <h4 className="font-medium">{session.studentName}</h4>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <div className={`flex items-center gap-2 text-sm text-muted-foreground ${isRTL ? 'flex-row-reverse' : ''}`}>
                             <span>Session {session.sessionNumber}</span>
                             <span>•</span>
                             <span>{formatTime(session.scheduledTime)}</span>
@@ -230,7 +230,8 @@ const EnhancedTeacherHomepage: React.FC = () => {
                         onClick={() => handleCompleteSession(session.id, session.studentName)}
                         disabled={completingSession}
                       >
-                        {completingSession ? 'Marking...' : 'Mark Complete'}
+                        <Clock className="h-4 w-4 mr-2" />
+                        {completingSession ? 'Marking...' : t('homepage.markComplete')}
                       </Button>
                     </div>
                   </div>
@@ -242,10 +243,10 @@ const EnhancedTeacherHomepage: React.FC = () => {
 
         {/* Quick Actions */}
         <Card className="dashboard-card">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
+          <CardHeader className={isRTL ? 'text-right' : 'text-left'}>
+            <CardTitle>{t('homepage.quickActions')}</CardTitle>
             <CardDescription>
-              Navigate to key sections quickly
+              {t('homepage.navigateQuickly')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -254,17 +255,17 @@ const EnhancedTeacherHomepage: React.FC = () => {
                 <Link key={action.path} to={action.path}>
                   <Card className="hover:shadow-md transition-shadow cursor-pointer">
                     <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                      <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                        <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                           <div className="p-2 bg-primary/10 rounded-full">
                             <action.icon className="h-4 w-4 text-primary" />
                           </div>
-                          <div>
+                          <div className={isRTL ? 'text-right' : 'text-left'}>
                             <h4 className="font-medium">{action.title}</h4>
                             <p className="text-sm text-muted-foreground">{action.description}</p>
                           </div>
                         </div>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <ArrowRight className={`h-4 w-4 text-muted-foreground ${isRTL ? 'rotate-180' : ''}`} />
                       </div>
                     </CardContent>
                   </Card>
@@ -275,7 +276,7 @@ const EnhancedTeacherHomepage: React.FC = () => {
         </Card>
       </div>
 
-      {/* PHASE 3: Debug information (can be removed in production) */}
+      {/* Debug information for development */}
       {process.env.NODE_ENV === 'development' && (
         <Card className="bg-gray-50 border-dashed">
           <CardHeader>

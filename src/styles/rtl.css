@@ -1,0 +1,88 @@
+
+/* RTL-specific styles */
+.rtl {
+  direction: rtl;
+}
+
+/* Sidebar RTL adjustments */
+.rtl .sidebar {
+  right: 0;
+  left: auto;
+}
+
+.rtl .sidebar-inset {
+  margin-right: 0;
+  margin-left: 16rem;
+}
+
+/* Flex and grid RTL adjustments */
+.rtl .flex-row {
+  flex-direction: row-reverse;
+}
+
+.rtl .space-x-2 > * + * {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+.rtl .space-x-4 > * + * {
+  margin-left: 0;
+  margin-right: 1rem;
+}
+
+/* Text alignment for RTL */
+.rtl .text-left {
+  text-align: right;
+}
+
+.rtl .text-right {
+  text-align: left;
+}
+
+/* Icon positioning for RTL */
+.rtl .sidebar-menu-button {
+  flex-direction: row-reverse;
+}
+
+.rtl .card-header {
+  direction: rtl;
+}
+
+/* Button spacing for RTL */
+.rtl .gap-2 {
+  flex-direction: row-reverse;
+}
+
+.rtl .gap-3 {
+  flex-direction: row-reverse;
+}
+
+/* Calendar RTL */
+.rtl .react-day-picker {
+  direction: rtl;
+}
+
+/* Form elements RTL */
+.rtl input, .rtl textarea, .rtl select {
+  text-align: right;
+}
+
+/* Toast positioning for RTL */
+.rtl .sonner-toaster {
+  right: auto;
+  left: 1rem;
+}
+
+/* Badge positioning for RTL */
+.rtl .absolute.top-1.right-1 {
+  right: auto;
+  left: 0.25rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .rtl .sidebar-inset {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}

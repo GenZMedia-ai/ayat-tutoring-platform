@@ -1,0 +1,57 @@
+
+{
+  "sidebar": {
+    "title": "Teacher Dashboard",
+    "subtitle": "Manage your classes",
+    "homepage": "Homepage",
+    "addAvailability": "Add Availability",
+    "trialAppointments": "Trial Appointments", 
+    "paidRegistration": "Paid Registration",
+    "sessionManagement": "Session Management",
+    "students": "Students",
+    "revenue": "Revenue"
+  },
+  "homepage": {
+    "title": "Teacher Dashboard",
+    "subtitle": "Overview of your teaching activities",
+    "currentCapacity": "Current Capacity",
+    "pendingTrials": "Pending Trials",
+    "confirmedTrials": "Confirmed Trials",
+    "completedTrials": "Completed Trials",
+    "rescheduled": "Rescheduled",
+    "ghosted": "Ghosted",
+    "todaysSessions": "Today's Paid Sessions",
+    "sessionsScheduled": "Sessions scheduled for today only",
+    "noSessions": "No paid sessions scheduled for today",
+    "checkRegistration": "Check the Paid Registration tab for students ready to schedule",
+    "quickActions": "Quick Actions",
+    "navigateQuickly": "Navigate to key sections quickly",
+    "completeRegistration": "Complete student registration",
+    "manageSessions": "Manage scheduled sessions",
+    "manageTrials": "Manage trial sessions",
+    "markComplete": "Mark Complete",
+    "contact": "Contact"
+  },
+  "availability": {
+    "title": "Availability Management",
+    "description": "Set your available time slots for new bookings (times shown in Egypt time)",
+    "todayUnlocked": "✅ You can now manage today's availability including adding new slots",
+    "todayNote": "Today's Availability Unlocked: You can now manage today's schedule including adding new time slots. Only booked slots remain protected to prevent disruption of confirmed bookings.",
+    "timeSlotsFor": "Time Slots for",
+    "loading": "Loading availability...",
+    "displayNote": "Times displayed in 12-hour format (Egypt timezone). Click to toggle availability.",
+    "legend": "Legend:",
+    "available": "Available (hover to remove)",
+    "notAvailable": "Not available (click to add)",
+    "booked": "Booked (protected)"
+  },
+  "common": {
+    "loading": "Loading...",
+    "cancel": "Cancel",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "close": "Close"
+  }
+}
