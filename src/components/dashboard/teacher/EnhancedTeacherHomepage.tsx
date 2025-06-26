@@ -1,283 +1,302 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { useTeacherActiveStudents } from '@/hooks/useTeacherActiveStudents';
-import { useTodayPaidSessions } from '@/hooks/useTodayPaidSessions';
-import { useTeacherRevenue } from '@/hooks/useTeacherRevenue';
 import { DateFilter, DateRange } from '@/components/teacher/DateFilter';
+import { useTeacherStatistics } from '@/hooks/useTeacherStatistics';
+import { useTodayPaidSessions } from '@/hooks/useTodayPaidSessions';
+import { useSessionCompletion } from '@/hooks/useSessionCompletion';
+import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
 import { 
-  CheckCircle, 
+  Users, 
   Clock, 
-  DollarSign, 
-  TrendingUp, 
-  User, 
+  CheckCircle, 
+  XCircle, 
+  RotateCcw, 
+  AlertTriangle,
   Calendar,
-  Award,
-  BookOpen,
-  Target
+  ArrowRight,
+  User
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { format, toZonedTime } from 'date-fns-tz';
+import { toast } from 'sonner';
+
+const EGYPT_TIMEZONE = 'Africa/Cairo';
 
 const EnhancedTeacherHomepage: React.FC = () => {
-  const [dateRange, setDateRange] = useState<DateRange>('this-week');
-  const { students: activeStudents, loading: studentsLoading } = useTeacherActiveStudents();
-  const { sessions: todayPaidSessions, loading: sessionsLoading } = useTodayPaidSessions();
-  const { revenue, loading: revenueLoading } = useTeacherRevenue('this-month');
+  const [dateRange, setDateRange] = useState<DateRange>('today');
+  
+  // PHASE 3 FIX: Use improved statistics hook
+  const { stats, loading: statsLoading, refreshStats } = useTeacherStatistics(dateRange);
+  const { sessions, loading: sessionsLoading, refreshSessions } = useTodayPaidSessions();
+  const { completeSession, loading: completingSession } = useSessionCompletion();
 
-  const totalUpcomingSessions = activeStudents.reduce((sum, student) => 
-    sum + (student.totalPaidSessions - student.completedPaidSessions), 0
-  );
+  // PHASE 3: Add debugging for data display
+  useEffect(() => {
+    console.log('🏠 HOMEPAGE: Stats updated:', { dateRange, stats, loading: statsLoading });
+  }, [stats, statsLoading, dateRange]);
 
-  const completionRate = activeStudents.length > 0 
-    ? Math.round((activeStudents.reduce((sum, s) => sum + s.completedPaidSessions, 0) / 
-        activeStudents.reduce((sum, s) => sum + s.totalPaidSessions, 0)) * 100) 
-    : 0;
+  useEffect(() => {
+    console.log('🏠 HOMEPAGE: Sessions updated:', { sessions, loading: sessionsLoading });
+  }, [sessions, sessionsLoading]);
+
+  const formatTime = (timeStr: string) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const utcDateTimeString = `${today}T${timeStr}Z`;
+      const utcDateTime = new Date(utcDateTimeString);
+      const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
+      return format(egyptDateTime, 'h:mm a');
+    } catch (error) {
+      console.error('❌ Error formatting time:', error);
+      return timeStr;
+    }
+  };
+
+  const handleCompleteSession = async (sessionId: string, studentName: string) => {
+    const result = await completeSession(sessionId, 60, `Session completed for ${studentName}`, true);
+    if (result) {
+      toast.success('Session marked as completed');
+      refreshSessions();
+    }
+  };
+
+  const statCards = [
+    {
+      title: 'Current Capacity',
+      value: stats.currentCapacity,
+      icon: Users,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50'
+    },
+    {
+      title: 'Pending Trials',
+      value: stats.pendingTrials,
+      icon: Clock,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50'
+    },
+    {
+      title: 'Confirmed Trials',
+      value: stats.confirmedTrials,
+      icon: CheckCircle,
+      color: 'text-green-600',
+      bg: 'bg-green-50'
+    },
+    {
+      title: 'Completed Trials',
+      value: stats.completedTrials,
+      icon: CheckCircle,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50'
+    },
+    {
+      title: 'Rescheduled',
+      value: stats.rescheduledTrials,
+      icon: RotateCcw,
+      color: 'text-yellow-600',
+      bg: 'bg-yellow-50'
+    },
+    {
+      title: 'Ghosted',
+      value: stats.ghostedTrials,
+      icon: XCircle,
+      color: 'text-red-600',
+      bg: 'bg-red-50'
+    }
+  ];
+
+  const quickActions = [
+    {
+      title: 'Paid Registration',
+      description: 'Complete student registration',
+      path: '/teacher/paid-registration',
+      icon: Users
+    },
+    {
+      title: 'Session Management',
+      description: 'Manage scheduled sessions',
+      path: '/teacher/session-management',
+      icon: Calendar
+    },
+    {
+      title: 'Trial Appointments',
+      description: 'Manage trial sessions',
+      path: '/teacher/trials',
+      icon: Clock
+    }
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Modern Header */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-primary to-secondary rounded-xl shadow-lg">
-            <BookOpen className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Teaching Dashboard
-            </h1>
-            <p className="text-muted-foreground">
-              Overview of your teaching activities and performance
-            </p>
-          </div>
+      {/* Header with Date Filter */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-primary">Teacher Dashboard</h1>
+          <p className="text-muted-foreground">Overview of your teaching activities</p>
         </div>
-        <DateFilter 
-          value={dateRange} 
-          onChange={setDateRange}
-          resultCount={todayPaidSessions.length}
-        />
+        {/* PHASE 3 FIX: Date filter properly connected */}
+        <DateFilter value={dateRange} onChange={setDateRange} />
       </div>
 
-      {/* Enhanced Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <Card className="dashboard-card border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50 to-blue-100 hover:shadow-lg transition-all duration-300">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-blue-600 font-medium">Today's Sessions</p>
-                <p className="text-2xl font-bold text-blue-700">
-                  {sessionsLoading ? '-' : todayPaidSessions.length}
-                </p>
-                <p className="text-xs text-blue-500 mt-1">Paid sessions only</p>
-              </div>
-              <div className="p-2 bg-blue-500 rounded-lg">
-                <Clock className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* PHASE 3: Enhanced debugging display */}
+      {dateRange !== 'today' && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p className="text-sm text-blue-800">
+            📅 Showing data for: <strong>{dateRange.replace('-', ' ').toUpperCase()}</strong>
+            {statsLoading && ' (Loading...)'}
+          </p>
+        </div>
+      )}
 
-        <Card className="dashboard-card border-l-4 border-l-green-500 bg-gradient-to-br from-green-50 to-green-100 hover:shadow-lg transition-all duration-300">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-green-600 font-medium">Active Students</p>
-                <p className="text-2xl font-bold text-green-700">
-                  {studentsLoading ? '-' : activeStudents.length}
-                </p>
-                <p className="text-xs text-green-500 mt-1">Ongoing programs</p>
-              </div>
-              <div className="p-2 bg-green-500 rounded-lg">
-                <User className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="dashboard-card border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 hover:shadow-lg transition-all duration-300">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-purple-600 font-medium">Remaining Sessions</p>
-                <p className="text-2xl font-bold text-purple-700">
-                  {studentsLoading ? '-' : totalUpcomingSessions}
-                </p>
-                <p className="text-xs text-purple-500 mt-1">Across all students</p>
-              </div>
-              <div className="p-2 bg-purple-500 rounded-lg">
-                <Target className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="dashboard-card border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50 to-orange-100 hover:shadow-lg transition-all duration-300">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-orange-600 font-medium">Monthly Revenue</p>
-                <p className="text-2xl font-bold text-orange-700">
-                  {revenueLoading ? '-' : `${revenue.totalEarnings.toLocaleString()} EGP`}
-                </p>
-                <p className="text-xs text-orange-500 mt-1">This month</p>
-              </div>
-              <div className="p-2 bg-orange-500 rounded-lg">
-                <DollarSign className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Today's Paid Sessions */}
-        <Card className="dashboard-card">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <div className="p-1.5 bg-blue-100 rounded-lg">
-                  <Clock className="h-4 w-4 text-blue-600" />
-                </div>
-                Today's Paid Sessions
-              </CardTitle>
-              <Badge variant="outline" className="bg-blue-50 border-blue-200">
-                {todayPaidSessions.length} scheduled
-              </Badge>
-            </div>
-            <CardDescription>
-              Your paid sessions scheduled for today (trials excluded)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {sessionsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="flex items-center gap-3">
-                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
-                  <span className="text-muted-foreground">Loading sessions...</span>
-                </div>
-              </div>
-            ) : todayPaidSessions.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-muted-foreground font-medium">No paid sessions today</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Your next sessions will appear here
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        {statCards.map((stat) => (
+          <Card key={stat.title} className="dashboard-card">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                  {/* PHASE 3 FIX: Better loading state display */}
+                  <p className="text-2xl font-bold">
+                    {statsLoading ? (
+                      <span className="text-muted-foreground">...</span>
+                    ) : (
+                      stat.value
+                    )}
                   </p>
                 </div>
+                <div className={`p-2 rounded-full ${stat.bg}`}>
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Today's Paid Sessions */}
+        <Card className="dashboard-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Today's Paid Sessions
+            </CardTitle>
+            <CardDescription>
+              Sessions scheduled for today only
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {sessionsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <LoadingSpinner />
+                <span className="ml-2 text-muted-foreground">Loading sessions...</span>
+              </div>
+            ) : sessions.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No paid sessions scheduled for today</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Check the Paid Registration tab for students ready to schedule
+                </p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-64 overflow-y-auto">
-                {todayPaidSessions.slice(0, 5).map((session) => (
-                  <div key={session.id} className="p-3 border border-border rounded-lg bg-gradient-to-r from-blue-50 to-white hover:shadow-sm transition-shadow">
+              <div className="space-y-3">
+                {sessions.map((session) => (
+                  <div key={session.id} className="p-3 border border-border rounded-lg">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="p-1.5 bg-primary/10 rounded-full">
-                          <User className="h-3 w-3 text-primary" />
+                        <div className="p-2 bg-primary/10 rounded-full">
+                          <User className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                          <h4 className="font-medium text-gray-900">{session.studentName}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Session {session.sessionNumber} • {session.scheduledTime}
-                          </p>
+                          <h4 className="font-medium">{session.studentName}</h4>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>Session {session.sessionNumber}</span>
+                            <span>•</span>
+                            <span>{formatTime(session.scheduledTime)}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Progress: {session.completedSessions}/{session.totalSessions} sessions
+                          </div>
                         </div>
                       </div>
-                      <Badge variant="secondary" className="text-xs">
-                        {session.status}
-                      </Badge>
+                      <Button
+                        size="sm"
+                        className="ayat-button-primary"
+                        onClick={() => handleCompleteSession(session.id, session.studentName)}
+                        disabled={completingSession}
+                      >
+                        {completingSession ? 'Marking...' : 'Mark Complete'}
+                      </Button>
                     </div>
                   </div>
                 ))}
-                {todayPaidSessions.length > 5 && (
-                  <p className="text-center text-sm text-muted-foreground">
-                    +{todayPaidSessions.length - 5} more sessions
-                  </p>
-                )}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Student Progress Overview */}
+        {/* Quick Actions */}
         <Card className="dashboard-card">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <div className="p-1.5 bg-green-100 rounded-lg">
-                  <Award className="h-4 w-4 text-green-600" />
-                </div>
-                Student Progress
-              </CardTitle>
-              <Badge variant="outline" className="bg-green-50 border-green-200">
-                {completionRate}% complete
-              </Badge>
-            </div>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
             <CardDescription>
-              Overall progress across all your active students
+              Navigate to key sections quickly
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {studentsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="flex items-center gap-3">
-                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
-                  <span className="text-muted-foreground">Loading students...</span>
-                </div>
-              </div>
-            ) : activeStudents.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <User className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-muted-foreground font-medium">No active students</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Students will appear here after registration completion
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium text-green-800">Overall Completion</span>
-                    <span className="font-bold text-green-900">{completionRate}%</span>
-                  </div>
-                  <Progress value={completionRate} className="h-2" />
-                  <div className="flex justify-between text-xs text-green-600 mt-2">
-                    <span>
-                      {activeStudents.reduce((sum, s) => sum + s.completedPaidSessions, 0)} completed
-                    </span>
-                    <span>
-                      {activeStudents.reduce((sum, s) => sum + s.totalPaidSessions, 0)} total
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {activeStudents.slice(0, 4).map((student) => (
-                    <div key={student.studentId} className="p-3 border border-border rounded-lg bg-white">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-gray-900">{student.studentName}</h4>
-                        <Badge variant="outline" className="text-xs">
-                          {student.completedPaidSessions}/{student.totalPaidSessions}
-                        </Badge>
+          <CardContent>
+            <div className="space-y-3">
+              {quickActions.map((action) => (
+                <Link key={action.path} to={action.path}>
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-primary/10 rounded-full">
+                            <action.icon className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium">{action.title}</h4>
+                            <p className="text-sm text-muted-foreground">{action.description}</p>
+                          </div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <Progress 
-                        value={(student.completedPaidSessions / student.totalPaidSessions) * 100} 
-                        className="h-1.5"
-                      />
-                    </div>
-                  ))}
-                  {activeStudents.length > 4 && (
-                    <p className="text-center text-sm text-muted-foreground">
-                      +{activeStudents.length - 4} more students
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* PHASE 3: Debug information (can be removed in production) */}
+      {process.env.NODE_ENV === 'development' && (
+        <Card className="bg-gray-50 border-dashed">
+          <CardHeader>
+            <CardTitle className="text-sm">Debug Information</CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <strong>Statistics Loading:</strong> {statsLoading ? 'Yes' : 'No'}<br/>
+                <strong>Sessions Loading:</strong> {sessionsLoading ? 'Yes' : 'No'}<br/>
+                <strong>Date Range:</strong> {dateRange}
+              </div>
+              <div>
+                <strong>Total Stats:</strong> {Object.values(stats).reduce((a, b) => a + b, 0)}<br/>
+                <strong>Sessions Count:</strong> {sessions.length}<br/>
+                <strong>Current Time:</strong> {new Date().toLocaleTimeString()}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

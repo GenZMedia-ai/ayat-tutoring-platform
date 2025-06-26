@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock } from 'lucide-react';
 
-export type DateRange = 'today' | 'tomorrow' | 'next-3-days' | 'yesterday' | 'last-7-days' | 'this-week' | 'next-7-days' | 'this-month' | 'last-month' | 'all-time' | 'custom';
+export type DateRange = 'today' | 'yesterday' | 'last-7-days' | 'this-month' | 'last-month' | 'all-time' | 'custom';
 export type FilterType = 'session_date' | 'booking_date';
 
 interface DateFilterProps {
@@ -35,12 +35,8 @@ export const DateFilter: React.FC<DateFilterProps> = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="tomorrow">Tomorrow</SelectItem>
-            <SelectItem value="next-3-days">Next 3 Days</SelectItem>
             <SelectItem value="yesterday">Yesterday</SelectItem>
             <SelectItem value="last-7-days">Last 7 Days</SelectItem>
-            <SelectItem value="this-week">This Week</SelectItem>
-            <SelectItem value="next-7-days">Next 7 Days</SelectItem>
             <SelectItem value="this-month">This Month</SelectItem>
             <SelectItem value="last-month">Last Month</SelectItem>
             <SelectItem value="all-time">All Time</SelectItem>
@@ -95,12 +91,8 @@ export const DateFilter: React.FC<DateFilterProps> = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="tomorrow">Tomorrow</SelectItem>
-            <SelectItem value="next-3-days">Next 3 Days</SelectItem>
             <SelectItem value="yesterday">Yesterday</SelectItem>
             <SelectItem value="last-7-days">Last 7 Days</SelectItem>
-            <SelectItem value="this-week">This Week</SelectItem>
-            <SelectItem value="next-7-days">Next 7 Days</SelectItem>
             <SelectItem value="this-month">This Month</SelectItem>
             <SelectItem value="last-month">Last Month</SelectItem>
             <SelectItem value="all-time">All Time</SelectItem>
