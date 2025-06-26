@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Filter, Calendar } from 'lucide-react';
 import { useMixedStudentData, MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { useFamilyGroups } from '@/hooks/useFamilyGroups';
-import { UnifiedTrialCard } from '@/components/shared/UnifiedTrialCard';
+import { EnhancedUnifiedTrialCard } from '@/components/shared/EnhancedUnifiedTrialCard';
 import { StudentEditModal } from '@/components/sales/StudentEditModal';
 import { StatusChangeModal } from '@/components/sales/StatusChangeModal';
 import { PaymentLinkModal } from '@/components/sales/PaymentLinkModal';
@@ -223,7 +222,7 @@ const SalesTrialAppointments: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredItems.map((item) => (
-            <UnifiedTrialCard
+            <EnhancedUnifiedTrialCard
               key={`${item.type}-${item.id}`}
               item={item}
               onEdit={setEditingItem}

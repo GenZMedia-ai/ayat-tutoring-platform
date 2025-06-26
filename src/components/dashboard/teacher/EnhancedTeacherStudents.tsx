@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -7,6 +6,7 @@ import { useTeacherActiveStudents } from '@/hooks/useTeacherActiveStudents';
 import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
 import { CompactStudentCard } from '@/components/teacher/CompactStudentCard';
 import { SessionEditModal } from '@/components/teacher/SessionEditModal';
+import { StudentProfileModal } from '@/components/shared/StudentProfileModal';
 
 interface EditingSession {
   sessionData: any;
@@ -17,6 +17,7 @@ interface EditingSession {
 const EnhancedTeacherStudents: React.FC = () => {
   const { students, loading, refreshStudents } = useTeacherActiveStudents();
   const [editingSession, setEditingSession] = useState<EditingSession | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
 
@@ -74,15 +75,38 @@ const EnhancedTeacherStudents: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {students.map((student) => (
-            <CompactStudentCard
-              key={student.studentId}
-              student={student}
-              onEditSession={(sessionData) => 
-                handleEditSession(sessionData, student.studentName, student.studentId)
-              }
-            />
+            <div key={student.studentId} onClick={() => setSelectedStudent(student)}>
+              <CompactStudentCard
+                student={student}
+                onEditSession={(sessionData) => 
+                  handleEditSession(sessionData, student.studentName, student.studentId)
+                }
+              />
+            </div>
           ))}
         </div>
+      )}
+
+      {/* Enhanced Student Profile Modal */}
+      {selectedStudent && (
+        <StudentProfileModal
+          student={{
+            id: selectedStudent.studentId,
+            name: selectedStudent.studentName,
+            uniqueId: selectedStudent.uniqueId,
+            age: selectedStudent.age,
+            phone: selectedStudent.phone,
+            country: selectedStudent.country,
+            platform: selectedStudent.platform,
+            status: 'active', // Active students
+            createdAt: new Date().toISOString(),
+            trialDate: null,
+            trialTime: null,
+            teacherType: 'mixed'
+          }}
+          open={!!selectedStudent}
+          onClose={() => setSelectedStudent(null)}
+        />
       )}
 
       {editingSession && (
