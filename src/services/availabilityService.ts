@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { GranularTimeSlot } from '@/types/availability';
 import { fromZonedTime, toZonedTime, format } from 'date-fns-tz';
@@ -11,71 +10,74 @@ export class AvailabilityService {
     teacherType: string,
     selectedHour: number
   ): Promise<GranularTimeSlot[]> {
-    console.log('=== AVAILABILITY SERVICE START (Enhanced with date-fns-tz) ===');
+    console.log('=== PHASE 1: AVAILABILITY SERVICE FIX ===');
     console.log('Search Parameters:', { 
-      date: date.toDateString(), 
-      dateStr: date.toISOString().split('T')[0],
+      selectedDate: date.toDateString(), 
+      dateString: date.toISOString().split('T')[0],
       timezone, 
       teacherType, 
       selectedHour 
     });
     
-    const dateStr = date.toISOString().split('T')[0];
+    // PHASE 1 FIX: Use the exact selected date without any shifts
+    const exactDateString = date.toISOString().split('T')[0];
     const timezoneConfig = getTimezoneConfig(timezone);
     
     if (!timezoneConfig) {
       throw new Error(`Invalid timezone: ${timezone}`);
     }
     
-    console.log('Timezone Config:', timezoneConfig);
+    console.log('PHASE 1: Using exact date for database search:', exactDateString);
     
-    // Use date-fns-tz for proper timezone conversion with DST handling
-    const clientDateTime = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      selectedHour,
-      0,
-      0
-    );
+    // PHASE 1 FIX: Convert only the time, preserve the date
+    const timeConversion = this.convertClientTimeToServer(date, selectedHour, timezone);
     
-    // Convert to UTC using date-fns-tz
-    const utcDateTime = fromZonedTime(clientDateTime, timezoneConfig.iana);
-    const utcHour = utcDateTime.getUTCHours();
-    const utcMinutes = utcDateTime.getUTCMinutes();
-    
-    console.log('Enhanced timezone conversion:', { 
-      clientDateTime: clientDateTime.toISOString(),
-      utcDateTime: utcDateTime.toISOString(),
-      utcHour,
-      utcMinutes
-    });
+    console.log('PHASE 1: Time conversion result:', timeConversion);
     
     // Build teacher type filter
     let teacherTypeFilter: string[];
     if (teacherType === 'mixed') {
       teacherTypeFilter = ['kids', 'adult', 'mixed', 'expert'];
-      console.log('Searching for mixed teachers - including all types');
     } else {
       teacherTypeFilter = [teacherType, 'mixed'];
-      console.log(`Searching for ${teacherType} teachers - including mixed`);
     }
     
-    console.log('Teacher Type Filter:', teacherTypeFilter);
-    
-    // Search for 30-minute slots in a 2-hour window
+    // PHASE 1 FIX: Search using the EXACT selected date
     const slots = await this.searchUsingSecureRPC(
-      dateStr,
-      utcHour,
+      exactDateString, // Use the exact selected date
+      timeConversion.utcHour,
       teacherTypeFilter,
       selectedHour,
       timezoneConfig
     );
     
-    console.log('Final available slots:', slots.length);
-    console.log('=== AVAILABILITY SERVICE END ===');
+    console.log('PHASE 1: Final available slots for date', exactDateString, ':', slots.length);
+    console.log('=== END PHASE 1 AVAILABILITY SERVICE ===');
     
     return slots;
+  }
+
+  // PHASE 1 FIX: Add dedicated time conversion method
+  private static convertClientTimeToServer(clientDate: Date, clientHour: number, timezone: string) {
+    const tzConfig = getTimezoneConfig(timezone);
+    if (!tzConfig) {
+      throw new Error(`Invalid timezone: ${timezone}`);
+    }
+
+    // Only convert the hour, preserve the date
+    const utcHour = clientHour - tzConfig.offset;
+    
+    let adjustedUtcHour = utcHour;
+    if (utcHour < 0) {
+      adjustedUtcHour = utcHour + 24;
+    } else if (utcHour >= 24) {
+      adjustedUtcHour = utcHour - 24;
+    }
+
+    return {
+      utcHour: adjustedUtcHour,
+      utcTime: `${String(adjustedUtcHour).padStart(2, '0')}:00:00`
+    };
   }
 
   private static async searchUsingSecureRPC(
@@ -85,57 +87,59 @@ export class AvailabilityService {
     clientHour: number,
     timezoneConfig: any
   ): Promise<GranularTimeSlot[]> {
-    console.log('--- SECURE RPC SEARCH (Enhanced with precise timing) ---');
-    console.log('RPC Parameters:', { dateStr, baseUtcHour, teacherTypeFilter, clientHour });
+    console.log('--- PHASE 1: SECURE RPC SEARCH WITH DATE PRESERVATION ---');
+    console.log('RPC Parameters:', { 
+      exactDateString: dateStr, 
+      baseUtcHour, 
+      teacherTypeFilter, 
+      clientHour 
+    });
     
-    // Create a wider search window to catch all 30-minute slots
-    // Search from 1 hour before to 2 hours after to ensure we get all relevant slots
+    // Create search window
     const searchStartHour = Math.max(0, baseUtcHour - 1);
     const searchEndHour = Math.min(24, baseUtcHour + 2);
     
     const startTime = `${String(searchStartHour).padStart(2, '0')}:00:00`;
     const endTime = `${String(searchEndHour).padStart(2, '0')}:00:00`;
     
-    console.log('Enhanced UTC Time Range for RPC:', { startTime, endTime });
+    console.log('PHASE 1: UTC Time Range for database search:', { 
+      dateString: dateStr,
+      startTime, 
+      endTime 
+    });
     
-    // Call the secure RPC function
+    // PHASE 1 FIX: Call RPC with exact date string
     const { data: rpcResults, error: rpcError } = await supabase
       .rpc('search_available_teachers', {
-        p_date: dateStr,
+        p_date: dateStr, // Use exact date string
         p_start_time: startTime,
         p_end_time: endTime,
         p_teacher_types: teacherTypeFilter
       });
 
-    console.log('RPC Results:', { rpcResults, error: rpcError });
+    console.log('PHASE 1: RPC Results for date', dateStr, ':', { 
+      resultsCount: rpcResults?.length || 0, 
+      error: rpcError 
+    });
 
     if (rpcError) {
-      console.error('Error calling secure RPC function:', rpcError);
+      console.error('PHASE 1: RPC Error:', rpcError);
       return [];
     }
 
     if (!rpcResults || rpcResults.length === 0) {
-      console.log('No teachers found via secure RPC');
+      console.log('PHASE 1: No teachers found for exact date:', dateStr);
       return [];
     }
 
-    console.log(`RPC returned ${rpcResults.length} teacher-slot combinations`);
-
-    // Filter and process RPC results into GranularTimeSlot format
+    // Process results
     const slots: GranularTimeSlot[] = [];
     
     for (const result of rpcResults) {
       const timeSlotStr = result.time_slot;
       const [slotHour, slotMinutes] = timeSlotStr.split(':').map(Number);
 
-      console.log('Processing RPC result:', { 
-        timeSlot: timeSlotStr, 
-        teacherId: result.teacher_id,
-        teacherName: result.teacher_name,
-        teacherType: result.teacher_type 
-      });
-
-      // Generate display times for this specific slot using date-fns-tz
+      // Generate display times
       const displayInfo = this.generateSlotDisplayWithDateFns(
         slotHour,
         slotMinutes,
@@ -157,11 +161,10 @@ export class AvailabilityService {
         isBooked: false
       };
 
-      console.log('Generated slot from RPC:', finalSlot);
       slots.push(finalSlot);
     }
 
-    console.log(`Final result: ${slots.length} slots generated from secure RPC`);
+    console.log(`PHASE 1: Final slots for date ${dateStr}:`, slots.length);
     return slots;
   }
 
