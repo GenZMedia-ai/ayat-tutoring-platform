@@ -16,6 +16,20 @@ interface PendingUser {
   status: string;
 }
 
+interface ApprovalResult {
+  success: boolean;
+  audit_id?: string;
+  user_id?: string;
+  error?: string;
+}
+
+interface RejectionResult {
+  success: boolean;
+  audit_id?: string;
+  user_id?: string;
+  error?: string;
+}
+
 export const useEnhancedPendingApprovals = () => {
   const queryClient = useQueryClient();
 
@@ -98,12 +112,13 @@ export const useEnhancedPendingApprovals = () => {
         throw error;
       }
 
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to approve user');
+      const result = data as ApprovalResult;
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to approve user');
       }
 
-      console.log('✅ User approved with audit:', data);
-      return data;
+      console.log('✅ User approved with audit:', result);
+      return result;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['pending-approvals'] });
@@ -130,12 +145,13 @@ export const useEnhancedPendingApprovals = () => {
         throw error;
       }
 
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to reject user');
+      const result = data as RejectionResult;
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to reject user');
       }
 
-      console.log('✅ User rejected with audit:', data);
-      return data;
+      console.log('✅ User rejected with audit:', result);
+      return result;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['pending-approvals'] });

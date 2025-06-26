@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -23,6 +24,13 @@ interface RegisterData {
   password: string;
   teacherType?: TeacherType;
   language: 'en' | 'ar';
+}
+
+interface InvitationCodeUsageResult {
+  success: boolean;
+  audit_id?: string;
+  new_usage_count?: number;
+  error?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -326,8 +334,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (usageError) {
           console.error('⚠️ Failed to record invitation code usage:', usageError);
           // Don't fail registration for this, but log it
-        } else if (usageResult?.success) {
-          console.log('✅ Invitation code usage recorded:', usageResult);
+        } else if (usageResult) {
+          const typedResult = usageResult as InvitationCodeUsageResult;
+          if (typedResult.success) {
+            console.log('✅ Invitation code usage recorded:', typedResult);
+          }
         }
       } catch (inviteError) {
         console.error('⚠️ Failed to record invitation code usage:', inviteError);
