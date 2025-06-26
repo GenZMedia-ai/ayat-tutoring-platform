@@ -1,3 +1,4 @@
+
 import { TIMEZONES } from '@/constants/timeSlots';
 import { fromZonedTime, toZonedTime, format } from 'date-fns-tz';
 
@@ -60,60 +61,6 @@ export const convertClientTimeToServer = (clientDate: Date, clientHour: number, 
   console.log('=== END FIXED TIMEZONE CONVERSION ===');
 
   return result;
-};
-
-// NEW: Fixed timezone conversion that preserves dates
-export const convertClientHourToUTCPreservingDate = (
-  clientHour: number, 
-  clientDate: Date, 
-  timezoneValue: string
-): { utcHour: number; utcMinutes: number; utcDate: Date; utcDateString: string } => {
-  console.log('=== DATE-PRESERVING TIMEZONE CONVERSION ===');
-  console.log('Input:', { clientHour, clientDate: clientDate.toISOString().split('T')[0], timezoneValue });
-  
-  const tzConfig = getTimezoneConfig(timezoneValue);
-  if (!tzConfig) {
-    throw new Error(`Invalid timezone: ${timezoneValue}`);
-  }
-  
-  // Simple offset calculation that preserves the date
-  const utcHour = clientHour - tzConfig.offset;
-  let adjustedUtcHour = utcHour;
-  
-  // Keep hour in 0-23 range without changing date
-  if (utcHour < 0) {
-    adjustedUtcHour = utcHour + 24;
-  } else if (utcHour >= 24) {
-    adjustedUtcHour = utcHour - 24;
-  }
-  
-  // Create UTC date with SAME date as input
-  const utcDate = new Date(
-    clientDate.getFullYear(),
-    clientDate.getMonth(),
-    clientDate.getDate(),
-    adjustedUtcHour,
-    0,
-    0
-  );
-  
-  const utcDateString = clientDate.toISOString().split('T')[0];
-  
-  console.log('Date-preserving conversion result:', {
-    originalDate: clientDate.toISOString().split('T')[0],
-    preservedDate: utcDateString,
-    clientHour,
-    utcHour: adjustedUtcHour,
-    datePreserved: true
-  });
-  console.log('=== END DATE-PRESERVING CONVERSION ===');
-  
-  return {
-    utcHour: adjustedUtcHour,
-    utcMinutes: 0,
-    utcDate,
-    utcDateString
-  };
 };
 
 // Enhanced timezone conversion using date-fns-tz for DST and fractional offset support
