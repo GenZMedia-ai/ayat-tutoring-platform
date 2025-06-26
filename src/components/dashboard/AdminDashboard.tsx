@@ -8,6 +8,7 @@ import DashboardNavigation from '@/components/shared/DashboardNavigation';
 const AdminDashboard: React.FC = () => {
   const tabs = [
     { value: 'homepage', label: 'Homepage', path: '/admin/homepage' },
+    { value: 'user-management', label: 'User Management', path: '/admin/user-management' },
     { value: 'trials', label: 'Trial Appointments', path: '/admin/trials' },
     { value: 'students', label: 'Students', path: '/admin/students' },
     { value: 'sessions', label: 'Sessions', path: '/admin/sessions' },
@@ -27,7 +28,7 @@ const AdminDashboard: React.FC = () => {
             </Badge>
           </div>
 
-          <DashboardNavigation tabs={tabs} gridCols="grid-cols-6" />
+          <DashboardNavigation tabs={tabs} gridCols="grid-cols-7" />
           
           <Outlet />
         </div>
