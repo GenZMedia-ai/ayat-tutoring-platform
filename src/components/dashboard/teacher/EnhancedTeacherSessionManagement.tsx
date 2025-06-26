@@ -98,8 +98,8 @@ const EnhancedTeacherSessionManagement: React.FC = () => {
                 <p className="text-sm text-muted-foreground">Completion Rate</p>
                 <p className="text-2xl font-bold text-purple-600">
                   {activeStudents.length > 0 
-                    ? Math.round((activeStudents.reduce((sum, s) => sum + s.completedSessions, 0) / 
-                        activeStudents.reduce((sum, s) => sum + s.totalSessions, 0)) * 100) 
+                    ? Math.round((activeStudents.reduce((sum, s) => sum + s.completedPaidSessions, 0) / 
+                        activeStudents.reduce((sum, s) => sum + s.totalPaidSessions, 0)) * 100) 
                     : 0}%
                 </p>
               </div>
@@ -114,7 +114,7 @@ const EnhancedTeacherSessionManagement: React.FC = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Sessions Left</p>
                 <p className="text-2xl font-bold text-orange-600">
-                  {activeStudents.reduce((sum, s) => sum + (s.totalSessions - s.completedSessions), 0)}
+                  {activeStudents.reduce((sum, s) => sum + (s.totalPaidSessions - s.completedPaidSessions), 0)}
                 </p>
               </div>
               <Target className="h-8 w-8 text-orange-500 opacity-80" />

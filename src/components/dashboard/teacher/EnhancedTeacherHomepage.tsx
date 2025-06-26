@@ -1,148 +1,38 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { SmartDateFilter, DateRange } from '@/components/teacher/SmartDateFilter';
-import { useTeacherStatistics } from '@/hooks/useTeacherStatistics';
+import { Progress } from '@/components/ui/progress';
+import { useTeacherActiveStudents } from '@/hooks/useTeacherActiveStudents';
 import { useTodayPaidSessions } from '@/hooks/useTodayPaidSessions';
-import { useSessionCompletion } from '@/hooks/useSessionCompletion';
-import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
+import { useTeacherRevenue } from '@/hooks/useTeacherRevenue';
+import { DateFilter, DateRange } from '@/components/teacher/DateFilter';
 import { 
-  Users, 
-  Clock, 
   CheckCircle, 
-  XCircle, 
-  RotateCcw, 
-  AlertTriangle,
+  Clock, 
+  DollarSign, 
+  TrendingUp, 
+  User, 
   Calendar,
-  ArrowRight,
-  User,
+  Award,
   BookOpen,
-  TrendingUp
+  Target
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { format, toZonedTime } from 'date-fns-tz';
-import { toast } from 'sonner';
-
-const EGYPT_TIMEZONE = 'Africa/Cairo';
 
 const EnhancedTeacherHomepage: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange>('this-week');
-  
-  const { stats, loading: statsLoading, refreshStats } = useTeacherStatistics(dateRange);
-  const { sessions, loading: sessionsLoading, refreshSessions } = useTodayPaidSessions();
-  const { completeSession, loading: completingSession } = useSessionCompletion();
+  const { students: activeStudents, loading: studentsLoading } = useTeacherActiveStudents();
+  const { sessions: todayPaidSessions, loading: sessionsLoading } = useTodayPaidSessions();
+  const { revenue, loading: revenueLoading } = useTeacherRevenue('this-month');
 
-  useEffect(() => {
-    console.log('🏠 HOMEPAGE: Stats updated:', { dateRange, stats, loading: statsLoading });
-  }, [stats, statsLoading, dateRange]);
+  const totalUpcomingSessions = activeStudents.reduce((sum, student) => 
+    sum + (student.totalPaidSessions - student.completedPaidSessions), 0
+  );
 
-  useEffect(() => {
-    console.log('🏠 HOMEPAGE: Sessions updated:', { sessions, loading: sessionsLoading });
-  }, [sessions, sessionsLoading]);
-
-  const formatTime = (timeStr: string) => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const utcDateTimeString = `${today}T${timeStr}Z`;
-      const utcDateTime = new Date(utcDateTimeString);
-      const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
-      return format(egyptDateTime, 'h:mm a');
-    } catch (error) {
-      console.error('❌ Error formatting time:', error);
-      return timeStr;
-    }
-  };
-
-  const handleCompleteSession = async (sessionId: string, studentName: string) => {
-    const result = await completeSession(sessionId, 60, `Session completed for ${studentName}`, true);
-    if (result) {
-      toast.success('Session marked as completed');
-      refreshSessions();
-    }
-  };
-
-  const statCards = [
-    {
-      title: 'Current Capacity',
-      value: stats.currentCapacity,
-      icon: Users,
-      gradient: 'from-blue-500 to-blue-600',
-      bgColor: 'bg-blue-50',
-      textColor: 'text-blue-700',
-      borderColor: 'border-blue-200'
-    },
-    {
-      title: 'Pending Trials',
-      value: stats.pendingTrials,
-      icon: Clock,
-      gradient: 'from-orange-500 to-orange-600',
-      bgColor: 'bg-orange-50',
-      textColor: 'text-orange-700',
-      borderColor: 'border-orange-200'
-    },
-    {
-      title: 'Confirmed Trials',
-      value: stats.confirmedTrials,
-      icon: CheckCircle,
-      gradient: 'from-green-500 to-green-600',
-      bgColor: 'bg-green-50',
-      textColor: 'text-green-700',
-      borderColor: 'border-green-200'
-    },
-    {
-      title: 'Completed Trials',
-      value: stats.completedTrials,
-      icon: CheckCircle,
-      gradient: 'from-emerald-500 to-emerald-600',
-      bgColor: 'bg-emerald-50',
-      textColor: 'text-emerald-700',
-      borderColor: 'border-emerald-200'
-    },
-    {
-      title: 'Rescheduled',
-      value: stats.rescheduledTrials,
-      icon: RotateCcw,
-      gradient: 'from-yellow-500 to-yellow-600',
-      bgColor: 'bg-yellow-50',
-      textColor: 'text-yellow-700',
-      borderColor: 'border-yellow-200'
-    },
-    {
-      title: 'Ghosted',
-      value: stats.ghostedTrials,
-      icon: XCircle,
-      gradient: 'from-red-500 to-red-600',
-      bgColor: 'bg-red-50',
-      textColor: 'text-red-700',
-      borderColor: 'border-red-200'
-    }
-  ];
-
-  const quickActions = [
-    {
-      title: 'Paid Registration',
-      description: 'Complete student registration',
-      path: '/teacher/paid-registration',
-      icon: Users,
-      gradient: 'from-blue-500 to-blue-600'
-    },
-    {
-      title: 'Session Management',
-      description: 'Manage scheduled sessions',
-      path: '/teacher/session-management',
-      icon: Calendar,
-      gradient: 'from-green-500 to-green-600'
-    },
-    {
-      title: 'Trial Appointments',
-      description: 'Manage trial sessions',
-      path: '/teacher/trials',
-      icon: Clock,
-      gradient: 'from-orange-500 to-orange-600'
-    }
-  ];
+  const completionRate = activeStudents.length > 0 
+    ? Math.round((activeStudents.reduce((sum, s) => sum + s.completedPaidSessions, 0) / 
+        activeStudents.reduce((sum, s) => sum + s.totalPaidSessions, 0)) * 100) 
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -154,162 +44,237 @@ const EnhancedTeacherHomepage: React.FC = () => {
           </div>
           <div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Teacher Dashboard
+              Teaching Dashboard
             </h1>
-            <p className="text-muted-foreground">Overview of your teaching activities</p>
+            <p className="text-muted-foreground">
+              Overview of your teaching activities and performance
+            </p>
           </div>
         </div>
-        <SmartDateFilter 
+        <DateFilter 
           value={dateRange} 
           onChange={setDateRange}
-          resultCount={Object.values(stats).reduce((a, b) => a + b, 0)}
+          resultCount={todayPaidSessions.length}
         />
       </div>
 
-      {/* Enhanced Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        {statCards.map((stat) => (
-          <Card key={stat.title} className={`dashboard-card border-2 ${stat.borderColor} ${stat.bgColor} hover:shadow-lg transition-all duration-300 hover:scale-105`}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`p-2 rounded-lg bg-gradient-to-r ${stat.gradient} shadow-md`}>
-                  <stat.icon className="h-4 w-4 text-white" />
-                </div>
-                {stat.value > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    Active
-                  </Badge>
-                )}
-              </div>
+      {/* Enhanced Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <Card className="dashboard-card border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50 to-blue-100 hover:shadow-lg transition-all duration-300">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">{stat.title}</p>
-                <p className={`text-2xl font-bold ${stat.textColor}`}>
-                  {statsLoading ? (
-                    <span className="text-muted-foreground">...</span>
-                  ) : (
-                    stat.value
-                  )}
+                <p className="text-sm text-blue-600 font-medium">Today's Sessions</p>
+                <p className="text-2xl font-bold text-blue-700">
+                  {sessionsLoading ? '-' : todayPaidSessions.length}
                 </p>
+                <p className="text-xs text-blue-500 mt-1">Paid sessions only</p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+              <div className="p-2 bg-blue-500 rounded-lg">
+                <Clock className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="dashboard-card border-l-4 border-l-green-500 bg-gradient-to-br from-green-50 to-green-100 hover:shadow-lg transition-all duration-300">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-green-600 font-medium">Active Students</p>
+                <p className="text-2xl font-bold text-green-700">
+                  {studentsLoading ? '-' : activeStudents.length}
+                </p>
+                <p className="text-xs text-green-500 mt-1">Ongoing programs</p>
+              </div>
+              <div className="p-2 bg-green-500 rounded-lg">
+                <User className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="dashboard-card border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 hover:shadow-lg transition-all duration-300">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-purple-600 font-medium">Remaining Sessions</p>
+                <p className="text-2xl font-bold text-purple-700">
+                  {studentsLoading ? '-' : totalUpcomingSessions}
+                </p>
+                <p className="text-xs text-purple-500 mt-1">Across all students</p>
+              </div>
+              <div className="p-2 bg-purple-500 rounded-lg">
+                <Target className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="dashboard-card border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50 to-orange-100 hover:shadow-lg transition-all duration-300">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-orange-600 font-medium">Monthly Revenue</p>
+                <p className="text-2xl font-bold text-orange-700">
+                  {revenueLoading ? '-' : `${revenue.totalEarnings.toLocaleString()} EGP`}
+                </p>
+                <p className="text-xs text-orange-500 mt-1">This month</p>
+              </div>
+              <div className="p-2 bg-orange-500 rounded-lg">
+                <DollarSign className="h-6 w-6 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Enhanced Two Column Layout */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Today's Paid Sessions */}
-        <Card className="dashboard-card bg-gradient-to-br from-white to-blue-50 border-2 border-blue-200">
-          <CardHeader>
+        <Card className="dashboard-card">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <div className="p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-md">
-                  <Calendar className="h-5 w-5 text-white" />
+                <div className="p-1.5 bg-blue-100 rounded-lg">
+                  <Clock className="h-4 w-4 text-blue-600" />
                 </div>
-                Today's Sessions
+                Today's Paid Sessions
               </CardTitle>
-              <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
-                {sessions.length} scheduled
+              <Badge variant="outline" className="bg-blue-50 border-blue-200">
+                {todayPaidSessions.length} scheduled
               </Badge>
             </div>
             <CardDescription>
-              Only paid sessions scheduled for today (trials excluded)
+              Your paid sessions scheduled for today (trials excluded)
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {sessionsLoading ? (
               <div className="flex items-center justify-center py-8">
-                <LoadingSpinner />
-                <span className="ml-2 text-muted-foreground">Loading sessions...</span>
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
+                  <span className="text-muted-foreground">Loading sessions...</span>
+                </div>
               </div>
-            ) : sessions.length === 0 ? (
+            ) : todayPaidSessions.length === 0 ? (
               <div className="text-center py-8">
-                <div className="p-4 bg-white rounded-lg border border-blue-200">
-                  <Calendar className="h-12 w-12 text-blue-300 mx-auto mb-3" />
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-muted-foreground font-medium">No paid sessions today</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Check Paid Registration for students ready to schedule
+                    Your next sessions will appear here
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="space-y-3">
-                {sessions.map((session) => (
-                  <div key={session.id} className="group p-4 bg-white border border-blue-200 rounded-lg hover:shadow-md transition-all duration-200">
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {todayPaidSessions.slice(0, 5).map((session) => (
+                  <div key={session.id} className="p-3 border border-border rounded-lg bg-gradient-to-r from-blue-50 to-white hover:shadow-sm transition-shadow">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="p-2 bg-primary/10 rounded-full">
-                          <User className="h-4 w-4 text-primary" />
+                      <div className="flex items-center gap-3">
+                        <div className="p-1.5 bg-primary/10 rounded-full">
+                          <User className="h-3 w-3 text-primary" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-gray-900">{session.studentName}</h4>
-                          <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                            <span className="flex items-center gap-1">
-                              <CheckCircle className="h-3 w-3" />
-                              Session {session.sessionNumber}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {formatTime(session.scheduledTime)}
-                            </span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Progress: {session.completedSessions}/{session.totalSessions} sessions
-                          </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">{session.studentName}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Session {session.sessionNumber} • {session.scheduledTime}
+                          </p>
                         </div>
                       </div>
-                      <Button
-                        className="ayat-button-primary flex items-center gap-2 group-hover:scale-105 transition-transform"
-                        onClick={() => handleCompleteSession(session.id, session.studentName)}
-                        disabled={completingSession}
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                        {completingSession ? 'Marking...' : 'Complete'}
-                      </Button>
+                      <Badge variant="secondary" className="text-xs">
+                        {session.status}
+                      </Badge>
                     </div>
                   </div>
                 ))}
+                {todayPaidSessions.length > 5 && (
+                  <p className="text-center text-sm text-muted-foreground">
+                    +{todayPaidSessions.length - 5} more sessions
+                  </p>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Enhanced Quick Actions */}
-        <Card className="dashboard-card bg-gradient-to-br from-white to-primary/5 border-2 border-primary/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-r from-primary to-secondary rounded-lg shadow-md">
-                <TrendingUp className="h-5 w-5 text-white" />
-              </div>
-              Quick Actions
-            </CardTitle>
+        {/* Student Progress Overview */}
+        <Card className="dashboard-card">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <div className="p-1.5 bg-green-100 rounded-lg">
+                  <Award className="h-4 w-4 text-green-600" />
+                </div>
+                Student Progress
+              </CardTitle>
+              <Badge variant="outline" className="bg-green-50 border-green-200">
+                {completionRate}% complete
+              </Badge>
+            </div>
             <CardDescription>
-              Navigate to key sections quickly
+              Overall progress across all your active students
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {quickActions.map((action) => (
-                <Link key={action.path} to={action.path}>
-                  <Card className="hover:shadow-md transition-all duration-300 hover:scale-105 cursor-pointer bg-white border-2 border-gray-200 hover:border-primary/30">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 bg-gradient-to-r ${action.gradient} rounded-lg shadow-md`}>
-                            <action.icon className="h-4 w-4 text-white" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">{action.title}</h4>
-                            <p className="text-sm text-muted-foreground">{action.description}</p>
-                          </div>
-                        </div>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          <CardContent className="space-y-4">
+            {studentsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
+                  <span className="text-muted-foreground">Loading students...</span>
+                </div>
+              </div>
+            ) : activeStudents.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <User className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-muted-foreground font-medium">No active students</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Students will appear here after registration completion
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium text-green-800">Overall Completion</span>
+                    <span className="font-bold text-green-900">{completionRate}%</span>
+                  </div>
+                  <Progress value={completionRate} className="h-2" />
+                  <div className="flex justify-between text-xs text-green-600 mt-2">
+                    <span>
+                      {activeStudents.reduce((sum, s) => sum + s.completedPaidSessions, 0)} completed
+                    </span>
+                    <span>
+                      {activeStudents.reduce((sum, s) => sum + s.totalPaidSessions, 0)} total
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {activeStudents.slice(0, 4).map((student) => (
+                    <div key={student.studentId} className="p-3 border border-border rounded-lg bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-gray-900">{student.studentName}</h4>
+                        <Badge variant="outline" className="text-xs">
+                          {student.completedPaidSessions}/{student.totalPaidSessions}
+                        </Badge>
                       </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
+                      <Progress 
+                        value={(student.completedPaidSessions / student.totalPaidSessions) * 100} 
+                        className="h-1.5"
+                      />
+                    </div>
+                  ))}
+                  {activeStudents.length > 4 && (
+                    <p className="text-center text-sm text-muted-foreground">
+                      +{activeStudents.length - 4} more students
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
