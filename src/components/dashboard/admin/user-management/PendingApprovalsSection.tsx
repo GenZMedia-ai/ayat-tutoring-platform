@@ -6,14 +6,16 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Eye, Check, X, Clock, AlertCircle } from 'lucide-react';
-import { usePendingApprovals } from '@/hooks/usePendingApprovals';
+import { useEnhancedPendingApprovals } from '@/hooks/useEnhancedPendingApprovals';
+import { UserDetailsModal } from './UserDetailsModal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 
 const PendingApprovalsSection: React.FC = () => {
-  const { data: pendingUsers, isLoading, approveUser, rejectUser } = usePendingApprovals();
+  const { data: pendingUsers, isLoading, approveUser, rejectUser } = useEnhancedPendingApprovals();
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [rejectReason, setRejectReason] = useState('');
+  const [selectedUserForDetails, setSelectedUserForDetails] = useState<any>(null);
 
   const handleSelectUser = (userId: string, checked: boolean) => {
     if (checked) {
@@ -232,7 +234,7 @@ const PendingApprovalsSection: React.FC = () => {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => {/* TODO: Open user details modal */}}
+                            onClick={() => setSelectedUserForDetails(user)}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -260,6 +262,21 @@ const PendingApprovalsSection: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* User Details Modal */}
+      <UserDetailsModal
+        user={selectedUserForDetails}
+        open={!!selectedUserForDetails}
+        onClose={() => setSelectedUserForDetails(null)}
+        onApprove={(userId) => {
+          approveUser(userId);
+          setSelectedUserForDetails(null);
+        }}
+        onReject={(userId, reason) => {
+          rejectUser(userId, reason);
+          setSelectedUserForDetails(null);
+        }}
+      />
     </div>
   );
 };

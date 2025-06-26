@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
@@ -315,24 +314,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       console.log('✅ User created successfully');
 
-      // Update invitation code usage
+      // NEW: Track invitation code usage with proper function call
       try {
-        const { data: currentCode, error: fetchError } = await supabase
-          .from('invitation_codes')
-          .select('used_count')
-          .eq('code', userData.invitationCode)
-          .single();
+        console.log('📊 Recording invitation code usage...');
+        
+        const { data: usageResult, error: usageError } = await supabase.rpc('record_invitation_code_usage', {
+          p_code: userData.invitationCode.trim().toUpperCase(),
+          p_user_id: data.user.id
+        });
 
-        if (!fetchError && currentCode) {
-          await supabase
-            .from('invitation_codes')
-            .update({ used_count: (currentCode.used_count || 0) + 1 })
-            .eq('code', userData.invitationCode);
-          
-          console.log('📊 Invitation code usage updated');
+        if (usageError) {
+          console.error('⚠️ Failed to record invitation code usage:', usageError);
+          // Don't fail registration for this, but log it
+        } else if (usageResult?.success) {
+          console.log('✅ Invitation code usage recorded:', usageResult);
         }
       } catch (inviteError) {
-        console.error('⚠️ Failed to update invitation code usage:', inviteError);
+        console.error('⚠️ Failed to record invitation code usage:', inviteError);
         // Don't fail registration for this
       }
 

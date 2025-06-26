@@ -7,13 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Copy, Eye, Trash2, ChevronDown, Calendar, Users } from 'lucide-react';
-import { useInvitationCodes } from '@/hooks/useInvitationCodes';
+import { Plus, Copy, Eye, Trash2, ChevronDown, Calendar, Users, RefreshCw } from 'lucide-react';
+import { useEnhancedInvitationCodes } from '@/hooks/useEnhancedInvitationCodes';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const InvitationCodeManagement: React.FC = () => {
-  const { data: codes, isLoading, createCode, deactivateCode, deleteCode } = useInvitationCodes();
+  const { data: codes, isLoading, createCode, deactivateCode, deleteCode } = useEnhancedInvitationCodes();
   const [isCreating, setIsCreating] = useState(false);
   const [showExpired, setShowExpired] = useState(false);
   
@@ -78,6 +78,27 @@ const InvitationCodeManagement: React.FC = () => {
       return <Badge variant="outline">Deactivated</Badge>;
     }
     return <Badge variant="default">Active</Badge>;
+  };
+
+  const getUsageBadge = (code: any) => {
+    const now = new Date();
+    const expiresAt = new Date(code.expires_at);
+    const isExpired = expiresAt < now;
+    const isExhausted = code.used_count >= code.usage_limit;
+    
+    let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
+    
+    if (isExpired || isExhausted) {
+      variant = "destructive";
+    } else if (code.used_count > 0) {
+      variant = "secondary";
+    }
+
+    return (
+      <Badge variant={variant} className="font-mono">
+        {code.used_count}/{code.usage_limit}
+      </Badge>
+    );
   };
 
   const activeCodes = codes?.filter(code => {
@@ -198,7 +219,14 @@ const InvitationCodeManagement: React.FC = () => {
               disabled={isCreating}
               className="mt-6"
             >
-              {isCreating ? 'Creating...' : 'Generate Code'}
+              {isCreating ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Generate Code'
+              )}
             </Button>
           </div>
         </CardContent>
@@ -212,7 +240,7 @@ const InvitationCodeManagement: React.FC = () => {
             Active Invitation Codes ({activeCodes.length})
           </CardTitle>
           <CardDescription>
-            Currently valid invitation codes
+            Currently valid invitation codes with real-time usage tracking
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -244,9 +272,7 @@ const InvitationCodeManagement: React.FC = () => {
                       {code.role === 'teacher' ? 'All Types' : '-'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {code.used_count}/{code.usage_limit}
-                      </Badge>
+                      {getUsageBadge(code)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-sm">
@@ -263,6 +289,7 @@ const InvitationCodeManagement: React.FC = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => copyCode(code.code)}
+                          title="Copy code"
                         >
                           <Copy className="w-4 h-4" />
                         </Button>
@@ -270,6 +297,7 @@ const InvitationCodeManagement: React.FC = () => {
                           variant="ghost" 
                           size="sm"
                           onClick={() => deactivateCode(code.id)}
+                          title="Deactivate code"
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -278,6 +306,7 @@ const InvitationCodeManagement: React.FC = () => {
                           size="sm"
                           onClick={() => deleteCode(code.id)}
                           className="text-red-600 hover:text-red-700"
+                          title="Delete code"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -321,9 +350,7 @@ const InvitationCodeManagement: React.FC = () => {
                         <TableCell className="font-mono">{code.code}</TableCell>
                         <TableCell className="capitalize">{code.role}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {code.used_count}/{code.usage_limit}
-                          </Badge>
+                          {getUsageBadge(code)}
                         </TableCell>
                         <TableCell>
                           {new Date(code.expires_at).toLocaleDateString()}

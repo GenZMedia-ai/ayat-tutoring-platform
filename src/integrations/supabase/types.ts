@@ -9,6 +9,56 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          new_values: Json | null
+          old_values: Json | null
+          target_id: string | null
+          target_type: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          new_values?: Json | null
+          old_values?: Json | null
+          target_id?: string | null
+          target_type: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          new_values?: Json | null
+          old_values?: Json | null
+          target_id?: string | null
+          target_type?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       currencies: {
         Row: {
           code: string
@@ -875,6 +925,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_user_with_audit: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       assign_teacher_round_robin: {
         Args: {
           teacher_type_param: string
@@ -1001,6 +1055,17 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      log_audit_action: {
+        Args: {
+          p_action_type: string
+          p_target_type: string
+          p_target_id?: string
+          p_old_values?: Json
+          p_new_values?: Json
+          p_metadata?: Json
+        }
+        Returns: string
+      }
       log_booking_operation: {
         Args: {
           p_operation_type: string
@@ -1029,6 +1094,14 @@ export type Database = {
           p_student_id?: string
           p_additional_data?: Json
         }
+        Returns: Json
+      }
+      record_invitation_code_usage: {
+        Args: { p_code: string; p_user_id: string }
+        Returns: Json
+      }
+      reject_user_with_audit: {
+        Args: { p_user_id: string; p_reason: string }
         Returns: Json
       }
       search_available_teachers: {
