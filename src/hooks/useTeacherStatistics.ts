@@ -76,10 +76,10 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
 
     setLoading(true);
     try {
-      console.log('📊 PHASE 3: Fetching teacher statistics with date filter:', { teacherId: user.id, dateRange });
+      console.log('📊 PHASE 1: Fetching teacher statistics with enhanced filter logic:', { teacherId: user.id, dateRange });
 
       const { startDate, endDate } = getDateRangeFilter(dateRange);
-      console.log('📅 PHASE 3: Date range filter:', { startDate, endDate });
+      console.log('📅 PHASE 1: Date range filter:', { startDate, endDate });
 
       // Current capacity (all active students)
       const { data: activeStudents, error: activeError } = await supabase
@@ -89,13 +89,13 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
         .eq('status', 'active');
 
       if (activeError) {
-        console.error('❌ PHASE 3: Error fetching active students:', activeError);
+        console.error('❌ PHASE 1: Error fetching active students:', activeError);
         throw activeError;
       }
 
-      console.log('✅ PHASE 3: Active students found:', activeStudents?.length || 0);
+      console.log('✅ PHASE 1: Active students found:', activeStudents?.length || 0);
 
-      // Individual students statistics with date filter
+      // PHASE 1 FIX: Use trial_date for filtering (session date, not creation date)
       const { data: individualStudents, error: individualsError } = await supabase
         .from('students')
         .select('id, status, trial_date')
@@ -105,13 +105,13 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
         .lte('trial_date', endDate);
 
       if (individualsError) {
-        console.error('❌ PHASE 3: Error fetching individual students:', individualsError);
+        console.error('❌ PHASE 1: Error fetching individual students:', individualsError);
         throw individualsError;
       }
 
-      console.log('✅ PHASE 3: Individual students in date range:', individualStudents?.length || 0);
+      console.log('✅ PHASE 1: Individual students in date range:', individualStudents?.length || 0);
 
-      // Family groups statistics with date filter
+      // PHASE 1 FIX: Use trial_date for family groups filtering
       const { data: familyGroups, error: familyError } = await supabase
         .from('family_groups')
         .select('id, status, trial_date, student_count')
@@ -120,11 +120,11 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
         .lte('trial_date', endDate);
 
       if (familyError) {
-        console.error('❌ PHASE 3: Error fetching family groups:', familyError);
+        console.error('❌ PHASE 1: Error fetching family groups:', familyError);
         throw familyError;
       }
 
-      console.log('✅ PHASE 3: Family groups in date range:', familyGroups?.length || 0);
+      console.log('✅ PHASE 1: Family groups in date range:', familyGroups?.length || 0);
 
       // Calculate statistics
       const individualsByStatus = {
@@ -153,8 +153,10 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
         ghostedTrials: individualsByStatus.ghosted + familiesByStatus.ghosted,
       };
 
-      console.log('📊 PHASE 3: Calculated statistics:', {
+      console.log('📊 PHASE 1: Calculated statistics with enhanced filtering:', {
         dateRange,
+        filterUsed: 'trial_date',
+        dateRangeApplied: { startDate, endDate },
         individualsByStatus,
         familiesByStatus,
         finalStats: newStats
@@ -162,7 +164,7 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
 
       setStats(newStats);
     } catch (error) {
-      console.error('❌ PHASE 3: Error fetching teacher statistics:', error);
+      console.error('❌ PHASE 1: Error fetching teacher statistics:', error);
     } finally {
       setLoading(false);
     }

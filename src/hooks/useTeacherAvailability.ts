@@ -20,7 +20,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // PHASE 3 FIX: Standardize time format conversion functions
+  // PHASE 1 FIX: Standardize time format conversion functions
   const formatTimeForDB = (time: string): string => {
     // Convert UI time (HH:MM) to database format (HH:MM:SS)
     if (time.match(/^\d{2}:\d{2}:\d{2}$/)) {
@@ -66,32 +66,22 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     return date.toDateString() === egyptToday.toDateString();
   };
 
-  // Enhanced validation for teacher operations on today's availability
+  // PHASE 1 FIX: Remove teacher restriction for today's availability
   const validateTeacherTodayOperation = (date: Date): boolean => {
-    // Only apply restrictions to teachers, not admins
-    if (user?.role !== 'teacher') {
-      console.log('✅ Non-teacher user - no restrictions applied');
-      return true;
-    }
-
-    if (isToday(date)) {
-      console.log('❌ Teacher attempting to modify today\'s availability - blocked');
-      toast.error('Cannot modify today\'s availability. Today\'s schedule is locked to prevent disruption of confirmed bookings.');
-      return false;
-    }
-
-    console.log('✅ Teacher operation allowed - not today\'s date');
+    // REMOVED: Previous restriction that prevented teachers from editing today's availability
+    // Teachers can now edit today's availability except for booked slots
+    console.log('✅ Teacher operation allowed for any date including today');
     return true;
   };
 
-  // PHASE 3 FIX: Enhanced availability fetching with proper time format handling
+  // PHASE 1 FIX: Enhanced availability fetching with proper time format handling
   const fetchAvailability = useCallback(async () => {
     if (!selectedDate || !user) return;
 
     setLoading(true);
     try {
       const dateString = format(selectedDate, 'yyyy-MM-dd');
-      console.log('📊 PHASE 3: Fetching availability with enhanced time handling for date:', dateString);
+      console.log('📊 PHASE 1: Fetching availability with enhanced time handling for date:', dateString);
       
       const { data, error } = await supabase
         .from('teacher_availability')
@@ -105,12 +95,12 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
         return;
       }
 
-      console.log('📋 PHASE 3: Raw database data for date', dateString, ':', data);
+      console.log('📋 PHASE 1: Raw database data for date', dateString, ':', data);
 
       // Generate all possible time slots in Egypt time (UI format)
       const allSlots = generateTimeSlots();
       
-      // PHASE 3 FIX: Update slots with database data using enhanced time conversion
+      // PHASE 1 FIX: Update slots with database data using enhanced time conversion
       const updatedSlots = allSlots.map(slot => {
         // Find matching database slot by converting UI time to DB format for comparison
         const dbSlot = data?.find(d => {
@@ -118,17 +108,17 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
             const uiTimeFromDB = formatTimeForUI(d.time_slot);
             const match = uiTimeFromDB === slot.time;
             if (match) {
-              console.log(`✅ PHASE 3: Time match found - UI: ${slot.time}, DB: ${d.time_slot}, Converted: ${uiTimeFromDB}`);
+              console.log(`✅ PHASE 1: Time match found - UI: ${slot.time}, DB: ${d.time_slot}, Converted: ${uiTimeFromDB}`);
             }
             return match;
           } catch (error) {
-            console.warn(`⚠️ PHASE 3: Time conversion error for DB time ${d.time_slot}:`, error);
+            console.warn(`⚠️ PHASE 1: Time conversion error for DB time ${d.time_slot}:`, error);
             return false;
           }
         });
         
         if (dbSlot) {
-          console.log(`✅ PHASE 3: Found matching slot for UI time ${slot.time}:`, { 
+          console.log(`✅ PHASE 1: Found matching slot for UI time ${slot.time}:`, { 
             dbId: dbSlot.id, 
             dbTime: dbSlot.time_slot,
             isAvailable: dbSlot.is_available,
@@ -146,7 +136,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
         return slot;
       });
 
-      console.log('📝 PHASE 3: Final updated slots for date', dateString, ':', 
+      console.log('📝 PHASE 1: Final updated slots for date', dateString, ':', 
         updatedSlots.filter(s => s.isAvailable || s.isBooked).map(s => ({
           time: s.time,
           available: s.isAvailable,
@@ -155,20 +145,20 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
       );
       setTimeSlots(updatedSlots);
     } catch (error) {
-      console.error('❌ PHASE 3: Error in fetchAvailability:', error);
+      console.error('❌ PHASE 1: Error in fetchAvailability:', error);
       toast.error('Failed to load availability');
     } finally {
       setLoading(false);
     }
   }, [selectedDate, user]);
 
-  // PHASE 3 FIX: Enhanced toggle availability with proper time format conversion
+  // PHASE 1 FIX: Enhanced toggle availability with proper time format conversion
   const toggleAvailability = async (time: string) => {
     if (!selectedDate || !user) return;
 
-    console.log('🎯 PHASE 3: Enhanced toggle availability for UI time:', time, 'on date:', selectedDate.toDateString());
+    console.log('🎯 PHASE 1: Enhanced toggle availability for UI time:', time, 'on date:', selectedDate.toDateString());
 
-    // Enhanced teacher validation for today's availability
+    // Enhanced teacher validation - now allows today's modifications
     if (!validateTeacherTodayOperation(selectedDate)) {
       return; // Validation failed, operation blocked
     }
@@ -176,16 +166,19 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     const slot = timeSlots.find(s => s.time === time);
     if (!slot || slot.isBooked) {
       console.log('❌ Cannot modify slot:', { slot, reason: slot?.isBooked ? 'booked' : 'not found' });
+      if (slot?.isBooked) {
+        toast.error('Cannot modify booked time slots');
+      }
       return; // Can't modify booked slots
     }
 
     const dateString = format(selectedDate, 'yyyy-MM-dd');
     
     try {
-      // PHASE 3 FIX: Convert UI time to database format
+      // PHASE 1 FIX: Convert UI time to database format
       const dbTime = formatTimeForDB(time);
       
-      console.log('💾 PHASE 3: Enhanced availability toggle with proper time conversion:', {
+      console.log('💾 PHASE 1: Enhanced availability toggle with proper time conversion:', {
         selectedDate: dateString,
         uiTime: time,
         dbTime: dbTime,
@@ -196,26 +189,22 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
       if (slot.isAvailable) {
         // Remove availability
         if (slot.id) {
-          console.log('🗑️ PHASE 3: Removing availability for slot ID:', slot.id);
+          console.log('🗑️ PHASE 1: Removing availability for slot ID:', slot.id);
           const { error } = await supabase
             .from('teacher_availability')
             .delete()
             .eq('id', slot.id);
 
           if (error) {
-            console.error('❌ PHASE 3: Error removing availability:', error);
-            if (error.message?.includes('Teachers cannot modify availability for today')) {
-              toast.error('Cannot modify today\'s availability. Today\'s schedule is locked.');
-            } else {
-              toast.error('Failed to remove availability');
-            }
+            console.error('❌ PHASE 1: Error removing availability:', error);
+            toast.error('Failed to remove availability');
             return;
           }
-          console.log('✅ PHASE 3: Successfully removed availability');
+          console.log('✅ PHASE 1: Successfully removed availability');
         }
       } else {
         // Add availability
-        console.log('➕ PHASE 3: Adding availability with enhanced time conversion:', {
+        console.log('➕ PHASE 1: Adding availability with enhanced time conversion:', {
           teacher_id: user.id,
           date: dateString,
           time_slot: dbTime,
@@ -235,33 +224,25 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
           });
 
         if (error) {
-          console.error('❌ PHASE 3: Error adding availability:', error);
-          if (error.message?.includes('Teachers cannot modify availability for today')) {
-            toast.error('Cannot modify today\'s availability. Today\'s schedule is locked.');
-          } else {
-            toast.error('Failed to add availability');
-          }
+          console.error('❌ PHASE 1: Error adding availability:', error);
+          toast.error('Failed to add availability');
           return;
         }
-        console.log('✅ PHASE 3: Successfully added availability with enhanced time conversion');
+        console.log('✅ PHASE 1: Successfully added availability with enhanced time conversion');
       }
 
       // Refresh data
       await fetchAvailability();
       toast.success(slot.isAvailable ? 'Time slot removed' : 'Time slot added');
     } catch (error) {
-      console.error('❌ PHASE 3: Error in enhanced toggle availability:', error);
-      if (error instanceof Error && error.message?.includes('Teachers cannot modify availability for today')) {
-        toast.error('Cannot modify today\'s availability. Today\'s schedule is locked.');
-      } else {
-        toast.error('Failed to update availability');
-      }
+      console.error('❌ PHASE 1: Error in enhanced toggle availability:', error);
+      toast.error('Failed to update availability');
     }
   };
 
   // Force refresh availability - useful after reschedule operations
   const forceRefresh = useCallback(() => {
-    console.log('🔄 PHASE 3: Force refreshing availability data with enhanced handling...');
+    console.log('🔄 PHASE 1: Force refreshing availability data with enhanced handling...');
     fetchAvailability();
   }, [fetchAvailability]);
 

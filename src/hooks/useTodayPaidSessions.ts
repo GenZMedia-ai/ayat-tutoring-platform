@@ -29,8 +29,9 @@ export const useTodayPaidSessions = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      console.log('🔍 Fetching today\'s paid sessions for teacher:', user.id, 'date:', today);
+      console.log('🔍 Fetching today\'s PAID sessions only for teacher:', user.id, 'date:', today);
 
+      // PHASE 1 FIX: Only fetch sessions for students with 'paid' or 'active' status
       const { data: sessionData, error } = await supabase
         .from('sessions')
         .select(`
@@ -43,24 +44,26 @@ export const useTodayPaidSessions = () => {
             students!inner(
               id,
               name,
-              assigned_teacher_id
+              assigned_teacher_id,
+              status
             )
           )
         `)
         .eq('scheduled_date', today)
         .eq('session_students.students.assigned_teacher_id', user.id)
+        .in('session_students.students.status', ['paid', 'active'])
         .in('status', ['scheduled'])
         .order('scheduled_time');
 
       if (error) {
-        console.error('❌ Error fetching today\'s sessions:', error);
+        console.error('❌ Error fetching today\'s paid sessions:', error);
         return;
       }
 
-      console.log('📋 Raw session data:', sessionData);
+      console.log('📋 Raw paid session data:', sessionData);
 
       if (!sessionData || sessionData.length === 0) {
-        console.log('📅 No sessions found for today');
+        console.log('📅 No paid sessions found for today');
         setSessions([]);
         return;
       }
@@ -98,7 +101,7 @@ export const useTodayPaidSessions = () => {
       );
 
       const validSessions = processedSessions.filter(Boolean) as TodaySession[];
-      console.log('📋 Processed today\'s sessions:', validSessions);
+      console.log('📋 Processed today\'s PAID sessions:', validSessions);
       setSessions(validSessions);
     } catch (error) {
       console.error('❌ Error in fetchTodaySessions:', error);
@@ -115,10 +118,10 @@ export const useTodayPaidSessions = () => {
   useEffect(() => {
     if (!user) return;
 
-    console.log('🔄 Setting up real-time updates for today\'s sessions');
+    console.log('🔄 Setting up real-time updates for today\'s paid sessions');
     
     const channel = supabase
-      .channel('teacher-today-sessions')
+      .channel('teacher-today-paid-sessions')
       .on(
         'postgres_changes',
         {

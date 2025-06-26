@@ -5,7 +5,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { useTeacherAvailability } from '@/hooks/useTeacherAvailability';
 import { useServerDate } from '@/hooks/useServerDate';
-import { Trash2, Lock, Eye } from 'lucide-react';
+import { Trash2, Lock } from 'lucide-react';
 
 const TeacherAvailability: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -15,7 +15,7 @@ const TeacherAvailability: React.FC = () => {
   const isSelectedDateToday = isDateToday(selectedDate);
 
   const renderTimeSlotButton = (slot: { time: string; isAvailable: boolean; isBooked: boolean }) => {
-    const isDisabled = loading || dateLoading || (isSelectedDateToday && !slot.isBooked);
+    const isDisabled = loading || dateLoading;
 
     if (slot.isBooked) {
       return (
@@ -32,59 +32,31 @@ const TeacherAvailability: React.FC = () => {
     }
 
     if (slot.isAvailable) {
-      if (isSelectedDateToday) {
-        return (
-          <Button
-            key={slot.time}
-            size="sm"
-            disabled
-            className="ayat-button-primary opacity-60 cursor-not-allowed relative"
-          >
-            <Eye className="w-3 h-3 absolute top-1 right-1 opacity-60" />
-            {slot.time}
-          </Button>
-        );
-      } else {
-        return (
-          <Button
-            key={slot.time}
-            size="sm"
-            className="ayat-button-primary relative group"
-            onClick={() => toggleAvailability(slot.time)}
-            disabled={isDisabled}
-          >
-            <Trash2 className="w-3 h-3 absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity" />
-            {slot.time}
-          </Button>
-        );
-      }
-    }
-
-    if (isSelectedDateToday) {
       return (
         <Button
           key={slot.time}
           size="sm"
-          variant="outline"
-          disabled
-          className="opacity-60 cursor-not-allowed"
-        >
-          {slot.time}
-        </Button>
-      );
-    } else {
-      return (
-        <Button
-          key={slot.time}
-          size="sm"
-          variant="outline"
+          className="ayat-button-primary relative group"
           onClick={() => toggleAvailability(slot.time)}
           disabled={isDisabled}
         >
+          <Trash2 className="w-3 h-3 absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity" />
           {slot.time}
         </Button>
       );
     }
+
+    return (
+      <Button
+        key={slot.time}
+        size="sm"
+        variant="outline"
+        onClick={() => toggleAvailability(slot.time)}
+        disabled={isDisabled}
+      >
+        {slot.time}
+      </Button>
+    );
   };
 
   return (
@@ -94,8 +66,8 @@ const TeacherAvailability: React.FC = () => {
         <CardDescription>
           Set your available time slots for new bookings (times shown in Egypt time)
           {isSelectedDateToday && (
-            <span className="block text-orange-600 font-medium mt-1">
-              ⚠️ Today's schedule is locked - you can only view existing availability
+            <span className="block text-green-600 font-medium mt-1">
+              ✅ You can now edit today's availability (except booked slots)
             </span>
           )}
         </CardDescription>
@@ -111,9 +83,9 @@ const TeacherAvailability: React.FC = () => {
               disabled={(date) => date < new Date()}
             />
             {isSelectedDateToday && (
-              <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                <p className="text-sm text-orange-800">
-                  <strong>Today's Schedule Locked:</strong> You cannot modify today's availability to prevent disruption of confirmed bookings. You can view your current schedule and all future dates remain editable.
+              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800">
+                  <strong>Today's Schedule Unlocked:</strong> You can now add or remove availability for today. Only booked slots remain protected to prevent disruption of confirmed bookings.
                 </p>
               </div>
             )}
@@ -121,9 +93,6 @@ const TeacherAvailability: React.FC = () => {
           <div className="space-y-4">
             <h4 className="font-medium">
               Time Slots for {selectedDate?.toDateString()}
-              {isSelectedDateToday && (
-                <span className="text-sm text-orange-600 ml-2">(View Only)</span>
-              )}
             </h4>
             {loading || dateLoading ? (
               <p className="text-sm text-muted-foreground">Loading availability...</p>
@@ -131,10 +100,7 @@ const TeacherAvailability: React.FC = () => {
               <>
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    {isSelectedDateToday 
-                      ? 'Viewing today\'s schedule (no modifications allowed)'
-                      : 'Click to toggle availability. Hover over available slots to remove them.'
-                    }
+                    Click to toggle availability. Hover over available slots to remove them.
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     {timeSlots.map(renderTimeSlotButton)}
@@ -145,30 +111,18 @@ const TeacherAvailability: React.FC = () => {
                   <div className="space-y-1 text-xs">
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 bg-primary rounded"></div>
-                      <span>
-                        {isSelectedDateToday ? 'Available (view only)' : 'Available (hover to remove)'}
-                      </span>
+                      <span>Available (hover to remove)</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border border-gray-300 rounded"></div>
-                      <span>
-                        {isSelectedDateToday ? 'Not available (view only)' : 'Not available (click to add)'}
-                      </span>
+                      <span>Not available (click to add)</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 bg-black rounded relative">
                         <Lock className="w-2 h-2 text-red-500 absolute top-0.5 right-0.5" />
                       </div>
-                      <span>Booked (locked)</span>
+                      <span>Booked (protected)</span>
                     </div>
-                    {isSelectedDateToday && (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-primary opacity-60 rounded relative">
-                          <Eye className="w-2 h-2 absolute top-0.5 right-0.5" />
-                        </div>
-                        <span>Today's slots (read-only)</span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </>
