@@ -23,11 +23,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { TrialStudent } from '@/hooks/useTeacherTrialSessions';
-import { format } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
 import { supabase } from '@/integrations/supabase/client';
-
-const EGYPT_TIMEZONE = 'Africa/Cairo';
+import { formatDateTimeInEgyptTime } from '@/utils/egyptTimezone';
 
 interface TeacherStudentCardProps {
   student: TrialStudent;
@@ -116,88 +113,13 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
     );
   };
 
+  // FIXED: Use Egypt timezone for all time displays
   const formatDateTime = (date?: string, time?: string) => {
-    if (!date || !time) return 'Not scheduled';
-    
-    try {
-      console.log('🔄 Formatting date/time:', { date, time });
-      
-      // Validate input date format (should be YYYY-MM-DD)
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        console.error('❌ Invalid date format:', date);
-        return 'Invalid date format';
-      }
-      
-      // Validate input time format (should be HH:mm:ss)
-      if (!/^\d{2}:\d{2}:\d{2}$/.test(time)) {
-        console.error('❌ Invalid time format:', time);
-        return 'Invalid time format';
-      }
-      
-      // Create UTC datetime string (database stores UTC time)
-      const utcDateTimeString = `${date}T${time}Z`;
-      console.log('📅 UTC DateTime String:', utcDateTimeString);
-      
-      // Parse as UTC date
-      const utcDateTime = new Date(utcDateTimeString);
-      
-      // Check if date is valid
-      if (isNaN(utcDateTime.getTime())) {
-        console.error('❌ Invalid date object:', utcDateTimeString);
-        return 'Invalid date';
-      }
-      
-      console.log('🌐 UTC DateTime Object:', utcDateTime.toISOString());
-      
-      // Convert to Egypt timezone
-      const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
-      console.log('🇪🇬 Egypt DateTime:', egyptDateTime);
-      
-      // Format in Egyptian format: DD/MM/YYYY at H:mm AM/PM
-      const formattedDateTime = format(egyptDateTime, 'dd/MM/yyyy \'at\' h:mm a');
-      console.log('✅ Formatted DateTime:', formattedDateTime);
-      
-      return formattedDateTime;
-    } catch (error) {
-      console.error('❌ Date formatting error:', error);
-      return 'Date formatting error';
-    }
+    return formatDateTimeInEgyptTime(date, time, "dd/MM/yyyy 'at' h:mm a");
   };
 
   const formatOriginalDateTime = (date?: string, time?: string) => {
-    if (!date || !time) return '';
-    
-    try {
-      console.log('🔄 Formatting original date/time:', { date, time });
-      
-      // Validate input formats
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}:\d{2}$/.test(time)) {
-        console.error('❌ Invalid original date/time format:', { date, time });
-        return '';
-      }
-      
-      // Create UTC datetime string
-      const utcDateTimeString = `${date}T${time}Z`;
-      const utcDateTime = new Date(utcDateTimeString);
-      
-      // Check if date is valid
-      if (isNaN(utcDateTime.getTime())) {
-        console.error('❌ Invalid original date object:', utcDateTimeString);
-        return '';
-      }
-      
-      // Convert to Egypt timezone
-      const egyptDateTime = toZonedTime(utcDateTime, EGYPT_TIMEZONE);
-      
-      // Format in short Egyptian format: DD/MM at H:mm AM/PM
-      const formattedDateTime = format(egyptDateTime, 'dd/MM \'at\' h:mm a');
-      console.log('✅ Formatted Original DateTime:', formattedDateTime);
-      
-      return formattedDateTime;
-    } catch (error) {
-      console.error('❌ Original date formatting error:', error);
-      return '';
-    }
+    return formatDateTimeInEgyptTime(date, time, "dd/MM 'at' h:mm a");
   };
 
   const getMenuOptions = () => {

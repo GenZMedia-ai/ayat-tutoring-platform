@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,10 +25,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialData';
-import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-
-const EGYPT_TIMEZONE = 'Africa/Cairo';
+import { formatDateTimeInEgyptTime } from '@/utils/egyptTimezone';
 
 interface UnifiedTeacherStudentCardProps {
   item: TeacherMixedTrialItem;
@@ -141,58 +140,13 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
     );
   };
 
+  // FIXED: Use Egypt timezone for all time displays
   const formatDateTime = (date?: string, time?: string) => {
-    if (!date || !time) return 'Not scheduled';
-    
-    try {
-      console.log('🔄 Formatting date/time:', { date, time });
-      
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}(:\d{2})?$/.test(time)) {
-        console.error('❌ Invalid date/time format:', { date, time });
-        return 'Invalid format';
-      }
-      
-      const normalizedTime = time.length === 5 ? `${time}:00` : time;
-      const egyptDateTimeString = `${date}T${normalizedTime}`;
-      const egyptDateTime = new Date(egyptDateTimeString);
-      
-      if (isNaN(egyptDateTime.getTime())) {
-        console.error('❌ Invalid date object:', egyptDateTimeString);
-        return 'Invalid date';
-      }
-      
-      const formattedDateTime = format(egyptDateTime, 'dd/MM/yyyy \'at\' h:mm a');
-      
-      return formattedDateTime;
-    } catch (error) {
-      console.error('❌ Date formatting error:', error);
-      return 'Date formatting error';
-    }
+    return formatDateTimeInEgyptTime(date, time, "dd/MM/yyyy 'at' h:mm a");
   };
 
   const formatOriginalDateTime = (date?: string, time?: string) => {
-    if (!date || !time) return '';
-    
-    try {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}(:\d{2})?$/.test(time)) {
-        return '';
-      }
-      
-      const normalizedTime = time.length === 5 ? `${time}:00` : time;
-      const egyptDateTimeString = `${date}T${normalizedTime}`;
-      const egyptDateTime = new Date(egyptDateTimeString);
-      
-      if (isNaN(egyptDateTime.getTime())) {
-        return '';
-      }
-      
-      const formattedDateTime = format(egyptDateTime, 'dd/MM \'at\' h:mm a');
-      
-      return formattedDateTime;
-    } catch (error) {
-      console.error('❌ Original date formatting error:', error);
-      return '';
-    }
+    return formatDateTimeInEgyptTime(date, time, "dd/MM 'at' h:mm a");
   };
 
   const getMenuOptions = () => {

@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toZonedTime, format } from 'date-fns-tz';
 import { getTimezoneConfig, convertClientTimeToServer } from '@/utils/timezoneUtils';
+import { formatInTimezone, EGYPT_TIMEZONE } from '@/utils/egyptTimezone';
 
 export interface SimpleTimeSlot {
   id: string;
@@ -103,13 +103,13 @@ export class SimpleAvailabilityService {
           const utcSlotDate = new Date(`${dateStr}T${timeSlotStr}.000Z`);
           const utcEndDate = new Date(utcSlotDate.getTime() + 30 * 60 * 1000);
           
-          // Format times for client timezone
-          const clientStartTime = this.formatTimeInTimezone(utcSlotDate, timezoneConfig.iana);
-          const clientEndTime = this.formatTimeInTimezone(utcEndDate, timezoneConfig.iana);
+          // FIXED: Format times using Egypt timezone utility
+          const clientStartTime = formatInTimezone(utcSlotDate, timezoneConfig.iana, 'h:mm a');
+          const clientEndTime = formatInTimezone(utcEndDate, timezoneConfig.iana, 'h:mm a');
           
-          // Format times for Egypt timezone
-          const egyptStartTime = this.formatTimeInTimezone(utcSlotDate, 'Africa/Cairo');
-          const egyptEndTime = this.formatTimeInTimezone(utcEndDate, 'Africa/Cairo');
+          // FIXED: Format times for Egypt timezone using utility
+          const egyptStartTime = formatInTimezone(utcSlotDate, EGYPT_TIMEZONE, 'h:mm a');
+          const egyptEndTime = formatInTimezone(utcEndDate, EGYPT_TIMEZONE, 'h:mm a');
           
           return {
             id: slot.id,
@@ -117,7 +117,7 @@ export class SimpleAvailabilityService {
             teacherName: profile.full_name,
             teacherType: profile.teacher_type,
             utcStartTime: timeSlotStr,
-            utcEndTime: format(utcEndDate, 'HH:mm:ss', { timeZone: 'UTC' }),
+            utcEndTime: utcEndDate.toISOString().split('T')[1].split('.')[0],
             clientTimeDisplay: `${clientStartTime}-${clientEndTime}`,
             egyptTimeDisplay: `${egyptStartTime}-${egyptEndTime} (Egypt)`
           };
@@ -130,12 +130,5 @@ export class SimpleAvailabilityService {
     }
   }
   
-  private static formatTimeInTimezone(date: Date, timeZone: string): string {
-    const zonedDate = toZonedTime(date, timeZone);
-    const hour = zonedDate.getHours();
-    const minutes = zonedDate.getMinutes();
-    const period = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-    return `${displayHour}:${String(minutes).padStart(2, '0')} ${period}`;
-  }
+  // REMOVED: formatTimeInTimezone method - now using centralized utility
 }

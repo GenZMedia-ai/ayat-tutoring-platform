@@ -112,7 +112,7 @@ const SalesTrialAppointments: React.FC = () => {
         <div>
           <h3 className="text-lg font-semibold">Trial Appointments</h3>
           <p className="text-sm text-muted-foreground">
-            Manage all trial sessions, payments, and follow-ups
+            Manage all trial sessions, payments, and follow-ups (All times shown in Egypt timezone)
           </p>
         </div>
         <Button onClick={() => {
