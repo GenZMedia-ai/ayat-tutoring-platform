@@ -71,20 +71,10 @@ const SalesFollowup: React.FC = () => {
 
       console.log('Loading follow-up tasks for date range:', fromStr, 'to', toStr);
 
-      // Build the query with proper joins for both students and families
+      // First get follow-ups
       let query = supabase
         .from('sales_followups')
-        .select(`
-          *,
-          students!sales_followups_student_id_fkey (
-            name,
-            phone
-          ),
-          family_groups!sales_followups_family_group_id_fkey (
-            parent_name,
-            phone
-          )
-        `)
+        .select('*')
         .eq('sales_agent_id', user.id)
         .order('scheduled_date', { ascending: true });
 
@@ -103,11 +93,45 @@ const SalesFollowup: React.FC = () => {
 
       console.log('Loaded follow-up tasks:', followups?.length || 0);
 
-      const tasksWithStudentInfo = (followups || []).map(followup => ({
-        ...followup,
-        student_name: followup.students?.name || followup.family_groups?.parent_name || 'Unknown',
-        student_phone: followup.students?.phone || followup.family_groups?.phone || ''
-      }));
+      // Now get related student/family data
+      const tasksWithStudentInfo = await Promise.all(
+        (followups || []).map(async (followup) => {
+          let studentName = 'Unknown';
+          let studentPhone = '';
+
+          if (followup.student_id) {
+            // Get student data
+            const { data: student } = await supabase
+              .from('students')
+              .select('name, phone')
+              .eq('id', followup.student_id)
+              .single();
+            
+            if (student) {
+              studentName = student.name;
+              studentPhone = student.phone;
+            }
+          } else if (followup.family_group_id) {
+            // Get family group data
+            const { data: familyGroup } = await supabase
+              .from('family_groups')
+              .select('parent_name, phone')
+              .eq('id', followup.family_group_id)
+              .single();
+            
+            if (familyGroup) {
+              studentName = familyGroup.parent_name;
+              studentPhone = familyGroup.phone;
+            }
+          }
+
+          return {
+            ...followup,
+            student_name: studentName,
+            student_phone: studentPhone
+          };
+        })
+      );
 
       setFollowUpTasks(tasksWithStudentInfo);
 
