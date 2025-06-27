@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +22,9 @@ import {
 import { MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { FamilyGroup } from '@/types/family';
 import { TrialSessionFlowStudent } from '@/types/trial';
+import { ScheduleFollowupModal } from '@/components/sales/ScheduleFollowupModal';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UnifiedTrialCardProps {
   item: MixedStudentItem;
@@ -43,8 +45,36 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
   onRefresh,
   showActions = true
 }) => {
+  const [followupModalOpen, setFollowupModalOpen] = useState(false);
+  const [existingFollowup, setExistingFollowup] = useState<any>(null);
+  const [loadingFollowup, setLoadingFollowup] = useState(false);
+
   const isFamily = item.type === 'family';
   const data = item.data;
+
+  // Load existing follow-up when component mounts
+  useEffect(() => {
+    loadExistingFollowup();
+  }, [item.id]);
+
+  const loadExistingFollowup = async () => {
+    try {
+      const { data: followup, error } = await supabase
+        .from('sales_followups')
+        .select('*')
+        .eq(isFamily ? 'family_group_id' : 'student_id', item.id)
+        .eq('completed', false)
+        .order('scheduled_date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && followup) {
+        setExistingFollowup(followup);
+      }
+    } catch (error) {
+      console.error('Error loading follow-up:', error);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; label: string }> = {
@@ -106,228 +136,278 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
 
   const shouldShowFollowUpSchedule = () => {
     const status = getStatus();
-    return (status === 'trial-completed' || status === 'trial-ghosted' || status === 'awaiting-payment') && !getPendingFollowUp();
+    return (status === 'trial-completed' || status === 'trial-ghosted' || status === 'awaiting-payment');
+  };
+
+  const handleScheduleFollowup = () => {
+    setFollowupModalOpen(true);
+  };
+
+  const handleFollowupSuccess = () => {
+    loadExistingFollowup();
+    if (onRefresh) {
+      onRefresh();
+    }
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex items-center gap-2">
-                {isFamily ? (
-                  <Users className="h-4 w-4 text-primary" />
-                ) : (
-                  <User className="h-4 w-4 text-primary" />
-                )}
-                <h3 className="font-semibold text-lg">{getName()}</h3>
-              </div>
-              {getStatusBadge(getStatus())}
-              <Badge variant="outline" className="text-xs">
-                {isFamily ? 'Family' : 'Individual'}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="font-mono">{getUniqueId()}</span>
-              {isFamily ? (
-                <span>{getStudentCount()} students</span>
-              ) : (
-                <>
-                  <span>Age: {getAge()}</span>
-                  {getParentName() && (
-                    <span>Parent: {getParentName()}</span>
+    <>
+      <Card className="hover:shadow-md transition-shadow">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center gap-2">
+                  {isFamily ? (
+                    <Users className="h-4 w-4 text-primary" />
+                  ) : (
+                    <User className="h-4 w-4 text-primary" />
                   )}
-                </>
+                  <h3 className="font-semibold text-lg">{getName()}</h3>
+                </div>
+                {getStatusBadge(getStatus())}
+                <Badge variant="outline" className="text-xs">
+                  {isFamily ? 'Family' : 'Individual'}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span className="font-mono">{getUniqueId()}</span>
+                {isFamily ? (
+                  <span>{getStudentCount()} students</span>
+                ) : (
+                  <>
+                    <span>Age: {getAge()}</span>
+                    {getParentName() && (
+                      <span>Parent: {getParentName()}</span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {showActions && onEdit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onEdit(item)}
+                >
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+              )}
+              {showActions && onStatusChange && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onStatusChange(item)}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
               )}
             </div>
           </div>
-          <div className="flex gap-2">
-            {showActions && onEdit && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onEdit(item)}
-              >
-                <Edit2 className="h-4 w-4" />
-              </Button>
-            )}
-            {showActions && onStatusChange && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onStatusChange(item)}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Contact Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm">
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              <span>{getPhone()}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span>{getCountry()}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Video className="h-4 w-4 text-muted-foreground" />
-              <span className="capitalize">{getPlatform()}</span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>{formatDateTime(getTrialDate(), getTrialTime())}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span className="capitalize">{getTeacherType()} Teacher</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Notes */}
-        {getNotes() && (
-          <div className="p-3 bg-muted rounded-lg">
-            <p className="text-sm">
-              <strong>Notes:</strong> {getNotes()}
-            </p>
-          </div>
-        )}
-
-        {/* Individual Student Specific Information */}
-        {!isFamily && (
-          <>
-            {/* Last Contact Info */}
-            {getLastWhatsAppContact() && (
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <div className="flex items-center gap-2 mb-1">
-                  <MessageCircle className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-800">Last Contact</span>
-                </div>
-                <p className="text-sm text-blue-700">
-                  {getLastWhatsAppContact()!.success ? 'Successful' : 'Failed'} contact on{' '}
-                  {format(new Date(getLastWhatsAppContact()!.contactedAt), 'MMM dd, yyyy')}
-                </p>
-                {getLastWhatsAppContact()!.notes && (
-                  <p className="text-sm text-blue-600 mt-1">
-                    {getLastWhatsAppContact()!.notes}
-                  </p>
-                )}
+        <CardContent className="space-y-4">
+          {/* Contact Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                <span>{getPhone()}</span>
               </div>
-            )}
+              <div className="flex items-center gap-2 text-sm">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <span>{getCountry()}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Video className="h-4 w-4 text-muted-foreground" />
+                <span className="capitalize">{getPlatform()}</span>
+              </div>
+            </div>
 
-            {/* Payment Link Info */}
-            {getPaymentLink() && (
-              <div className="p-3 bg-purple-50 rounded-lg">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-purple-600" />
-                    <span className="text-sm font-medium text-purple-800">Payment Link</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span>{formatDateTime(getTrialDate(), getTrialTime())}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="capitalize">{getTeacherType()} Teacher</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          {getNotes() && (
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-sm">
+                <strong>Notes:</strong> {getNotes()}
+              </p>
+            </div>
+          )}
+
+          {/* Individual Student Specific Information */}
+          {!isFamily && (
+            <>
+              {/* Last Contact Info */}
+              {getLastWhatsAppContact() && (
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <MessageCircle className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">Last Contact</span>
                   </div>
-                  <Badge className={`${
-                    getPaymentLink()!.status === 'paid' ? 'bg-green-100 text-green-800' :
-                    getPaymentLink()!.status === 'clicked' ? 'bg-yellow-100 text-yellow-800' :
-                    getPaymentLink()!.status === 'expired' ? 'bg-red-100 text-red-800' :
-                    'bg-purple-100 text-purple-800'
-                  } border-0`}>
-                    {getPaymentLink()!.status}
-                  </Badge>
+                  <p className="text-sm text-blue-700">
+                    {getLastWhatsAppContact()!.success ? 'Successful' : 'Failed'} contact on{' '}
+                    {format(new Date(getLastWhatsAppContact()!.contactedAt), 'MMM dd, yyyy')}
+                  </p>
+                  {getLastWhatsAppContact()!.notes && (
+                    <p className="text-sm text-blue-600 mt-1">
+                      {getLastWhatsAppContact()!.notes}
+                    </p>
+                  )}
                 </div>
-                <p className="text-sm text-purple-700">
-                  Amount: {getPaymentLink()!.currency.toUpperCase()} {(getPaymentLink()!.amount / 100).toFixed(2)}
-                </p>
-              </div>
-            )}
+              )}
 
-            {/* Follow-up Info */}
-            {getPendingFollowUp() && !getPendingFollowUp()!.completed && (
-              <div className="p-3 bg-yellow-50 rounded-lg">
-                <div className="flex items-center gap-2 mb-1">
-                  <Clock className="h-4 w-4 text-yellow-600" />
-                  <span className="text-sm font-medium text-yellow-800">Pending Follow-up</span>
+              {/* Payment Link Info */}
+              {getPaymentLink() && (
+                <div className="p-3 bg-purple-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-purple-600" />
+                      <span className="text-sm font-medium text-purple-800">Payment Link</span>
+                    </div>
+                    <Badge className={`${
+                      getPaymentLink()!.status === 'paid' ? 'bg-green-100 text-green-800' :
+                      getPaymentLink()!.status === 'clicked' ? 'bg-yellow-100 text-yellow-800' :
+                      getPaymentLink()!.status === 'expired' ? 'bg-red-100 text-red-800' :
+                      'bg-purple-100 text-purple-800'
+                    } border-0`}>
+                      {getPaymentLink()!.status}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-purple-700">
+                    Amount: {getPaymentLink()!.currency.toUpperCase()} {(getPaymentLink()!.amount / 100).toFixed(2)}
+                  </p>
                 </div>
-                <p className="text-sm text-yellow-700">
-                  Scheduled: {format(new Date(getPendingFollowUp()!.scheduledDate), 'MMM dd, yyyy')}
-                </p>
-                <p className="text-sm text-yellow-600">
-                  Reason: {getPendingFollowUp()!.reason}
-                </p>
+              )}
+
+              {/* Follow-up Info */}
+              {getPendingFollowUp() && !getPendingFollowUp()!.completed && (
+                <div className="p-3 bg-yellow-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="h-4 w-4 text-yellow-600" />
+                    <span className="text-sm font-medium text-yellow-800">Pending Follow-up</span>
+                  </div>
+                  <p className="text-sm text-yellow-700">
+                    Scheduled: {format(new Date(getPendingFollowUp()!.scheduledDate), 'MMM dd, yyyy')}
+                  </p>
+                  <p className="text-sm text-yellow-600">
+                    Reason: {getPendingFollowUp()!.reason}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* PHASE 2: Existing Follow-up Display */}
+          {existingFollowup && (
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">Scheduled Follow-up</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleScheduleFollowup}
+                  className="text-xs"
+                >
+                  Reschedule
+                </Button>
               </div>
-            )}
-          </>
-        )}
+              <p className="text-sm text-blue-700">
+                {format(new Date(existingFollowup.scheduled_date), 'MMM dd, yyyy')} at {existingFollowup.scheduled_time}
+              </p>
+              <p className="text-sm text-blue-600">
+                Reason: {existingFollowup.reason.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </p>
+              {existingFollowup.notes && (
+                <p className="text-sm text-blue-600 mt-1">
+                  Notes: {existingFollowup.notes}
+                </p>
+              )}
+            </div>
+          )}
 
-        {/* Action Buttons */}
-        {showActions && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t">
-            {/* Contact Button */}
-            {onContact && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => onContact(item)}
-              >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                Contact {isFamily ?
-                 'Family' : 'Student'}
-              </Button>
-            )}
+          {/* Action Buttons */}
+          {showActions && (
+            <div className="flex flex-wrap gap-2 pt-2 border-t">
+              {/* Contact Button */}
+              {onContact && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => onContact(item)}
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Contact {isFamily ? 'Family' : 'Student'}
+                </Button>
+              )}
 
-            {/* Create Payment Link Button */}
-            {shouldShowPaymentLink() && onCreatePaymentLink && (
-              <Button 
-                variant="default" 
-                size="sm"
-                onClick={() => onCreatePaymentLink(item)}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Create Payment Link
-              </Button>
-            )}
+              {/* Create Payment Link Button */}
+              {shouldShowPaymentLink() && onCreatePaymentLink && (
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  onClick={() => onCreatePaymentLink(item)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Create Payment Link
+                </Button>
+              )}
 
-            {/* Schedule Follow-up Button */}
-            {shouldShowFollowUpSchedule() && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  // This would trigger follow-up scheduling
-                  console.log('Schedule follow-up for:', getName());
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Schedule Follow-up
-              </Button>
-            )}
+              {/* PHASE 2: Schedule Follow-up Button - WORKING IMPLEMENTATION */}
+              {shouldShowFollowUpSchedule() && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleScheduleFollowup}
+                  disabled={loadingFollowup}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {existingFollowup ? 'Reschedule Follow-up' : 'Schedule Follow-up'}
+                </Button>
+              )}
 
-            {/* Payment Link Status for existing links */}
-            {getPaymentLink() && getPaymentLink()!.status === 'pending' && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  // Copy payment link to clipboard
-                  navigator.clipboard.writeText(getPaymentLink()!.stripeSessionId || '');
-                }}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View Payment Link
-              </Button>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              {/* Payment Link Status for existing links */}
+              {getPaymentLink() && getPaymentLink()!.status === 'pending' && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    // Copy payment link to clipboard
+                    navigator.clipboard.writeText(getPaymentLink()!.stripeSessionId || '');
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Payment Link
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* PHASE 2: Schedule Follow-up Modal */}
+      <ScheduleFollowupModal
+        open={followupModalOpen}
+        onClose={() => setFollowupModalOpen(false)}
+        item={item}
+        existingFollowup={existingFollowup}
+        onSuccess={handleFollowupSuccess}
+      />
+    </>
   );
 };

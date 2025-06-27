@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toZonedTime, format } from 'date-fns-tz';
-import { getTimezoneConfig, convertClientTimeToServer } from '@/utils/timezoneUtils';
+import { getTimezoneConfig, convertClientTimeToServerPreservingDate } from '@/utils/timezoneUtils';
 
 export interface SimpleTimeSlot {
   id: string;
@@ -22,14 +22,29 @@ export class SimpleAvailabilityService {
     selectedHour: number
   ): Promise<SimpleTimeSlot[]> {
     try {
-      const dateStr = date.toISOString().split('T')[0];
+      console.log('=== PHASE 1: SIMPLE SERVICE WITH DATE PRESERVATION ===');
+      console.log('Search Parameters:', { 
+        date: date.toDateString(), 
+        dateISO: date.toISOString().split('T')[0],
+        timezone, 
+        teacherType, 
+        selectedHour 
+      });
+      
       const timezoneConfig = getTimezoneConfig(timezone);
       
       if (!timezoneConfig) {
         throw new Error(`Invalid timezone: ${timezone}`);
       }
       
-      const serverTime = convertClientTimeToServer(date, selectedHour, timezone);
+      // PHASE 1 FIX: Use date-preserving conversion
+      const serverTime = convertClientTimeToServerPreservingDate(date, selectedHour, timezone);
+      
+      console.log('PHASE 1 FIXED: Date preservation verified:', {
+        originalDate: date.toDateString(),
+        preservedDateString: serverTime.utcDateString,
+        dateMatches: date.toISOString().split('T')[0] === serverTime.utcDateString
+      });
       
       // Search for the selected hour and the next 30 minutes
       const baseUtcHour = serverTime.utcHour;
@@ -44,16 +59,23 @@ export class SimpleAvailabilityService {
         teacherTypeFilter = [teacherType, 'mixed'];
       }
       
-      // Query database for available slots
+      // Query database for available slots using preserved date
       const { data: availability, error: availabilityError } = await supabase
         .from('teacher_availability')
         .select('id, time_slot, teacher_id')
-        .eq('date', dateStr)
+        .eq('date', serverTime.utcDateString) // Use preserved date
         .eq('is_available', true)
         .eq('is_booked', false)
         .gte('time_slot', startTime)
         .lt('time_slot', endTime)
         .order('time_slot');
+      
+      console.log('Database query with preserved date:', {
+        searchDate: serverTime.utcDateString,
+        startTime,
+        endTime,
+        resultsCount: availability?.length || 0
+      });
       
       if (availabilityError) {
         console.error('Database query error:', availabilityError);
@@ -88,15 +110,15 @@ export class SimpleAvailabilityService {
       // Create a map of teacher profiles for quick lookup
       const profileMap = new Map(profiles.map(profile => [profile.id, profile]));
       
-      // Process results
+      // Process results using preserved date
       const slots: SimpleTimeSlot[] = availability
         .filter(slot => profileMap.has(slot.teacher_id))
         .map(slot => {
           const profile = profileMap.get(slot.teacher_id)!;
           const timeSlotStr = slot.time_slot;
           
-          // Create UTC date for this slot
-          const utcSlotDate = new Date(`${dateStr}T${timeSlotStr}.000Z`);
+          // Create UTC date for this slot using preserved date
+          const utcSlotDate = new Date(`${serverTime.utcDateString}T${timeSlotStr}.000Z`);
           const utcEndDate = new Date(utcSlotDate.getTime() + 30 * 60 * 1000);
           
           // Format times for client timezone
@@ -118,6 +140,12 @@ export class SimpleAvailabilityService {
             egyptTimeDisplay: `${egyptStartTime}-${egyptEndTime} (Egypt)`
           };
         });
+      
+      console.log('PHASE 1 FIXED: Final slots with date preservation:', {
+        slotsCount: slots.length,
+        searchDate: serverTime.utcDateString,
+        datePreserved: true
+      });
       
       return slots;
     } catch (error) {
