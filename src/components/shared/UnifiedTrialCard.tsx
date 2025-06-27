@@ -1,18 +1,37 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React from 'react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Edit, Calendar, CreditCard, Clock, Phone, MapPin, Users } from 'lucide-react';
-import { ScheduleFollowupModal } from '@/components/sales/ScheduleFollowupModal';
+import { 
+  Calendar, 
+  Clock, 
+  Phone, 
+  MapPin, 
+  User, 
+  Edit2, 
+  MoreHorizontal,
+  MessageCircle,
+  CreditCard,
+  ExternalLink,
+  Video,
+  Users,
+  Plus,
+  AlertCircle
+} from 'lucide-react';
+import { MixedStudentItem } from '@/hooks/useMixedStudentData';
+import { FamilyGroup } from '@/types/family';
+import { TrialSessionFlowStudent } from '@/types/trial';
+import { format } from 'date-fns';
 
 interface UnifiedTrialCardProps {
-  item: any;
-  onEdit: (item: any) => void;
-  onStatusChange: (item: any) => void;
-  onContact: (item: any) => void;
-  onCreatePaymentLink: (item: any) => void;
-  onRefresh: () => void;
+  item: MixedStudentItem;
+  onEdit?: (item: MixedStudentItem) => void;
+  onStatusChange?: (item: MixedStudentItem) => void;
+  onContact?: (item: MixedStudentItem) => void;
+  onCreatePaymentLink?: (item: MixedStudentItem) => void;
+  onRefresh?: () => void;
+  showActions?: boolean;
 }
 
 export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
@@ -21,168 +40,294 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
   onStatusChange,
   onContact,
   onCreatePaymentLink,
-  onRefresh
+  onRefresh,
+  showActions = true
 }) => {
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  
-  const data = item.data;
   const isFamily = item.type === 'family';
-  
-  const getName = () => {
-    return isFamily ? data.parent_name : data.name;
-  };
-  
-  const getUniqueId = () => {
-    return isFamily ? data.unique_id : data.uniqueId;
-  };
-  
-  const getAge = () => {
-    return isFamily ? `${data.student_count} students` : `Age: ${data.age}`;
-  };
-  
-  const getTrialDate = () => {
-    return isFamily ? data.trial_date : data.trialDate;
-  };
-  
-  const getTrialTime = () => {
-    return isFamily ? data.trial_time : data.trialTime;
+  const data = item.data;
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { color: string; label: string }> = {
+      'pending': { color: 'bg-orange-100 text-orange-800', label: 'Pending' },
+      'confirmed': { color: 'bg-blue-100 text-blue-800', label: 'Confirmed' },
+      'trial-completed': { color: 'bg-green-100 text-green-800', label: 'Trial Completed' },
+      'trial-ghosted': { color: 'bg-red-100 text-red-800', label: 'Trial Ghosted' },
+      'awaiting-payment': { color: 'bg-purple-100 text-purple-800', label: 'Awaiting Payment' },
+      'paid': { color: 'bg-emerald-100 text-emerald-800', label: 'Paid' },
+      'active': { color: 'bg-cyan-100 text-cyan-800', label: 'Active' },
+      'expired': { color: 'bg-gray-100 text-gray-800', label: 'Expired' },
+      'cancelled': { color: 'bg-slate-100 text-slate-800', label: 'Cancelled' },
+      'dropped': { color: 'bg-slate-100 text-slate-800', label: 'Dropped' }
+    };
+
+    const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', label: status };
+    return (
+      <Badge className={`${config.color} border-0`}>
+        {config.label}
+      </Badge>
+    );
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'confirmed': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'trial-completed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'trial-ghosted': return 'bg-red-100 text-red-800 border-red-200';
-      case 'awaiting-payment': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'paid': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'active': return 'bg-teal-100 text-teal-800 border-teal-200';
-      case 'expired': return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      case 'dropped': return 'bg-stone-100 text-stone-800 border-stone-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  const formatDateTime = (date?: string, time?: string) => {
+    if (!date || !time) return 'Not scheduled';
+    try {
+      const dateTime = new Date(`${date}T${time}`);
+      return format(dateTime, 'MMM dd, yyyy at HH:mm');
+    } catch {
+      return 'Invalid date';
     }
   };
 
-  const formatStatus = (status: string) => {
-    return status.split('-').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
+  // Helper functions to get data from both types
+  const getName = () => isFamily ? (data as FamilyGroup).parent_name : (data as TrialSessionFlowStudent).name;
+  const getUniqueId = () => isFamily ? (data as FamilyGroup).unique_id : (data as TrialSessionFlowStudent).uniqueId;
+  const getStatus = () => data.status;
+  const getPhone = () => data.phone;
+  const getCountry = () => data.country;
+  const getPlatform = () => data.platform;
+  const getNotes = () => data.notes;
+  const getTrialDate = () => isFamily ? (data as FamilyGroup).trial_date : (data as TrialSessionFlowStudent).trialDate;
+  const getTrialTime = () => isFamily ? (data as FamilyGroup).trial_time : (data as TrialSessionFlowStudent).trialTime;
+  const getTeacherType = () => isFamily ? (data as FamilyGroup).teacher_type : (data as TrialSessionFlowStudent).teacherType;
+  const getStudentCount = () => isFamily ? (data as FamilyGroup).student_count : 1;
+  const getAge = () => !isFamily ? (data as TrialSessionFlowStudent).age : null;
+  const getParentName = () => !isFamily ? (data as TrialSessionFlowStudent).parentName : null;
+
+  // Individual student specific data
+  const getLastWhatsAppContact = () => !isFamily ? (data as TrialSessionFlowStudent).lastWhatsAppContact : null;
+  const getPaymentLink = () => !isFamily ? (data as TrialSessionFlowStudent).paymentLink : null;
+  const getPendingFollowUp = () => !isFamily ? (data as TrialSessionFlowStudent).pendingFollowUp : null;
+
+  // Determine what actions should be shown based on status
+  const shouldShowPaymentLink = () => {
+    const status = getStatus();
+    return (status === 'trial-completed' || status === 'trial-ghosted') && !getPaymentLink();
   };
 
-  const handleScheduleFollowup = () => {
-    setShowScheduleModal(true);
-  };
-
-  const handleScheduleSuccess = () => {
-    setShowScheduleModal(false);
-    onRefresh();
+  const shouldShowFollowUpSchedule = () => {
+    const status = getStatus();
+    return (status === 'trial-completed' || status === 'trial-ghosted' || status === 'awaiting-payment') && !getPendingFollowUp();
   };
 
   return (
-    <>
-      <Card className="hover:shadow-md transition-shadow">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                {isFamily && <Users className="h-4 w-4" />}
-                {getName()}
-              </CardTitle>
-              <CardDescription>
-                {getUniqueId()} • {getAge()} • {data.country}
-              </CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <Badge className={getStatusColor(data.status)}>
-                {formatStatus(data.status)}
-              </Badge>
-              <Badge variant="outline">
+    <Card className="hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-2">
+                {isFamily ? (
+                  <Users className="h-4 w-4 text-primary" />
+                ) : (
+                  <User className="h-4 w-4 text-primary" />
+                )}
+                <h3 className="font-semibold text-lg">{getName()}</h3>
+              </div>
+              {getStatusBadge(getStatus())}
+              <Badge variant="outline" className="text-xs">
                 {isFamily ? 'Family' : 'Individual'}
               </Badge>
             </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span className="font-mono">{getUniqueId()}</span>
+              {isFamily ? (
+                <span>{getStudentCount()} students</span>
+              ) : (
+                <>
+                  <span>Age: {getAge()}</span>
+                  {getParentName() && (
+                    <span>Parent: {getParentName()}</span>
+                  )}
+                </>
+              )}
+            </div>
           </div>
-        </CardHeader>
-        
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              <span>{data.phone}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span>{data.platform}</span>
-            </div>
-            {getTrialDate() && (
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>{getTrialDate()}</span>
-              </div>
-            )}
-            {getTrialTime() && (
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span>{getTrialTime()}</span>
-              </div>
-            )}
-          </div>
-          
-          {data.notes && (
-            <div className="p-3 bg-muted rounded-md">
-              <span className="font-medium text-sm">Notes:</span>
-              <p className="text-sm mt-1">{data.notes}</p>
-            </div>
-          )}
-
-          <div className="flex flex-wrap gap-2 pt-4 border-t">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onContact(item)}
-            >
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Contact
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onEdit(item)}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleScheduleFollowup}
-            >
-              <Calendar className="h-4 w-4 mr-2" />
-              Schedule Follow-up
-            </Button>
-            
-            {(data.status === 'trial-completed' || data.status === 'awaiting-payment') && (
+          <div className="flex gap-2">
+            {showActions && onEdit && (
               <Button
+                variant="outline"
                 size="sm"
-                onClick={() => onCreatePaymentLink(item)}
+                onClick={() => onEdit(item)}
               >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Payment Link
+                <Edit2 className="h-4 w-4" />
+              </Button>
+            )}
+            {showActions && onStatusChange && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onStatusChange(item)}
+              >
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </CardHeader>
 
-      {/* Schedule Follow-up Modal */}
-      <ScheduleFollowupModal
-        open={showScheduleModal}
-        onClose={() => setShowScheduleModal(false)}
-        student={data}
-        onSuccess={handleScheduleSuccess}
-      />
-    </>
+      <CardContent className="space-y-4">
+        {/* Contact Information */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <span>{getPhone()}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span>{getCountry()}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Video className="h-4 w-4 text-muted-foreground" />
+              <span className="capitalize">{getPlatform()}</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span>{formatDateTime(getTrialDate(), getTrialTime())}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="capitalize">{getTeacherType()} Teacher</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Notes */}
+        {getNotes() && (
+          <div className="p-3 bg-muted rounded-lg">
+            <p className="text-sm">
+              <strong>Notes:</strong> {getNotes()}
+            </p>
+          </div>
+        )}
+
+        {/* Individual Student Specific Information */}
+        {!isFamily && (
+          <>
+            {/* Last Contact Info */}
+            {getLastWhatsAppContact() && (
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-1">
+                  <MessageCircle className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">Last Contact</span>
+                </div>
+                <p className="text-sm text-blue-700">
+                  {getLastWhatsAppContact()!.success ? 'Successful' : 'Failed'} contact on{' '}
+                  {format(new Date(getLastWhatsAppContact()!.contactedAt), 'MMM dd, yyyy')}
+                </p>
+                {getLastWhatsAppContact()!.notes && (
+                  <p className="text-sm text-blue-600 mt-1">
+                    {getLastWhatsAppContact()!.notes}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Payment Link Info */}
+            {getPaymentLink() && (
+              <div className="p-3 bg-purple-50 rounded-lg">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-800">Payment Link</span>
+                  </div>
+                  <Badge className={`${
+                    getPaymentLink()!.status === 'paid' ? 'bg-green-100 text-green-800' :
+                    getPaymentLink()!.status === 'clicked' ? 'bg-yellow-100 text-yellow-800' :
+                    getPaymentLink()!.status === 'expired' ? 'bg-red-100 text-red-800' :
+                    'bg-purple-100 text-purple-800'
+                  } border-0`}>
+                    {getPaymentLink()!.status}
+                  </Badge>
+                </div>
+                <p className="text-sm text-purple-700">
+                  Amount: {getPaymentLink()!.currency.toUpperCase()} {(getPaymentLink()!.amount / 100).toFixed(2)}
+                </p>
+              </div>
+            )}
+
+            {/* Follow-up Info */}
+            {getPendingFollowUp() && !getPendingFollowUp()!.completed && (
+              <div className="p-3 bg-yellow-50 rounded-lg">
+                <div className="flex items-center gap-2 mb-1">
+                  <Clock className="h-4 w-4 text-yellow-600" />
+                  <span className="text-sm font-medium text-yellow-800">Pending Follow-up</span>
+                </div>
+                <p className="text-sm text-yellow-700">
+                  Scheduled: {format(new Date(getPendingFollowUp()!.scheduledDate), 'MMM dd, yyyy')}
+                </p>
+                <p className="text-sm text-yellow-600">
+                  Reason: {getPendingFollowUp()!.reason}
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Action Buttons */}
+        {showActions && (
+          <div className="flex flex-wrap gap-2 pt-2 border-t">
+            {/* Contact Button */}
+            {onContact && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => onContact(item)}
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Contact {isFamily ?
+                 'Family' : 'Student'}
+              </Button>
+            )}
+
+            {/* Create Payment Link Button */}
+            {shouldShowPaymentLink() && onCreatePaymentLink && (
+              <Button 
+                variant="default" 
+                size="sm"
+                onClick={() => onCreatePaymentLink(item)}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Create Payment Link
+              </Button>
+            )}
+
+            {/* Schedule Follow-up Button */}
+            {shouldShowFollowUpSchedule() && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  // This would trigger follow-up scheduling
+                  console.log('Schedule follow-up for:', getName());
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Schedule Follow-up
+              </Button>
+            )}
+
+            {/* Payment Link Status for existing links */}
+            {getPaymentLink() && getPaymentLink()!.status === 'pending' && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  // Copy payment link to clipboard
+                  navigator.clipboard.writeText(getPaymentLink()!.stripeSessionId || '');
+                }}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Payment Link
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };

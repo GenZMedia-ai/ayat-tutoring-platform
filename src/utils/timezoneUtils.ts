@@ -1,3 +1,4 @@
+
 import { TIMEZONES } from '@/constants/timeSlots';
 import { fromZonedTime, toZonedTime, format } from 'date-fns-tz';
 
@@ -5,26 +6,25 @@ export const getTimezoneConfig = (timezoneValue: string) => {
   return TIMEZONES.find(tz => tz.value === timezoneValue);
 };
 
-// PHASE 1 FIX: Preserve selected date during timezone conversion
+// FIXED: Convert client time to server preserving the selected date
 export const convertClientTimeToServer = (clientDate: Date, clientHour: number, timezoneValue: string) => {
   const tzConfig = getTimezoneConfig(timezoneValue);
   if (!tzConfig) {
     throw new Error(`Invalid timezone: ${timezoneValue}`);
   }
 
-  console.log('=== PHASE 1: DATE PRESERVATION FIX ===');
+  console.log('=== FIXED TIMEZONE CONVERSION ===');
   console.log('Input:', { 
     clientDate: clientDate.toDateString(), 
-    selectedDateString: clientDate.toISOString().split('T')[0],
     clientHour, 
     timezone: timezoneValue,
     offset: tzConfig.offset 
   });
 
-  // PHASE 1 FIX: Only convert the hour, PRESERVE the original date
+  // FIXED: Only convert the hour, preserve the date
   const utcHour = clientHour - tzConfig.offset;
   
-  // Keep the hour within 0-23 range
+  // Keep the hour within 0-23 range, but DON'T change the date
   let adjustedUtcHour = utcHour;
   if (utcHour < 0) {
     adjustedUtcHour = utcHour + 24;
@@ -32,25 +32,33 @@ export const convertClientTimeToServer = (clientDate: Date, clientHour: number, 
     adjustedUtcHour = utcHour - 24;
   }
 
-  // PHASE 1 FIX: Always preserve the original selected date
-  const preservedDateString = clientDate.toISOString().split('T')[0];
+  // FIXED: Create UTC date using the SAME date, just with converted hour
+  const utcDate = new Date(
+    clientDate.getFullYear(),
+    clientDate.getMonth(),
+    clientDate.getDate(),
+    adjustedUtcHour
+  );
+
+  // FIXED: Preserve original date in string format
+  const utcDateString = format(clientDate, 'yyyy-MM-dd');
 
   const result = {
+    utcDate,
+    utcDateString: utcDateString, // FIXED: Use original date
     utcHour: adjustedUtcHour,
-    utcTime: `${String(adjustedUtcHour).padStart(2, '0')}:00:00`,
-    preservedDateString, // Always use the original selected date
-    datePreserved: true
+    utcTime: format(utcDate, 'HH:mm:ss', { timeZone: 'UTC' })
   };
 
-  console.log('PHASE 1 FIX - Date preserved:', {
-    originalSelectedDate: clientDate.toDateString(),
-    preservedDateString: result.preservedDateString,
+  console.log('FIXED conversion result - date preserved:', {
+    originalDate: clientDate.toDateString(),
+    preservedDateString: result.utcDateString,
     clientHour: clientHour,
     utcHour: result.utcHour,
     utcTime: result.utcTime,
-    confirmation: 'DATE PRESERVED - NO SHIFT'
+    datePreserved: clientDate.toISOString().split('T')[0] === result.utcDateString
   });
-  console.log('=== END PHASE 1 DATE PRESERVATION ===');
+  console.log('=== END FIXED TIMEZONE CONVERSION ===');
 
   return result;
 };

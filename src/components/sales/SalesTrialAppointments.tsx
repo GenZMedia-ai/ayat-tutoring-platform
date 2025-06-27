@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -72,10 +73,6 @@ const SalesTrialAppointments: React.FC = () => {
     const message = `Hello ${family.parent_name}, this is regarding your family trial session. Please let us know if you have any questions.`;
     const whatsappUrl = `https://wa.me/${family.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
-  };
-
-  const handleCreatePaymentLink = (item: MixedStudentItem) => {
-    toast.info('Payment link creation - Feature coming soon');
   };
 
   if (loading || familyLoading) {
@@ -222,7 +219,6 @@ const SalesTrialAppointments: React.FC = () => {
                   onEdit={setEditingItem}
                   onStatusChange={setChangingStatusItem}
                   onContact={handleContact}
-                  onCreatePaymentLink={handleCreatePaymentLink}
                   onRefresh={refetchData}
                 />
               ))}

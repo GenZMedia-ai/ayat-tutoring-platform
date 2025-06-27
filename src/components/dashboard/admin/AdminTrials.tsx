@@ -95,10 +95,6 @@ const AdminTrials: React.FC = () => {
     window.open(whatsappUrl, '_blank');
   };
 
-  const handleCreatePaymentLink = (item: any) => {
-    toast.info('Admin payment link creation - Coming soon');
-  };
-
   if (loading || familyLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -284,7 +280,6 @@ const AdminTrials: React.FC = () => {
                   onEdit={() => toast.info('Admin edit modal coming soon')}
                   onStatusChange={() => toast.info('Admin status change modal coming soon')}
                   onContact={handleContact}
-                  onCreatePaymentLink={handleCreatePaymentLink}
                   onRefresh={refetchData}
                 />
               ))}
