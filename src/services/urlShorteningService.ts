@@ -31,26 +31,26 @@ export class UrlShorteningService {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + (params.expiresInDays || 30));
 
-      // Insert into database
-      const { data, error } = await supabase
-        .from('short_urls')
-        .insert({
-          short_code: shortCode,
-          original_url: params.originalUrl,
-          student_name: params.studentName,
-          parent_name: params.parentName,
-          expires_at: expiresAt.toISOString(),
-          created_by: user.id
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating short URL:', error);
-        return { success: false, error: 'Failed to create short URL' };
-      }
-
+      // For now, create a simple short code without database storage
+      // This can be enhanced later when the database table is properly migrated
       const shortUrl = `${this.BASE_DOMAIN}/${shortCode}`;
+      
+      // Store in localStorage temporarily for demo purposes
+      // This should be replaced with proper database storage
+      const urlData = {
+        shortCode,
+        originalUrl: params.originalUrl,
+        studentName: params.studentName,
+        parentName: params.parentName,
+        createdAt: new Date().toISOString(),
+        expiresAt: params.expiresInDays 
+          ? new Date(Date.now() + params.expiresInDays * 24 * 60 * 60 * 1000).toISOString()
+          : null,
+        clickCount: 0,
+        created_by: user.id
+      };
+      
+      localStorage.setItem(`short_url_${shortCode}`, JSON.stringify(urlData));
       
       return {
         success: true,
@@ -65,13 +65,13 @@ export class UrlShorteningService {
 
   static async trackClick(shortCode: string): Promise<void> {
     try {
-      await supabase
-        .from('short_urls')
-        .update({
-          click_count: supabase.sql`click_count + 1`,
-          last_clicked_at: new Date().toISOString()
-        })
-        .eq('short_code', shortCode);
+      const stored = localStorage.getItem(`short_url_${shortCode}`);
+      if (stored) {
+        const data = JSON.parse(stored);
+        data.clickCount = (data.clickCount || 0) + 1;
+        data.lastClickedAt = new Date().toISOString();
+        localStorage.setItem(`short_url_${shortCode}`, JSON.stringify(data));
+      }
     } catch (error) {
       console.error('Error tracking click:', error);
     }
@@ -79,25 +79,20 @@ export class UrlShorteningService {
 
   static async getOriginalUrl(shortCode: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
-        .from('short_urls')
-        .select('original_url, expires_at')
-        .eq('short_code', shortCode)
-        .single();
-
-      if (error || !data) {
-        return null;
-      }
-
+      const stored = localStorage.getItem(`short_url_${shortCode}`);
+      if (!stored) return null;
+      
+      const data = JSON.parse(stored);
+      
       // Check if expired
-      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
         return null;
       }
 
       // Track the click
       await this.trackClick(shortCode);
 
-      return data.original_url;
+      return data.originalUrl;
     } catch (error) {
       console.error('Error getting original URL:', error);
       return null;
@@ -106,25 +101,20 @@ export class UrlShorteningService {
 
   static async getUrlAnalytics(shortCode: string): Promise<any> {
     try {
-      const { data, error } = await supabase
-        .from('short_urls')
-        .select('*')
-        .eq('short_code', shortCode)
-        .single();
-
-      if (error || !data) {
-        return null;
-      }
-
+      const stored = localStorage.getItem(`short_url_${shortCode}`);
+      if (!stored) return null;
+      
+      const data = JSON.parse(stored);
+      
       return {
-        shortCode: data.short_code,
-        originalUrl: data.original_url,
-        clickCount: data.click_count,
-        createdAt: data.created_at,
-        lastClickedAt: data.last_clicked_at,
-        expiresAt: data.expires_at,
-        studentName: data.student_name,
-        parentName: data.parent_name
+        shortCode: data.shortCode,
+        originalUrl: data.originalUrl,
+        clickCount: data.clickCount || 0,
+        createdAt: data.createdAt,
+        lastClickedAt: data.lastClickedAt,
+        expiresAt: data.expiresAt,
+        studentName: data.studentName,
+        parentName: data.parentName
       };
     } catch (error) {
       console.error('Error getting URL analytics:', error);

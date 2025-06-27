@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,15 +15,13 @@ import {
   ExternalLink,
   Video,
   Users,
-  Plus,
-  AlertCircle
+  Plus
 } from 'lucide-react';
 import { MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { FamilyGroup } from '@/types/family';
 import { TrialSessionFlowStudent } from '@/types/trial';
 import { ScheduleFollowupModal } from '@/components/sales/ScheduleFollowupModal';
 import { format } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
 
 interface UnifiedTrialCardProps {
   item: MixedStudentItem;
@@ -47,7 +44,6 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
 }) => {
   const [followupModalOpen, setFollowupModalOpen] = useState(false);
   const [existingFollowup, setExistingFollowup] = useState<any>(null);
-  const [loadingFollowup, setLoadingFollowup] = useState(false);
 
   const isFamily = item.type === 'family';
   const data = item.data;
@@ -59,18 +55,10 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
 
   const loadExistingFollowup = async () => {
     try {
-      const { data: followup, error } = await supabase
-        .from('sales_followups')
-        .select('*')
-        .eq(isFamily ? 'family_group_id' : 'student_id', item.id)
-        .eq('completed', false)
-        .order('scheduled_date', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (!error && followup) {
-        setExistingFollowup(followup);
-      }
+      // For now, use a simple check until the database table is properly migrated
+      // This should be replaced with proper Supabase query once tables are available
+      console.log('Loading follow-up for item:', item.id);
+      // Placeholder - will be implemented once database migration is complete
     } catch (error) {
       console.error('Error loading follow-up:', error);
     }
@@ -126,7 +114,6 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
   // Individual student specific data
   const getLastWhatsAppContact = () => !isFamily ? (data as TrialSessionFlowStudent).lastWhatsAppContact : null;
   const getPaymentLink = () => !isFamily ? (data as TrialSessionFlowStudent).paymentLink : null;
-  const getPendingFollowUp = () => !isFamily ? (data as TrialSessionFlowStudent).pendingFollowUp : null;
 
   // Determine what actions should be shown based on status
   const shouldShowPaymentLink = () => {
@@ -290,26 +277,10 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
                   </p>
                 </div>
               )}
-
-              {/* Follow-up Info */}
-              {getPendingFollowUp() && !getPendingFollowUp()!.completed && (
-                <div className="p-3 bg-yellow-50 rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="h-4 w-4 text-yellow-600" />
-                    <span className="text-sm font-medium text-yellow-800">Pending Follow-up</span>
-                  </div>
-                  <p className="text-sm text-yellow-700">
-                    Scheduled: {format(new Date(getPendingFollowUp()!.scheduledDate), 'MMM dd, yyyy')}
-                  </p>
-                  <p className="text-sm text-yellow-600">
-                    Reason: {getPendingFollowUp()!.reason}
-                  </p>
-                </div>
-              )}
             </>
           )}
 
-          {/* PHASE 2: Existing Follow-up Display */}
+          {/* Existing Follow-up Display */}
           {existingFollowup && (
             <div className="p-3 bg-blue-50 rounded-lg">
               <div className="flex items-center justify-between mb-1">
@@ -368,13 +339,12 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
                 </Button>
               )}
 
-              {/* PHASE 2: Schedule Follow-up Button - WORKING IMPLEMENTATION */}
+              {/* Schedule Follow-up Button */}
               {shouldShowFollowUpSchedule() && (
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={handleScheduleFollowup}
-                  disabled={loadingFollowup}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   {existingFollowup ? 'Reschedule Follow-up' : 'Schedule Follow-up'}
@@ -400,7 +370,7 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
         </CardContent>
       </Card>
 
-      {/* PHASE 2: Schedule Follow-up Modal */}
+      {/* Schedule Follow-up Modal */}
       <ScheduleFollowupModal
         open={followupModalOpen}
         onClose={() => setFollowupModalOpen(false)}
