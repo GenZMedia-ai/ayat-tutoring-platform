@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { convertEgyptTimeToUTC, generateEgyptTimeSlots } from '@/utils/egyptTimezoneUtils';
+import { toZonedTime } from 'date-fns-tz';
+import { EGYPT_TIMEZONE } from '@/utils/egyptTimezone';
 
 export interface TimeSlot {
   id?: string;
@@ -14,6 +15,45 @@ export interface TimeSlot {
   isBooked: boolean;
   studentId?: string;
 }
+
+// Generate Egypt timezone slots (7:30 AM to 10:30 PM Egypt time)
+const generateEgyptTimeSlots = () => {
+  const slots = [];
+  for (let hour = 7; hour <= 22; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      if (hour === 22 && minute === 30) break; // Stop at 10:00 PM
+      
+      const time24 = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const time12 = `${displayHour}:${String(minute).padStart(2, '0')} ${ampm}`;
+      
+      slots.push({
+        time24,
+        time12
+      });
+    }
+  }
+  return slots;
+};
+
+// Convert Egypt time to UTC for database storage
+const convertEgyptTimeToUTC = (egyptTime24: string, date: Date): string => {
+  try {
+    // Create a date string in Egypt timezone
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const egyptDateTime = `${dateStr}T${egyptTime24}:00`;
+    
+    // Parse as Egypt time and convert to UTC
+    const egyptDate = new Date(egyptDateTime);
+    const utcDate = toZonedTime(egyptDate, EGYPT_TIMEZONE);
+    
+    return format(utcDate, 'HH:mm:ss');
+  } catch (error) {
+    console.error('Error converting Egypt time to UTC:', error);
+    return egyptTime24 + ':00';
+  }
+};
 
 export const useTeacherAvailability = (selectedDate: Date | undefined) => {
   const { user } = useAuth();
