@@ -22,6 +22,7 @@ import { FamilyGroup } from '@/types/family';
 import { TrialSessionFlowStudent } from '@/types/trial';
 import { ScheduleFollowupModal } from '@/components/sales/ScheduleFollowupModal';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UnifiedTrialCardProps {
   item: MixedStudentItem;
@@ -55,10 +56,34 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
 
   const loadExistingFollowup = async () => {
     try {
-      // For now, use a simple check until the database table is properly migrated
-      // This should be replaced with proper Supabase query once tables are available
-      console.log('Loading follow-up for item:', item.id);
-      // Placeholder - will be implemented once database migration is complete
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Query for existing follow-up based on item type
+      const query = supabase
+        .from('sales_followups')
+        .select('*')
+        .eq('sales_agent_id', user.id)
+        .eq('completed', false)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (isFamily) {
+        query.eq('family_group_id', item.id);
+      } else {
+        query.eq('student_id', item.id);
+      }
+
+      const { data: followups, error } = await query;
+
+      if (error) {
+        console.error('Error loading follow-up:', error);
+        return;
+      }
+
+      if (followups && followups.length > 0) {
+        setExistingFollowup(followups[0]);
+      }
     } catch (error) {
       console.error('Error loading follow-up:', error);
     }

@@ -506,12 +506,15 @@ export type Database = {
           completed: boolean
           completed_at: string | null
           created_at: string
+          created_by: string | null
+          family_group_id: string | null
           id: string
           notes: string | null
           outcome: string | null
           reason: string
           sales_agent_id: string
           scheduled_date: string
+          scheduled_time: string | null
           student_id: string
           updated_at: string
         }
@@ -519,12 +522,15 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
+          family_group_id?: string | null
           id?: string
           notes?: string | null
           outcome?: string | null
           reason: string
           sales_agent_id: string
           scheduled_date: string
+          scheduled_time?: string | null
           student_id: string
           updated_at?: string
         }
@@ -532,12 +538,15 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           created_at?: string
+          created_by?: string | null
+          family_group_id?: string | null
           id?: string
           notes?: string | null
           outcome?: string | null
           reason?: string
           sales_agent_id?: string
           scheduled_date?: string
+          scheduled_time?: string | null
           student_id?: string
           updated_at?: string
         }
@@ -554,6 +563,20 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_followups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_followups_family_group_id_fkey"
+            columns: ["family_group_id"]
+            isOneToOne: false
+            referencedRelation: "family_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -985,6 +1008,18 @@ export type Database = {
         Args: { p_student_id: string }
         Returns: Json
       }
+      create_sales_followup: {
+        Args: {
+          p_scheduled_date: string
+          p_scheduled_time: string
+          p_reason: string
+          p_sales_agent_id: string
+          p_student_id?: string
+          p_family_group_id?: string
+          p_notes?: string
+        }
+        Returns: Json
+      }
       ensure_family_session_links: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -1142,6 +1177,16 @@ export type Database = {
           p_teacher_notes?: string
           p_student_behavior?: string
           p_recommended_package?: string
+        }
+        Returns: Json
+      }
+      update_sales_followup: {
+        Args: {
+          p_followup_id: string
+          p_scheduled_date: string
+          p_scheduled_time: string
+          p_reason: string
+          p_notes?: string
         }
         Returns: Json
       }

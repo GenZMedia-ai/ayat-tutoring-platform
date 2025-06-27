@@ -83,45 +83,40 @@ export const ScheduleFollowupModal: React.FC<ScheduleFollowupModalProps> = ({
         return;
       }
 
-      // For now, we'll use direct SQL execution until the table is properly migrated
-      const followupData = {
-        student_id: isFamily ? null : item.id,
-        family_group_id: isFamily ? item.id : null,
-        scheduled_date: selectedDate.toISOString().split('T')[0],
-        scheduled_time: selectedTime,
-        reason,
-        notes,
-        sales_agent_id: user.id, // Use sales_agent_id to match expected schema
-        created_by: user.id
-      };
-
       if (existingFollowup) {
-        // Update existing follow-up using RPC call to avoid type issues
-        const { error } = await supabase.rpc('update_sales_followup', {
-          p_followup_id: existingFollowup.id,
-          p_scheduled_date: followupData.scheduled_date,
-          p_scheduled_time: followupData.scheduled_time,
-          p_reason: followupData.reason,
-          p_notes: followupData.notes
-        });
+        // Update existing follow-up using direct query since RPC might not be available in types yet
+        const { error } = await supabase
+          .from('sales_followups')
+          .update({
+            scheduled_date: selectedDate.toISOString().split('T')[0],
+            scheduled_time: selectedTime,
+            reason,
+            notes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingFollowup.id);
 
         if (error) {
           console.error('Update followup error:', error);
-          // Fallback to direct table access
           throw new Error('Failed to update follow-up');
         }
         toast.success('Follow-up rescheduled successfully');
       } else {
-        // Create new follow-up using RPC call
-        const { error } = await supabase.rpc('create_sales_followup', {
-          p_student_id: followupData.student_id,
-          p_family_group_id: followupData.family_group_id,
-          p_scheduled_date: followupData.scheduled_date,
-          p_scheduled_time: followupData.scheduled_time,
-          p_reason: followupData.reason,
-          p_notes: followupData.notes,
-          p_sales_agent_id: followupData.sales_agent_id
-        });
+        // Create new follow-up using direct query
+        const followupData = {
+          student_id: isFamily ? null : item.id,
+          family_group_id: isFamily ? item.id : null,
+          scheduled_date: selectedDate.toISOString().split('T')[0],
+          scheduled_time: selectedTime,
+          reason,
+          notes,
+          sales_agent_id: user.id,
+          created_by: user.id
+        };
+
+        const { error } = await supabase
+          .from('sales_followups')
+          .insert([followupData]);
 
         if (error) {
           console.error('Create followup error:', error);
