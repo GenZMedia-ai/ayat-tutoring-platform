@@ -1,10 +1,9 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { convertEgyptTimeToUTC, generateEgyptTimeSlots } from '@/utils/egyptTimezone';
+import { convertEgyptTimeToUTC } from '@/utils/egyptTimezone';
 
 export interface TimeSlot {
   id?: string;
