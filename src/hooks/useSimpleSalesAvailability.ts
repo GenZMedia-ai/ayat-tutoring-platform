@@ -39,10 +39,9 @@ export const useSimpleSalesAvailability = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('=== PHASE 1: DATE-PRESERVING AVAILABILITY CHECK START ===');
+      console.log('=== PHASE 4: SIMPLIFIED AVAILABILITY CHECK START ===');
       console.log('Request Parameters:', { 
         date: date.toDateString(), 
-        dateISO: date.toISOString().split('T')[0],
         timezone, 
         teacherType, 
         selectedHour 
@@ -55,15 +54,11 @@ export const useSimpleSalesAvailability = () => {
         selectedHour
       );
       
-      console.log('PHASE 1 FIXED: Slots received with date preservation:', {
-        slotsCount: slots.length,
-        searchDate: date.toISOString().split('T')[0],
-        datePreserved: true
-      });
-      
+      console.log('Simplified slots received:', slots.length);
+      console.log('Date preservation check: All slots should be for date:', date.toDateString());
       setAvailableSlots(slots);
     } catch (error) {
-      console.error('Date-preserving availability check error:', error);
+      console.error('Simplified availability check error:', error);
       toast.error('Failed to check availability');
       setAvailableSlots([]);
     } finally {
@@ -80,37 +75,37 @@ export const useSimpleSalesAvailability = () => {
   ): Promise<boolean> => {
     // Use family booking for multi-student sessions
     if (isMultiStudent) {
-      console.log('=== PHASE 1: ROUTING TO FAMILY BOOKING WITH DATE PRESERVATION ===');
-      console.log('Selected date preservation:', {
-        selectedDate: selectedDate.toDateString(),
-        selectedDateISO: selectedDate.toISOString().split('T')[0]
-      });
+      console.log('=== PHASE 4: ROUTING TO FAMILY BOOKING SYSTEM ===');
+      console.log('Selected date preservation:', selectedDate.toDateString());
       return await bookFamilyTrialSession(bookingData, selectedDate, selectedSlot, teacherType);
     }
 
     // Single student booking with date preservation
     try {
-      console.log('=== PHASE 1: SINGLE STUDENT BOOKING WITH DATE PRESERVATION ===');
-      
-      // PHASE 1 FIX: Preserve the selected date exactly
-      const bookingDateString = selectedDate.toISOString().split('T')[0];
-      console.log('PHASE 1 FIXED: Date being sent to booking function (preserved):', {
-        originalDate: selectedDate.toDateString(),
-        preservedDateString: bookingDateString,
+      console.log('=== PHASE 4: SINGLE STUDENT BOOKING START ===');
+      console.log('Booking parameters with date preservation:', { 
+        selectedDate: selectedDate.toDateString(),
+        selectedDateISO: selectedDate.toISOString().split('T')[0],
         slotId: selectedSlot.id,
-        teacherId: selectedSlot.teacherId
+        teacherId: selectedSlot.teacherId,
+        teacherType, 
+        isMultiStudent 
       });
+      
+      // PHASE 4: Use the selected date directly (no conversion)
+      const bookingDateString = selectedDate.toISOString().split('T')[0];
+      console.log('Date being sent to booking function:', bookingDateString);
       
       const { data, error } = await supabase.rpc('simple_book_trial_session', {
         p_booking_data: bookingData,
         p_is_multi_student: isMultiStudent,
-        p_selected_date: bookingDateString, // Preserved original selected date
+        p_selected_date: bookingDateString, // Preserve original selected date
         p_utc_start_time: selectedSlot.utcStartTime,
         p_teacher_type: teacherType,
         p_teacher_id: selectedSlot.teacherId
       });
 
-      console.log('Single student booking response with preserved date:', { data, error });
+      console.log('Single student booking response:', { data, error });
 
       if (error) {
         console.error('Single student booking error:', error);
@@ -141,12 +136,12 @@ export const useSimpleSalesAvailability = () => {
         const teacherName = bookingResult.teacher_name || 'Unknown Teacher';
         const studentNames = bookingResult.student_names || '';
         
-        console.log('PHASE 1 FIXED: Single student booking success with date preservation:', {
+        console.log('Single student booking success with date preservation:', {
           teacherName,
           studentNames,
           sessionId: bookingResult.session_id,
           originalDate: selectedDate.toDateString(),
-          preservedBookingDate: bookingDateString
+          bookedDate: bookingDateString
         });
         
         toast.success(

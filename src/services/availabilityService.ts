@@ -1,8 +1,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { GranularTimeSlot } from '@/types/availability';
-import { toZonedTime, format } from 'date-fns-tz';
-import { getTimezoneConfig, convertClientTimeToServerPreservingDate } from '@/utils/timezoneUtils';
+import { fromZonedTime, toZonedTime, format } from 'date-fns-tz';
+import { getTimezoneConfig } from '@/utils/timezoneUtils';
 
 export class AvailabilityService {
   static async searchAvailableSlots(
@@ -11,7 +11,7 @@ export class AvailabilityService {
     teacherType: string,
     selectedHour: number
   ): Promise<GranularTimeSlot[]> {
-    console.log('=== PHASE 1: FIXED AVAILABILITY SERVICE START ===');
+    console.log('=== AVAILABILITY SERVICE START (Enhanced with date-fns-tz) ===');
     console.log('Search Parameters:', { 
       date: date.toDateString(), 
       dateStr: date.toISOString().split('T')[0],
@@ -20,6 +20,7 @@ export class AvailabilityService {
       selectedHour 
     });
     
+    const dateStr = date.toISOString().split('T')[0];
     const timezoneConfig = getTimezoneConfig(timezone);
     
     if (!timezoneConfig) {
@@ -28,14 +29,26 @@ export class AvailabilityService {
     
     console.log('Timezone Config:', timezoneConfig);
     
-    // PHASE 1 FIX: Use date-preserving conversion
-    const serverTime = convertClientTimeToServerPreservingDate(date, selectedHour, timezone);
+    // Use date-fns-tz for proper timezone conversion with DST handling
+    const clientDateTime = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      selectedHour,
+      0,
+      0
+    );
     
-    console.log('PHASE 1 FIXED: Date-preserving conversion result:', { 
-      originalDate: date.toDateString(),
-      preservedDateString: serverTime.utcDateString,
-      utcHour: serverTime.utcHour,
-      datePreservationVerified: date.toISOString().split('T')[0] === serverTime.utcDateString
+    // Convert to UTC using date-fns-tz
+    const utcDateTime = fromZonedTime(clientDateTime, timezoneConfig.iana);
+    const utcHour = utcDateTime.getUTCHours();
+    const utcMinutes = utcDateTime.getUTCMinutes();
+    
+    console.log('Enhanced timezone conversion:', { 
+      clientDateTime: clientDateTime.toISOString(),
+      utcDateTime: utcDateTime.toISOString(),
+      utcHour,
+      utcMinutes
     });
     
     // Build teacher type filter
@@ -50,18 +63,17 @@ export class AvailabilityService {
     
     console.log('Teacher Type Filter:', teacherTypeFilter);
     
-    // PHASE 1 FIX: Use preserved date for database search
+    // Search for 30-minute slots in a 2-hour window
     const slots = await this.searchUsingSecureRPC(
-      serverTime.utcDateString, // Use preserved date
-      serverTime.utcHour,
+      dateStr,
+      utcHour,
       teacherTypeFilter,
       selectedHour,
       timezoneConfig
     );
     
     console.log('Final available slots:', slots.length);
-    console.log('PHASE 1 VERIFICATION: All slots should be for date:', serverTime.utcDateString);
-    console.log('=== END PHASE 1: FIXED AVAILABILITY SERVICE ===');
+    console.log('=== AVAILABILITY SERVICE END ===');
     
     return slots;
   }
@@ -73,33 +85,29 @@ export class AvailabilityService {
     clientHour: number,
     timezoneConfig: any
   ): Promise<GranularTimeSlot[]> {
-    console.log('--- PHASE 1: FIXED SECURE RPC SEARCH ---');
-    console.log('RPC Parameters with preserved date:', { dateStr, baseUtcHour, teacherTypeFilter, clientHour });
+    console.log('--- SECURE RPC SEARCH (Enhanced with precise timing) ---');
+    console.log('RPC Parameters:', { dateStr, baseUtcHour, teacherTypeFilter, clientHour });
     
     // Create a wider search window to catch all 30-minute slots
+    // Search from 1 hour before to 2 hours after to ensure we get all relevant slots
     const searchStartHour = Math.max(0, baseUtcHour - 1);
     const searchEndHour = Math.min(24, baseUtcHour + 2);
     
     const startTime = `${String(searchStartHour).padStart(2, '0')}:00:00`;
     const endTime = `${String(searchEndHour).padStart(2, '0')}:00:00`;
     
-    console.log('PHASE 1 FIXED: UTC Time Range for RPC with preserved date:', { 
-      dateStr, 
-      startTime, 
-      endTime,
-      datePreserved: true 
-    });
+    console.log('Enhanced UTC Time Range for RPC:', { startTime, endTime });
     
-    // Call the secure RPC function with preserved date
+    // Call the secure RPC function
     const { data: rpcResults, error: rpcError } = await supabase
       .rpc('search_available_teachers', {
-        p_date: dateStr, // This is now guaranteed to be the user-selected date
+        p_date: dateStr,
         p_start_time: startTime,
         p_end_time: endTime,
         p_teacher_types: teacherTypeFilter
       });
 
-    console.log('RPC Results for preserved date:', { rpcResults, error: rpcError, searchDate: dateStr });
+    console.log('RPC Results:', { rpcResults, error: rpcError });
 
     if (rpcError) {
       console.error('Error calling secure RPC function:', rpcError);
@@ -107,11 +115,11 @@ export class AvailabilityService {
     }
 
     if (!rpcResults || rpcResults.length === 0) {
-      console.log('No teachers found via secure RPC for preserved date:', dateStr);
+      console.log('No teachers found via secure RPC');
       return [];
     }
 
-    console.log(`RPC returned ${rpcResults.length} teacher-slot combinations for date: ${dateStr}`);
+    console.log(`RPC returned ${rpcResults.length} teacher-slot combinations`);
 
     // Filter and process RPC results into GranularTimeSlot format
     const slots: GranularTimeSlot[] = [];
@@ -120,12 +128,11 @@ export class AvailabilityService {
       const timeSlotStr = result.time_slot;
       const [slotHour, slotMinutes] = timeSlotStr.split(':').map(Number);
 
-      console.log('Processing RPC result for preserved date:', { 
+      console.log('Processing RPC result:', { 
         timeSlot: timeSlotStr, 
         teacherId: result.teacher_id,
         teacherName: result.teacher_name,
-        teacherType: result.teacher_type,
-        searchDate: dateStr
+        teacherType: result.teacher_type 
       });
 
       // Generate display times for this specific slot using date-fns-tz
@@ -133,7 +140,7 @@ export class AvailabilityService {
         slotHour,
         slotMinutes,
         timezoneConfig,
-        dateStr // Use preserved date
+        dateStr
       );
 
       const finalSlot = {
@@ -150,11 +157,11 @@ export class AvailabilityService {
         isBooked: false
       };
 
-      console.log('Generated slot from RPC with preserved date:', finalSlot);
+      console.log('Generated slot from RPC:', finalSlot);
       slots.push(finalSlot);
     }
 
-    console.log(`PHASE 1 FIXED: ${slots.length} slots generated from secure RPC for date: ${dateStr}`);
+    console.log(`Final result: ${slots.length} slots generated from secure RPC`);
     return slots;
   }
 
@@ -164,7 +171,7 @@ export class AvailabilityService {
     timezoneConfig: any,
     dateStr: string
   ) {
-    // Create UTC date for the slot using preserved date
+    // Create UTC date for the slot
     const utcSlotDate = new Date(`${dateStr}T${String(utcHour).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}:00.000Z`);
     
     // Calculate end time (30 minutes later)

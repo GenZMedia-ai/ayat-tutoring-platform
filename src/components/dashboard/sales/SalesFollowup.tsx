@@ -12,12 +12,10 @@ import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 
 interface FollowUpTask {
   id: string;
-  student_id?: string;
-  family_group_id?: string;
+  student_id: string;
   student_name: string;
   student_phone: string;
   scheduled_date: string;
-  scheduled_time?: string;
   reason: string;
   completed: boolean;
   completed_at?: string;
@@ -55,6 +53,49 @@ const SalesFollowup: React.FC = () => {
     }
   };
 
+  // Create sample follow-up data for testing
+  const createSampleData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get some students to create follow-up tasks for
+      const { data: students } = await supabase
+        .from('students')
+        .select('id, name, phone')
+        .eq('assigned_sales_agent_id', user.id)
+        .in('status', ['trial-completed', 'trial-ghosted'])
+        .limit(3);
+
+      if (!students || students.length === 0) {
+        toast.info('No eligible students found for follow-up tasks');
+        return;
+      }
+
+      // Create sample follow-up tasks
+      const sampleTasks = students.map((student, index) => ({
+        student_id: student.id,
+        sales_agent_id: user.id,
+        scheduled_date: new Date(Date.now() + index * 24 * 60 * 60 * 1000).toISOString(),
+        reason: index === 0 ? 'trial_followup' : index === 1 ? 'payment_reminder' : 'general_followup',
+        completed: false,
+        notes: `Follow-up with ${student.name} regarding their trial session`
+      }));
+
+      const { error } = await supabase
+        .from('sales_followups')
+        .insert(sampleTasks);
+
+      if (error) throw error;
+
+      toast.success('Sample follow-up tasks created successfully');
+      loadFollowUpTasks();
+    } catch (error) {
+      console.error('Error creating sample data:', error);
+      toast.error('Failed to create sample data');
+    }
+  };
+
   // Load follow-up tasks
   const loadFollowUpTasks = async () => {
     try {
@@ -71,20 +112,33 @@ const SalesFollowup: React.FC = () => {
 
       console.log('Loading follow-up tasks for date range:', fromStr, 'to', toStr);
 
-      // First get follow-ups
-      let query = supabase
-        .from('sales_followups')
-        .select('*')
-        .eq('sales_agent_id', user.id)
-        .order('scheduled_date', { ascending: true });
+      const followupsQuery = dateFilter === 'alltime'
+        ? supabase
+            .from('sales_followups')
+            .select(`
+              *,
+              students!fk_sales_followups_student (
+                name,
+                phone
+              )
+            `)
+            .eq('sales_agent_id', user.id)
+            .order('scheduled_date', { ascending: true })
+        : supabase
+            .from('sales_followups')
+            .select(`
+              *,
+              students!fk_sales_followups_student (
+                name,
+                phone
+              )
+            `)
+            .eq('sales_agent_id', user.id)
+            .gte('scheduled_date', fromStr)
+            .lte('scheduled_date', toStr + 'T23:59:59')
+            .order('scheduled_date', { ascending: true });
 
-      if (dateFilter !== 'alltime') {
-        query = query
-          .gte('scheduled_date', fromStr)
-          .lte('scheduled_date', toStr);
-      }
-
-      const { data: followups, error } = await query;
+      const { data: followups, error } = await followupsQuery;
 
       if (error) {
         console.error('Error loading follow-up tasks:', error);
@@ -93,45 +147,11 @@ const SalesFollowup: React.FC = () => {
 
       console.log('Loaded follow-up tasks:', followups?.length || 0);
 
-      // Now get related student/family data
-      const tasksWithStudentInfo = await Promise.all(
-        (followups || []).map(async (followup) => {
-          let studentName = 'Unknown';
-          let studentPhone = '';
-
-          if (followup.student_id) {
-            // Get student data
-            const { data: student } = await supabase
-              .from('students')
-              .select('name, phone')
-              .eq('id', followup.student_id)
-              .single();
-            
-            if (student) {
-              studentName = student.name;
-              studentPhone = student.phone;
-            }
-          } else if (followup.family_group_id) {
-            // Get family group data
-            const { data: familyGroup } = await supabase
-              .from('family_groups')
-              .select('parent_name, phone')
-              .eq('id', followup.family_group_id)
-              .single();
-            
-            if (familyGroup) {
-              studentName = familyGroup.parent_name;
-              studentPhone = familyGroup.phone;
-            }
-          }
-
-          return {
-            ...followup,
-            student_name: studentName,
-            student_phone: studentPhone
-          };
-        })
-      );
+      const tasksWithStudentInfo = (followups || []).map(followup => ({
+        ...followup,
+        student_name: (followup.students as any)?.name || 'Unknown',
+        student_phone: (followup.students as any)?.phone || ''
+      }));
 
       setFollowUpTasks(tasksWithStudentInfo);
 
@@ -216,6 +236,10 @@ const SalesFollowup: React.FC = () => {
           <Badge variant="outline">
             {filteredTasks.filter(t => !t.completed).length} pending tasks
           </Badge>
+          <Button onClick={createSampleData} variant="outline" size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Sample Data
+          </Button>
           <Button onClick={loadFollowUpTasks} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
@@ -279,6 +303,10 @@ const SalesFollowup: React.FC = () => {
                     : 'No follow-up tasks found for the selected date range. Try "All Time" to see all data.'
                 }
               </p>
+              <Button onClick={createSampleData} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Sample Follow-up Tasks
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -298,7 +326,6 @@ const SalesFollowup: React.FC = () => {
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {format(new Date(task.scheduled_date), 'MMM dd, yyyy')}
-                    {task.scheduled_time && ` at ${task.scheduled_time}`}
                   </div>
                 </div>
                 <CardTitle className="text-lg">{task.student_name}</CardTitle>
