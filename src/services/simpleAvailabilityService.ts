@@ -22,14 +22,18 @@ export class SimpleAvailabilityService {
     selectedHour: number
   ): Promise<SimpleTimeSlot[]> {
     try {
-      const dateStr = date.toISOString().split('T')[0];
+      // FIXED: Get timezone config and convert time BEFORE extracting date string
       const timezoneConfig = getTimezoneConfig(timezone);
       
       if (!timezoneConfig) {
         throw new Error(`Invalid timezone: ${timezone}`);
       }
       
+      // FIXED: Convert client time to server preserving the selected date
       const serverTime = convertClientTimeToServer(date, selectedHour, timezone);
+      
+      // FIXED: Use the preserved date string instead of problematic UTC conversion
+      const dateStr = serverTime.utcDateString;
       
       // Search for the selected hour and the next 30 minutes
       const baseUtcHour = serverTime.utcHour;
