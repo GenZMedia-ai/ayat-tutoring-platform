@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { convertEgyptTimeToUTC, generateEgyptTimeSlots } from '@/utils/egyptTimezoneUtils';
+import { convertEgyptTimeToUTC, generateEgyptTimeSlots } from '@/utils/egyptTimezone';
 
 export interface TimeSlot {
   id?: string;
@@ -19,6 +19,25 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
   const { user } = useAuth();
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Generate Egypt timezone slots using the centralized utility
+  const generateEgyptTimeSlots = (): Array<{ time24: string; time12: string }> => {
+    const slots = [];
+    
+    // Generate slots from 8:00 AM to 10:00 PM (22:00) in 30-minute intervals
+    for (let hour = 8; hour < 22; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const time24 = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const displayHours = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+        const time12 = `${displayHours}:${minute.toString().padStart(2, '0')} ${period}`;
+        
+        slots.push({ time24, time12 });
+      }
+    }
+    
+    return slots;
+  };
 
   // Generate time slots with 12-hour format for display
   const generateTimeSlots = (): TimeSlot[] => {
@@ -119,7 +138,7 @@ export const useTeacherAvailability = (selectedDate: Date | undefined) => {
     const dateString = format(selectedDate, 'yyyy-MM-dd');
     
     try {
-      // Convert Egypt time to UTC for database storage
+      // Convert Egypt time to UTC for database storage - CRITICAL for proper storage
       const utcTime = convertEgyptTimeToUTC(slot.time24, selectedDate);
       
       console.log('💾 Availability toggle with timezone conversion:', {

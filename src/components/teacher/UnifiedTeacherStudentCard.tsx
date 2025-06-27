@@ -24,10 +24,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialData';
-import { format } from 'date-fns';
+import { formatDateTimeInEgypt } from '@/utils/egyptTimezone';
 import { supabase } from '@/integrations/supabase/client';
-
-const EGYPT_TIMEZONE = 'Africa/Cairo';
 
 interface UnifiedTeacherStudentCardProps {
   item: TeacherMixedTrialItem;
@@ -65,14 +63,12 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
     sessionId: data.sessionId
   });
 
-  // Fetch reschedule information
   useEffect(() => {
     const fetchRescheduleInfo = async () => {
       try {
         let sessionIds: string[] = [];
 
         if (isFamily) {
-          // For families, get session IDs from family students
           const { data: familyStudents } = await supabase
             .from('students')
             .select(`
@@ -86,7 +82,6 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
               .map(ss => ss.session_id);
           }
         } else {
-          // For individuals, get from session_students
           const { data: sessionStudents } = await supabase
             .from('session_students')
             .select('session_id')
@@ -141,58 +136,15 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
     );
   };
 
+  // FIXED: Use Egypt timezone formatting for consistent display
   const formatDateTime = (date?: string, time?: string) => {
-    if (!date || !time) return 'Not scheduled';
-    
-    try {
-      console.log('🔄 Formatting date/time:', { date, time });
-      
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}(:\d{2})?$/.test(time)) {
-        console.error('❌ Invalid date/time format:', { date, time });
-        return 'Invalid format';
-      }
-      
-      const normalizedTime = time.length === 5 ? `${time}:00` : time;
-      const egyptDateTimeString = `${date}T${normalizedTime}`;
-      const egyptDateTime = new Date(egyptDateTimeString);
-      
-      if (isNaN(egyptDateTime.getTime())) {
-        console.error('❌ Invalid date object:', egyptDateTimeString);
-        return 'Invalid date';
-      }
-      
-      const formattedDateTime = format(egyptDateTime, 'dd/MM/yyyy \'at\' h:mm a');
-      
-      return formattedDateTime;
-    } catch (error) {
-      console.error('❌ Date formatting error:', error);
-      return 'Date formatting error';
-    }
+    console.log('🔄 FIXED: Formatting date/time in Egypt timezone:', { date, time });
+    return formatDateTimeInEgypt(date, time, "dd/MM/yyyy 'at' h:mm a");
   };
 
   const formatOriginalDateTime = (date?: string, time?: string) => {
-    if (!date || !time) return '';
-    
-    try {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}(:\d{2})?$/.test(time)) {
-        return '';
-      }
-      
-      const normalizedTime = time.length === 5 ? `${time}:00` : time;
-      const egyptDateTimeString = `${date}T${normalizedTime}`;
-      const egyptDateTime = new Date(egyptDateTimeString);
-      
-      if (isNaN(egyptDateTime.getTime())) {
-        return '';
-      }
-      
-      const formattedDateTime = format(egyptDateTime, 'dd/MM \'at\' h:mm a');
-      
-      return formattedDateTime;
-    } catch (error) {
-      console.error('❌ Original date formatting error:', error);
-      return '';
-    }
+    console.log('🔄 FIXED: Formatting original date/time in Egypt timezone:', { date, time });
+    return formatDateTimeInEgypt(date, time, "dd/MM 'at' h:mm a");
   };
 
   const getMenuOptions = () => {
@@ -205,7 +157,6 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
         { 
           label: 'Reschedule', 
           action: () => {
-            // CRITICAL FIX: Enable reschedule for both individual and family
             console.log(`🔄 CRITICAL FIX: ${isFamily ? 'Family' : 'Individual'} reschedule enabled`);
             onReschedule(item);
           }, 
@@ -228,7 +179,6 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
         { 
           label: 'Reschedule', 
           action: () => {
-            // CRITICAL FIX: Enable reschedule for both individual and family
             console.log(`🔄 CRITICAL FIX: ${isFamily ? 'Family' : 'Individual'} reschedule enabled`);
             onReschedule(item);
           }, 
