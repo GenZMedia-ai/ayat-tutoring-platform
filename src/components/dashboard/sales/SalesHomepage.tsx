@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 import { toast } from 'sonner';
 import { useSimpleSalesAvailability, SimpleBookingData } from '@/hooks/useSimpleSalesAvailability';
 import { TEACHER_TYPES } from '@/constants/teacherTypes';
@@ -14,11 +14,12 @@ import { HOURLY_TIME_SLOTS, TIMEZONES } from '@/constants/timeSlots';
 import { BookingModal } from '@/components/booking/BookingModal';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 
 const SalesHomepage: React.FC = () => {
   // Date filtering
   const [dateFilter, setDateFilter] = useState('today');
-  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | null>(null);
+  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
   
   // Quick Availability Checker state - Fixed defaults
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -57,7 +58,9 @@ const SalesHomepage: React.FC = () => {
       case 'alltime':
         return { from: new Date('2024-01-01'), to: now };
       case 'custom':
-        return customDateRange || { from: now, to: now };
+        return customDateRange && customDateRange.from && customDateRange.to 
+          ? { from: customDateRange.from, to: customDateRange.to }
+          : { from: now, to: now };
       default:
         return { from: now, to: now };
     }
@@ -210,25 +213,36 @@ const SalesHomepage: React.FC = () => {
           <CardTitle className="text-lg">Filter by Date</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { value: 'today', label: 'Today' },
-              { value: 'yesterday', label: 'Yesterday' },
-              { value: 'last7days', label: 'Last 7 Days' },
-              { value: 'thismonth', label: 'This Month' },
-              { value: 'lastmonth', label: 'Last Month' },
-              { value: 'alltime', label: 'All Time' },
-              { value: 'custom', label: 'Custom Range' }
-            ].map((option) => (
-              <Button
-                key={option.value}
-                variant={dateFilter === option.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setDateFilter(option.value)}
-              >
-                {option.label}
-              </Button>
-            ))}
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'today', label: 'Today' },
+                { value: 'yesterday', label: 'Yesterday' },
+                { value: 'last7days', label: 'Last 7 Days' },
+                { value: 'thismonth', label: 'This Month' },
+                { value: 'lastmonth', label: 'Last Month' },
+                { value: 'alltime', label: 'All Time' },
+                { value: 'custom', label: 'Custom Range' }
+              ].map((option) => (
+                <Button
+                  key={option.value}
+                  variant={dateFilter === option.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setDateFilter(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            
+            {dateFilter === 'custom' && (
+              <div className="mt-4">
+                <DatePickerWithRange
+                  dateRange={customDateRange}
+                  setDateRange={setCustomDateRange}
+                />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

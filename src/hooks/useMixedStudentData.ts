@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,7 +22,7 @@ export const useMixedStudentData = () => {
     try {
       setLoading(true);
 
-      // Base query filters based on user role
+      // Base query filters based on user role - ENSURE ALL STATUSES ARE INCLUDED
       let studentsQuery = supabase.from('students').select('*');
       let familyGroupsQuery = supabase.from('family_groups').select('*');
 
@@ -36,7 +35,7 @@ export const useMixedStudentData = () => {
         familyGroupsQuery = familyGroupsQuery.eq('assigned_sales_agent_id', user.id);
       }
 
-      // Fetch individual students (those not part of family groups)
+      // Fetch individual students (those not part of family groups) - NO STATUS FILTERING
       const { data: individualStudents, error: studentsError } = await studentsQuery
         .is('family_group_id', null)
         .order('created_at', { ascending: false });
@@ -46,7 +45,7 @@ export const useMixedStudentData = () => {
         throw studentsError;
       }
 
-      // Fetch family groups
+      // Fetch family groups - NO STATUS FILTERING
       const { data: familyGroups, error: familyError } = await familyGroupsQuery
         .order('created_at', { ascending: false });
 
@@ -213,6 +212,17 @@ export const useMixedStudentData = () => {
         return bDate.getTime() - aDate.getTime();
       });
 
+      console.log('📊 Mixed data fetched - All statuses included:', {
+        totalItems: allItems.length,
+        statusBreakdown: allItems.reduce((acc, item) => {
+          const status = item.type === 'individual' 
+            ? (item.data as TrialSessionFlowStudent).status 
+            : (item.data as FamilyGroup).status;
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      });
+
       setItems(allItems);
     } catch (error) {
       console.error('Error in fetchMixedData:', error);
@@ -230,7 +240,7 @@ export const useMixedStudentData = () => {
     fetchMixedData();
   };
 
-  // Helper functions for different categories
+  // Helper functions for different categories - ENSURE ALL STATUSES ARE COUNTED
   const getItemsByStatus = (status: string | string[]) => {
     const statusArray = Array.isArray(status) ? status : [status];
     return items.filter(item => {
@@ -242,7 +252,9 @@ export const useMixedStudentData = () => {
   };
 
   const getStatsCount = (status: string) => {
-    return getItemsByStatus(status).length;
+    const count = getItemsByStatus(status).length;
+    console.log(`📈 Status count for "${status}":`, count);
+    return count;
   };
 
   const getTotalCount = () => {

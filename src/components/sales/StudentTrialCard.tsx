@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,11 +13,14 @@ import {
   MessageCircle,
   CreditCard,
   ExternalLink,
-  Video
+  Video,
+  Eye,
+  Copy
 } from 'lucide-react';
 import { TrialSessionFlowStudent } from '@/types/trial';
 import { useSalesPermissions } from '@/hooks/useSalesPermissions';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 interface StudentTrialCardProps {
   student: TrialSessionFlowStudent;
@@ -66,6 +68,29 @@ export const StudentTrialCard: React.FC<StudentTrialCardProps> = ({
       return 'Invalid date';
     }
   };
+
+  // Smart payment link button logic
+  const handlePaymentLinkAction = () => {
+    if (student.paymentLink && student.paymentLink.stripeSessionId) {
+      // Payment link exists - copy/view it
+      const url = `https://checkout.stripe.com/c/pay/${student.paymentLink.stripeSessionId}`;
+      navigator.clipboard.writeText(url);
+      toast.success('Payment link copied to clipboard');
+    } else {
+      // No payment link exists - create one
+      toast.info('Opening payment link creation form...');
+      // This would trigger the payment link creation modal
+    }
+  };
+
+  const openPaymentLink = () => {
+    if (student.paymentLink && student.paymentLink.stripeSessionId) {
+      const url = `https://checkout.stripe.com/c/pay/${student.paymentLink.stripeSessionId}`;
+      window.open(url, '_blank');
+    }
+  };
+
+  const hasPaymentLink = student.paymentLink && student.paymentLink.stripeSessionId;
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -212,12 +237,39 @@ export const StudentTrialCard: React.FC<StudentTrialCardProps> = ({
         {/* Action Buttons */}
         {(permissions.canCreatePaymentLink || permissions.canCreateFollowUp) && (
           <div className="flex gap-2 pt-2 border-t">
-            {permissions.canCreatePaymentLink && !student.paymentLink && (
-              <Button variant="outline" size="sm">
-                <CreditCard className="h-4 w-4 mr-2" />
-                Create Payment Link
-              </Button>
+            {/* Smart Payment Link Button */}
+            {hasPaymentLink ? (
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handlePaymentLinkAction}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Link
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={openPaymentLink}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Link
+                </Button>
+              </div>
+            ) : (
+              permissions.canCreatePaymentLink && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handlePaymentLinkAction}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Create Payment Link
+                </Button>
+              )
             )}
+            
             {permissions.canCreateFollowUp && !student.pendingFollowUp && (
               <Button variant="outline" size="sm">
                 <Calendar className="h-4 w-4 mr-2" />

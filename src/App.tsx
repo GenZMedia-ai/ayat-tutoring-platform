@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,13 +23,12 @@ import TeacherRevenue from "./components/dashboard/teacher/TeacherRevenue";
 import TeacherPaidRegistration from "./components/dashboard/teacher/TeacherPaidRegistration";
 import TeacherSessionManagement from "./components/dashboard/teacher/TeacherSessionManagement";
 
-// Sales Tab Components - FIXED IMPORTS
+// Sales Tab Components - ANALYTICS REMOVED
 import SalesHomepage from "./components/dashboard/sales/SalesHomepage";
 import SalesTrialAppointments from "./components/dashboard/sales/SalesTrialAppointments";
 import SalesPaymentLinks from "./components/dashboard/sales/SalesPaymentLinks";
 import SalesFollowup from "./components/dashboard/sales/SalesFollowup";
 import SalesStudents from "./components/dashboard/sales/SalesStudents";
-import SalesAnalytics from "./components/dashboard/sales/SalesAnalytics";
 
 // Admin Tab Components
 import AdminHomepage from "./components/dashboard/admin/AdminHomepage";
@@ -80,7 +78,7 @@ const App = () => (
               <Route index element={<Navigate to="homepage" replace />} />
             </Route>
 
-            {/* Sales Routes - FIXED */}
+            {/* Sales Routes - ANALYTICS REMOVED */}
             <Route path="/sales" element={<Navigate to="/sales/homepage" replace />} />
             <Route path="/sales/*" element={<SalesDashboard />}>
               <Route path="homepage" element={<SalesHomepage />} />
@@ -88,7 +86,6 @@ const App = () => (
               <Route path="payment-links" element={<SalesPaymentLinks />} />
               <Route path="followup" element={<SalesFollowup />} />
               <Route path="students" element={<SalesStudents />} />
-              <Route path="analytics" element={<SalesAnalytics />} />
               <Route index element={<Navigate to="homepage" replace />} />
             </Route>
 

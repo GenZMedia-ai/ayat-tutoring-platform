@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -159,9 +158,22 @@ const SalesPaymentLinks: React.FC = () => {
 
   const copyPaymentLink = (sessionId: string) => {
     if (sessionId) {
-      const url = `https://checkout.stripe.com/pay/${sessionId}`;
+      // Fix: Use correct Stripe checkout URL format
+      const url = `https://checkout.stripe.com/c/pay/${sessionId}`;
       navigator.clipboard.writeText(url);
       toast.success('Payment link copied to clipboard');
+    } else {
+      toast.error('No valid payment link available');
+    }
+  };
+
+  const openPaymentLink = (sessionId: string) => {
+    if (sessionId) {
+      // Fix: Use correct Stripe checkout URL format
+      const url = `https://checkout.stripe.com/c/pay/${sessionId}`;
+      window.open(url, '_blank');
+    } else {
+      toast.error('No valid payment link available');
     }
   };
 
@@ -298,7 +310,7 @@ const SalesPaymentLinks: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Payment Links List - No amounts displayed */}
+      {/* Payment Links List - Fixed URLs */}
       {filteredLinks.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
@@ -376,7 +388,7 @@ const SalesPaymentLinks: React.FC = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => window.open(`https://checkout.stripe.com/pay/${link.stripe_session_id}`, '_blank')}
+                        onClick={() => openPaymentLink(link.stripe_session_id!)}
                       >
                         <ExternalLink className="h-4 w-4 mr-1" />
                         Open Link
