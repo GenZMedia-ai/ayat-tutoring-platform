@@ -1,6 +1,6 @@
 
 import { format, parseISO } from 'date-fns';
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 export const EGYPT_TIMEZONE = 'Africa/Cairo';
 
@@ -65,6 +65,7 @@ export const formatTimeInEgyptToday = (
 /**
  * Convert Egypt time to UTC for database storage
  * Use this ONLY for Availability Management - preserves existing functionality
+ * FIXED: Now uses formatInTimeZone to ensure proper UTC formatting
  */
 export const convertEgyptTimeToUTC = (
   egyptTime24: string,
@@ -78,7 +79,9 @@ export const convertEgyptTimeToUTC = (
     
     // Convert FROM Egypt timezone TO UTC using fromZonedTime
     const utcDate = fromZonedTime(egyptDateTimeString, EGYPT_TIMEZONE);
-    const utcTime = format(utcDate, 'HH:mm:ss');
+    
+    // FIXED: Use formatInTimeZone to ensure proper UTC formatting
+    const utcTime = formatInTimeZone(utcDate, 'UTC', 'HH:mm:ss');
     
     console.log('✅ Egypt to UTC conversion result:', {
       egyptTime: egyptTime24,
