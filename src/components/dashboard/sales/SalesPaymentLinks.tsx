@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,7 @@ interface PaymentLinkData {
   currency: string;
   amount: number;
   stripe_session_id: string | null;
-  stripe_checkout_url: string | null;
+  stripe_checkout_url?: string | null; // Make this optional
   created_by: string;
   expires_at: string;
   clicked_at: string | null;
@@ -114,17 +113,16 @@ const SalesPaymentLinks: React.FC = () => {
   });
 
   const handleCopyLink = async (link: PaymentLinkData) => {
-    if (!link.stripe_checkout_url && !link.stripe_session_id) {
-      toast.error('No payment URL available');
+    if (!link.stripe_session_id) {
+      toast.error('No payment session available');
       return;
     }
 
-    // Use the stored checkout URL if available, otherwise construct from session ID
-    const url = link.stripe_checkout_url || 
-                `https://checkout.stripe.com/pay/${link.stripe_session_id}`;
+    // Construct the correct Stripe checkout URL
+    const checkoutUrl = `https://checkout.stripe.com/c/pay/${link.stripe_session_id}`;
     
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(checkoutUrl);
       toast.success('Payment link copied to clipboard');
     } catch (error) {
       console.error('Failed to copy link:', error);
@@ -133,16 +131,14 @@ const SalesPaymentLinks: React.FC = () => {
   };
 
   const handleOpenLink = (link: PaymentLinkData) => {
-    if (!link.stripe_checkout_url && !link.stripe_session_id) {
-      toast.error('No payment URL available');
+    if (!link.stripe_session_id) {
+      toast.error('No payment session available');
       return;
     }
 
-    // Use the stored checkout URL if available, otherwise construct from session ID
-    const url = link.stripe_checkout_url || 
-                `https://checkout.stripe.com/pay/${link.stripe_session_id}`;
-    
-    window.open(url, '_blank');
+    // Construct the correct Stripe checkout URL
+    const checkoutUrl = `https://checkout.stripe.com/c/pay/${link.stripe_session_id}`;
+    window.open(checkoutUrl, '_blank');
   };
 
   const getStatusBadge = (status: string) => {
@@ -368,7 +364,7 @@ const SalesPaymentLinks: React.FC = () => {
                     size="sm"
                     onClick={() => handleCopyLink(link)}
                     className="flex-1 border-primary/30 text-primary hover:bg-primary/5"
-                    disabled={!link.stripe_checkout_url && !link.stripe_session_id}
+                    disabled={!link.stripe_session_id}
                   >
                     <Copy className="h-4 w-4 mr-2" />
                     Copy Link
@@ -378,7 +374,7 @@ const SalesPaymentLinks: React.FC = () => {
                     size="sm"
                     onClick={() => handleOpenLink(link)}
                     className="flex-1 bg-primary hover:bg-primary/90"
-                    disabled={!link.stripe_checkout_url && !link.stripe_session_id}
+                    disabled={!link.stripe_session_id}
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Open Link
