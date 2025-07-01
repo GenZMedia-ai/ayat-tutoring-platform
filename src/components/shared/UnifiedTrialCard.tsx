@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,22 +52,22 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; label: string }> = {
-      'pending': { color: 'bg-orange-100 text-orange-800', label: 'Pending' },
-      'confirmed': { color: 'bg-blue-100 text-blue-800', label: 'Confirmed' },
-      'trial-completed': { color: 'bg-green-100 text-green-800', label: 'Trial Completed' },
-      'trial-ghosted': { color: 'bg-red-100 text-red-800', label: 'Trial Ghosted' },
-      'follow-up': { color: 'bg-yellow-100 text-yellow-800', label: 'Follow-up' },
-      'awaiting-payment': { color: 'bg-purple-100 text-purple-800', label: 'Awaiting Payment' },
-      'paid': { color: 'bg-emerald-100 text-emerald-800', label: 'Paid' },
-      'active': { color: 'bg-cyan-100 text-cyan-800', label: 'Active' },
-      'expired': { color: 'bg-gray-100 text-gray-800', label: 'Expired' },
-      'cancelled': { color: 'bg-slate-100 text-slate-800', label: 'Cancelled' },
-      'dropped': { color: 'bg-slate-100 text-slate-800', label: 'Dropped' }
+      'pending': { color: 'bg-orange-100 text-orange-800 border-orange-200', label: 'Pending' },
+      'confirmed': { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Confirmed' },
+      'trial-completed': { color: 'bg-green-100 text-green-800 border-green-200', label: 'Trial Completed' },
+      'trial-ghosted': { color: 'bg-red-100 text-red-800 border-red-200', label: 'Trial Ghosted' },
+      'follow-up': { color: 'bg-amber-100 text-amber-800 border-amber-200', label: 'Follow-up' },
+      'awaiting-payment': { color: 'bg-purple-100 text-purple-800 border-purple-200', label: 'Awaiting Payment' },
+      'paid': { color: 'bg-emerald-100 text-emerald-800 border-emerald-200', label: 'Paid' },
+      'active': { color: 'bg-cyan-100 text-cyan-800 border-cyan-200', label: 'Active' },
+      'expired': { color: 'bg-gray-100 text-gray-800 border-gray-200', label: 'Expired' },
+      'cancelled': { color: 'bg-slate-100 text-slate-800 border-slate-200', label: 'Cancelled' },
+      'dropped': { color: 'bg-slate-100 text-slate-800 border-slate-200', label: 'Dropped' }
     };
 
-    const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', label: status };
+    const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800 border-gray-200', label: status };
     return (
-      <Badge className={`${config.color} border-0`}>
+      <Badge className={`${config.color} border`}>
         {config.label}
       </Badge>
     );
@@ -84,7 +83,6 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
     }
   };
 
-  // Helper functions to get data from both types
   const getName = () => isFamily ? (data as FamilyGroup).parent_name : (data as TrialSessionFlowStudent).name;
   const getUniqueId = () => isFamily ? (data as FamilyGroup).unique_id : (data as TrialSessionFlowStudent).uniqueId;
   const getStatus = () => data.status;
@@ -99,18 +97,15 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
   const getAge = () => !isFamily ? (data as TrialSessionFlowStudent).age : null;
   const getParentName = () => !isFamily ? (data as TrialSessionFlowStudent).parentName : null;
 
-  // Individual student specific data
   const getLastWhatsAppContact = () => !isFamily ? (data as TrialSessionFlowStudent).lastWhatsAppContact : null;
   const getPaymentLink = () => !isFamily ? (data as TrialSessionFlowStudent).paymentLink : null;
   const getPendingFollowUp = () => !isFamily ? (data as TrialSessionFlowStudent).pendingFollowUp : null;
 
-  // Determine what actions should be shown based on status
   const shouldShowPaymentLink = () => {
     const status = getStatus();
-    return (status === 'trial-completed' || status === 'trial-ghosted') && !getPaymentLink();
+    return (status === 'trial-completed' || status === 'follow-up' || status === 'awaiting-payment') && !getPaymentLink();
   };
 
-  // FIXED: Only show for trial-completed and follow-up statuses
   const shouldShowScheduleFollowUp = () => {
     const status = getStatus();
     return status === 'trial-completed' && !getPendingFollowUp();
@@ -126,8 +121,13 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
     return status === 'follow-up' && getPendingFollowUp() && !getPendingFollowUp()!.completed;
   };
 
+  const shouldShowViewPaymentLink = () => {
+    const paymentLink = getPaymentLink();
+    return paymentLink && paymentLink.status === 'pending';
+  };
+
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="hover:shadow-md transition-shadow border-l-4 border-l-primary/20">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -141,14 +141,14 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
                 <h3 className="font-semibold text-lg">{getName()}</h3>
               </div>
               {getStatusBadge(getStatus())}
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs border-primary/30">
                 {isFamily ? 'Family' : 'Individual'}
               </Badge>
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="font-mono">{getUniqueId()}</span>
+              <span className="font-mono text-primary/70">{getUniqueId()}</span>
               {isFamily ? (
-                <span>{getStudentCount()} students</span>
+                <span className="text-primary/60">{getStudentCount()} students</span>
               ) : (
                 <>
                   <span>Age: {getAge()}</span>
@@ -164,6 +164,7 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
               <Button
                 variant="outline"
                 size="sm"
+                className="border-primary/30 text-primary hover:bg-primary/5"
                 onClick={() => onEdit(item)}
               >
                 <Edit2 className="h-4 w-4" />
@@ -173,6 +174,7 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
               <Button
                 variant="outline"
                 size="sm"
+                className="border-primary/30 text-primary hover:bg-primary/5"
                 onClick={() => onStatusChange(item)}
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -183,7 +185,6 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Contact Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
@@ -212,21 +213,18 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
           </div>
         </div>
 
-        {/* Notes */}
         {getNotes() && (
-          <div className="p-3 bg-muted rounded-lg">
+          <div className="p-3 bg-muted/50 rounded-lg border border-primary/10">
             <p className="text-sm">
               <strong>Notes:</strong> {getNotes()}
             </p>
           </div>
         )}
 
-        {/* Individual Student Specific Information */}
         {!isFamily && (
           <>
-            {/* Last Contact Info */}
             {getLastWhatsAppContact() && (
-              <div className="p-3 bg-blue-50 rounded-lg">
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="flex items-center gap-2 mb-1">
                   <MessageCircle className="h-4 w-4 text-blue-600" />
                   <span className="text-sm font-medium text-blue-800">Last Contact</span>
@@ -243,20 +241,19 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
               </div>
             )}
 
-            {/* Payment Link Info */}
             {getPaymentLink() && (
-              <div className="p-3 bg-purple-50 rounded-lg">
+              <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-purple-600" />
                     <span className="text-sm font-medium text-purple-800">Payment Link</span>
                   </div>
                   <Badge className={`${
-                    getPaymentLink()!.status === 'paid' ? 'bg-green-100 text-green-800' :
-                    getPaymentLink()!.status === 'clicked' ? 'bg-yellow-100 text-yellow-800' :
-                    getPaymentLink()!.status === 'expired' ? 'bg-red-100 text-red-800' :
-                    'bg-purple-100 text-purple-800'
-                  } border-0`}>
+                    getPaymentLink()!.status === 'paid' ? 'bg-green-100 text-green-800 border-green-200' :
+                    getPaymentLink()!.status === 'clicked' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                    getPaymentLink()!.status === 'expired' ? 'bg-red-100 text-red-800 border-red-200' :
+                    'bg-purple-100 text-purple-800 border-purple-200'
+                  } border`}>
                     {getPaymentLink()!.status}
                   </Badge>
                 </div>
@@ -266,17 +263,16 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
               </div>
             )}
 
-            {/* Follow-up Info */}
             {getPendingFollowUp() && !getPendingFollowUp()!.completed && (
-              <div className="p-3 bg-yellow-50 rounded-lg">
+              <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
                 <div className="flex items-center gap-2 mb-1">
-                  <Clock className="h-4 w-4 text-yellow-600" />
-                  <span className="text-sm font-medium text-yellow-800">Pending Follow-up</span>
+                  <Clock className="h-4 w-4 text-amber-600" />
+                  <span className="text-sm font-medium text-amber-800">Pending Follow-up</span>
                 </div>
-                <p className="text-sm text-yellow-700">
+                <p className="text-sm text-amber-700">
                   Scheduled: {format(new Date(getPendingFollowUp()!.scheduledDate), 'MMM dd, yyyy')}
                 </p>
-                <p className="text-sm text-yellow-600">
+                <p className="text-sm text-amber-600">
                   Reason: {getPendingFollowUp()!.reason}
                 </p>
               </div>
@@ -284,14 +280,13 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
           </>
         )}
 
-        {/* Action Buttons */}
         {showActions && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t">
-            {/* Contact Button */}
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-primary/10">
             {onContact && (
               <Button 
                 variant="outline" 
                 size="sm"
+                className="border-primary/30 text-primary hover:bg-primary/5"
                 onClick={() => onContact(item)}
               >
                 <MessageCircle className="h-4 w-4 mr-2" />
@@ -299,70 +294,69 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
               </Button>
             )}
 
-            {/* Create Payment Link Button */}
             {shouldShowPaymentLink() && onCreatePaymentLink && (
               <Button 
                 variant="default" 
                 size="sm"
                 onClick={() => onCreatePaymentLink(item)}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 border-0"
               >
                 <CreditCard className="h-4 w-4 mr-2" />
                 Create Payment Link
               </Button>
             )}
 
-            {/* Schedule Follow-up Button - Only for trial-completed */}
+            {shouldShowViewPaymentLink() && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  const link = getPaymentLink();
+                  if (link?.stripeSessionId) {
+                    // In a real implementation, you'd have the actual URL
+                    navigator.clipboard.writeText(link.stripeSessionId);
+                  }
+                }}
+                className="border-purple-200 text-purple-700 hover:bg-purple-50"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Payment Link
+              </Button>
+            )}
+
             {shouldShowScheduleFollowUp() && onScheduleFollowUp && (
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => onScheduleFollowUp(item)}
-                className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                className="border-amber-200 text-amber-700 hover:bg-amber-50"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Schedule Follow-up
               </Button>
             )}
 
-            {/* Complete Follow-up Button - Only for follow-up status */}
             {shouldShowCompleteFollowUp() && onCompleteFollowUp && (
               <Button 
                 variant="default" 
                 size="sm"
                 onClick={() => onCompleteFollowUp(item)}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 border-0"
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
                 Complete Follow-up
               </Button>
             )}
 
-            {/* Reschedule Follow-up Button - Only for follow-up status */}
             {shouldShowRescheduleFollowUp() && onScheduleFollowUp && (
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => onScheduleFollowUp(item)}
-                className="border-yellow-200 text-yellow-700 hover:bg-yellow-50"
+                className="border-amber-200 text-amber-700 hover:bg-amber-50"
               >
                 <Clock className="h-4 w-4 mr-2" />
                 Reschedule Follow-up
-              </Button>
-            )}
-
-            {/* Payment Link Status for existing links */}
-            {getPaymentLink() && getPaymentLink()!.status === 'pending' && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  // Copy payment link to clipboard
-                  navigator.clipboard.writeText(getPaymentLink()!.stripeSessionId || '');
-                }}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View Payment Link
               </Button>
             )}
           </div>

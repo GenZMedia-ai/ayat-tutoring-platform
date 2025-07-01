@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { CheckCircle, XCircle, CreditCard } from 'lucide-react';
+import { XCircle, AlertCircle } from 'lucide-react';
 import { useStudentFollowUp, FollowUpData } from '@/hooks/useStudentFollowUp';
 import { TrialSessionFlowStudent } from '@/types/trial';
 import { FamilyGroup } from '@/types/family';
@@ -25,7 +25,7 @@ export const CompleteFollowUpModal: React.FC<CompleteFollowUpModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const [outcome, setOutcome] = useState<'awaiting-payment' | 'paid' | 'dropped'>('awaiting-payment');
+  const [outcome, setOutcome] = useState<'awaiting-payment' | 'dropped'>('awaiting-payment');
   const [notes, setNotes] = useState('');
   const { completeFollowUp, loading } = useStudentFollowUp();
 
@@ -46,7 +46,7 @@ export const CompleteFollowUpModal: React.FC<CompleteFollowUpModalProps> = ({
   };
 
   const handleOutcomeChange = (value: string) => {
-    if (value === 'awaiting-payment' || value === 'paid' || value === 'dropped') {
+    if (value === 'awaiting-payment' || value === 'dropped') {
       setOutcome(value);
     }
   };
@@ -56,15 +56,8 @@ export const CompleteFollowUpModal: React.FC<CompleteFollowUpModalProps> = ({
       value: 'awaiting-payment' as const,
       label: 'Ready for Payment',
       description: 'Customer is ready to proceed with payment',
-      icon: CreditCard,
+      icon: AlertCircle,
       color: 'text-blue-600'
-    },
-    {
-      value: 'paid' as const,
-      label: 'Already Paid',
-      description: 'Customer has completed payment',
-      icon: CheckCircle,
-      color: 'text-green-600'
     },
     {
       value: 'dropped' as const,
@@ -86,7 +79,7 @@ export const CompleteFollowUpModal: React.FC<CompleteFollowUpModalProps> = ({
         
         <div className="space-y-4">
           {/* Follow-up Info */}
-          <div className="p-3 bg-gray-50 rounded-lg">
+          <div className="p-3 bg-gray-50 rounded-lg border border-primary/10">
             <p className="text-sm font-medium">Follow-up Reason:</p>
             <p className="text-sm text-gray-600">{followUpData.reason.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
             {followUpData.notes && (
@@ -95,6 +88,17 @@ export const CompleteFollowUpModal: React.FC<CompleteFollowUpModalProps> = ({
                 <p className="text-sm text-gray-600">{followUpData.notes}</p>
               </>
             )}
+          </div>
+
+          {/* Important Notice */}
+          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium">Automatic Payment Processing</p>
+                <p>Payment status will be automatically updated when payment is received through our system. No manual confirmation needed.</p>
+              </div>
+            </div>
           </div>
 
           {/* Outcome Selection */}
@@ -134,7 +138,6 @@ export const CompleteFollowUpModal: React.FC<CompleteFollowUpModalProps> = ({
           {/* Preview */}
           <div className={`p-3 rounded-lg border ${
             outcome === 'awaiting-payment' ? 'bg-blue-50 border-blue-200' :
-            outcome === 'paid' ? 'bg-green-50 border-green-200' :
             'bg-red-50 border-red-200'
           }`}>
             <p className="text-sm font-medium">
@@ -144,7 +147,12 @@ export const CompleteFollowUpModal: React.FC<CompleteFollowUpModalProps> = ({
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
+          <Button 
+            variant="outline" 
+            onClick={onClose} 
+            disabled={loading}
+            className="border-primary/30"
+          >
             Cancel
           </Button>
           <Button 
@@ -152,7 +160,6 @@ export const CompleteFollowUpModal: React.FC<CompleteFollowUpModalProps> = ({
             disabled={loading}
             className={
               outcome === 'awaiting-payment' ? 'bg-blue-600 hover:bg-blue-700' :
-              outcome === 'paid' ? 'bg-green-600 hover:bg-green-700' :
               'bg-red-600 hover:bg-red-700'
             }
           >

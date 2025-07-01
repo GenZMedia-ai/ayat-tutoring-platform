@@ -45,6 +45,16 @@ export const useSalesPermissions = (status: StudentStatus): SalesPermissions => 
           statusMessage: 'Full control - can manage payment and follow-up'
         };
 
+      case 'follow-up':
+        return {
+          canEdit: true,
+          canChangeStatus: true,
+          canCreatePaymentLink: true,
+          canCreateFollowUp: true,
+          canViewAll: true,
+          statusMessage: 'Follow-up scheduled - can manage payment and complete follow-up'
+        };
+
       case 'awaiting-payment':
         return {
           canEdit: true,

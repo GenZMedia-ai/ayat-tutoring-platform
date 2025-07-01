@@ -52,7 +52,7 @@ export const useTeacherMixedTrialData = () => {
     try {
       console.log('🔍 Fetching mixed trial data for teacher:', user.id);
 
-      // Fetch individual students
+      // Fetch individual students - UPDATED: Include follow-up status
       const { data: individualStudents, error: studentsError } = await supabase
         .from('students')
         .select(`
@@ -71,7 +71,7 @@ export const useTeacherMixedTrialData = () => {
           family_group_id
         `)
         .eq('assigned_teacher_id', user.id)
-        .in('status', ['pending', 'confirmed'])
+        .in('status', ['pending', 'confirmed', 'follow-up'])
         .is('family_group_id', null);
 
       if (studentsError) {
@@ -79,7 +79,7 @@ export const useTeacherMixedTrialData = () => {
         throw studentsError;
       }
 
-      // Fetch family groups
+      // Fetch family groups - UPDATED: Include follow-up status
       const { data: familyGroups, error: familyError } = await supabase
         .from('family_groups')
         .select(`
@@ -96,7 +96,7 @@ export const useTeacherMixedTrialData = () => {
           student_count
         `)
         .eq('assigned_teacher_id', user.id)
-        .in('status', ['pending', 'confirmed']);
+        .in('status', ['pending', 'confirmed', 'follow-up']);
 
       if (familyError) {
         console.error('❌ Error fetching family groups:', familyError);
