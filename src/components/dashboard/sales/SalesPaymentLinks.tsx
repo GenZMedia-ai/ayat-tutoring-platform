@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ interface PaymentLink {
   paid_at?: string;
   clicked_at?: string;
   stripe_session_id?: string;
+  stripe_checkout_url?: string; // CRITICAL FIX: Added stored URL field
   created_by: string;
   student_names?: string[];
   family_group_id?: string;
@@ -156,25 +158,39 @@ const SalesPaymentLinks: React.FC = () => {
     }
   };
 
-  const copyPaymentLink = (sessionId: string) => {
-    if (sessionId) {
-      // Fix: Use correct Stripe checkout URL format
-      const url = `https://checkout.stripe.com/c/pay/${sessionId}`;
-      navigator.clipboard.writeText(url);
+  // CRITICAL FIX: Use stored URL or show error for missing URLs
+  const copyPaymentLink = (link: PaymentLink) => {
+    if (link.stripe_checkout_url) {
+      // Use the stored complete URL
+      navigator.clipboard.writeText(link.stripe_checkout_url);
       toast.success('Payment link copied to clipboard');
+    } else if (link.stripe_session_id) {
+      // Legacy fallback - inform user that URL might not work
+      const url = `https://checkout.stripe.com/c/pay/${link.stripe_session_id}`;
+      navigator.clipboard.writeText(url);
+      toast.warning('Payment link copied (legacy format - might not work)');
     } else {
       toast.error('No valid payment link available');
     }
   };
 
-  const openPaymentLink = (sessionId: string) => {
-    if (sessionId) {
-      // Fix: Use correct Stripe checkout URL format
-      const url = `https://checkout.stripe.com/c/pay/${sessionId}`;
+  const openPaymentLink = (link: PaymentLink) => {
+    if (link.stripe_checkout_url) {
+      // Use the stored complete URL
+      window.open(link.stripe_checkout_url, '_blank');
+    } else if (link.stripe_session_id) {
+      // Legacy fallback - warn user
+      const url = `https://checkout.stripe.com/c/pay/${link.stripe_session_id}`;
       window.open(url, '_blank');
+      toast.warning('Opening legacy payment link - this might not work');
     } else {
       toast.error('No valid payment link available');
     }
+  };
+
+  // Check if payment link is available and valid
+  const hasValidPaymentLink = (link: PaymentLink) => {
+    return !!(link.stripe_checkout_url || link.stripe_session_id);
   };
 
   if (loading) {
@@ -342,6 +358,16 @@ const SalesPaymentLinks: React.FC = () => {
                     <Badge variant="outline" className="text-xs">
                       {link.payment_type === 'family' ? 'Family' : 'Individual'}
                     </Badge>
+                    {/* Show URL availability status */}
+                    {link.stripe_checkout_url ? (
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                        URL Available
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
+                        Legacy Link
+                      </Badge>
+                    )}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {link.package_session_count} sessions
@@ -375,12 +401,12 @@ const SalesPaymentLinks: React.FC = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {link.stripe_session_id && (
+                  {hasValidPaymentLink(link) ? (
                     <>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => copyPaymentLink(link.stripe_session_id!)}
+                        onClick={() => copyPaymentLink(link)}
                       >
                         <Copy className="h-4 w-4 mr-1" />
                         Copy Link
@@ -388,12 +414,16 @@ const SalesPaymentLinks: React.FC = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => openPaymentLink(link.stripe_session_id!)}
+                        onClick={() => openPaymentLink(link)}
                       >
                         <ExternalLink className="h-4 w-4 mr-1" />
                         Open Link
                       </Button>
                     </>
+                  ) : (
+                    <div className="text-sm text-muted-foreground bg-gray-50 p-2 rounded">
+                      ⚠️ Payment link not available (expired or invalid session)
+                    </div>
                   )}
                 </div>
 

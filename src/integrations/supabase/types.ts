@@ -381,6 +381,7 @@ export type Database = {
           paid_at: string | null
           payment_type: string | null
           status: string
+          stripe_checkout_url: string | null
           stripe_session_id: string | null
           student_ids: string[]
           total_amount: number | null
@@ -402,6 +403,7 @@ export type Database = {
           paid_at?: string | null
           payment_type?: string | null
           status?: string
+          stripe_checkout_url?: string | null
           stripe_session_id?: string | null
           student_ids: string[]
           total_amount?: number | null
@@ -423,6 +425,7 @@ export type Database = {
           paid_at?: string | null
           payment_type?: string | null
           status?: string
+          stripe_checkout_url?: string | null
           stripe_session_id?: string | null
           student_ids?: string[]
           total_amount?: number | null

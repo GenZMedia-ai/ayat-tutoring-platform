@@ -231,9 +231,9 @@ serve(async (req) => {
       metadata: sessionMetadata
     });
 
-    logStep("Checkout session created", { sessionId: session.id, metadata: sessionMetadata });
+    logStep("Checkout session created", { sessionId: session.id, url: session.url, metadata: sessionMetadata });
 
-    // Store payment link in database
+    // Store payment link in database with both session ID and complete URL
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
 
@@ -243,6 +243,7 @@ serve(async (req) => {
       currency: finalCurrency,
       amount: finalAmount,
       stripe_session_id: session.id,
+      stripe_checkout_url: session.url, // CRITICAL FIX: Store the complete working URL
       created_by: user.id,
       expires_at: expiresAt.toISOString(),
       status: 'pending',
@@ -262,7 +263,7 @@ serve(async (req) => {
       .single();
 
     if (linkError) throw new Error(`Failed to store payment link: ${linkError.message}`);
-    logStep("Payment link stored", { linkId: paymentLink.id, paymentType: payment_type });
+    logStep("Payment link stored", { linkId: paymentLink.id, paymentType: payment_type, urlStored: !!session.url });
 
     return new Response(JSON.stringify({ 
       url: session.url,

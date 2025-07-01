@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -69,13 +70,25 @@ export const StudentTrialCard: React.FC<StudentTrialCardProps> = ({
     }
   };
 
-  // Smart payment link button logic
+  // CRITICAL FIX: Smart payment link button logic with stored URL support
   const handlePaymentLinkAction = () => {
-    if (student.paymentLink && student.paymentLink.stripeSessionId) {
-      // Payment link exists - copy/view it
-      const url = `https://checkout.stripe.com/c/pay/${student.paymentLink.stripeSessionId}`;
-      navigator.clipboard.writeText(url);
-      toast.success('Payment link copied to clipboard');
+    if (student.paymentLink) {
+      // Try to use stored URL first, fallback to session ID
+      const url = student.paymentLink.stripeCheckoutUrl || 
+                 (student.paymentLink.stripeSessionId ? 
+                  `https://checkout.stripe.com/c/pay/${student.paymentLink.stripeSessionId}` : 
+                  null);
+      
+      if (url) {
+        navigator.clipboard.writeText(url);
+        if (student.paymentLink.stripeCheckoutUrl) {
+          toast.success('Payment link copied to clipboard');
+        } else {
+          toast.warning('Payment link copied (legacy format - might not work)');
+        }
+      } else {
+        toast.error('No valid payment link available');
+      }
     } else {
       // No payment link exists - create one
       toast.info('Opening payment link creation form...');
@@ -84,13 +97,27 @@ export const StudentTrialCard: React.FC<StudentTrialCardProps> = ({
   };
 
   const openPaymentLink = () => {
-    if (student.paymentLink && student.paymentLink.stripeSessionId) {
-      const url = `https://checkout.stripe.com/c/pay/${student.paymentLink.stripeSessionId}`;
-      window.open(url, '_blank');
+    if (student.paymentLink) {
+      // Try to use stored URL first, fallback to session ID
+      const url = student.paymentLink.stripeCheckoutUrl || 
+                 (student.paymentLink.stripeSessionId ? 
+                  `https://checkout.stripe.com/c/pay/${student.paymentLink.stripeSessionId}` : 
+                  null);
+      
+      if (url) {
+        window.open(url, '_blank');
+        if (!student.paymentLink.stripeCheckoutUrl) {
+          toast.warning('Opening legacy payment link - this might not work');
+        }
+      } else {
+        toast.error('No valid payment link available');
+      }
     }
   };
 
-  const hasPaymentLink = student.paymentLink && student.paymentLink.stripeSessionId;
+  // Check if valid payment link exists (either stored URL or session ID)
+  const hasPaymentLink = student.paymentLink && 
+    (student.paymentLink.stripeCheckoutUrl || student.paymentLink.stripeSessionId);
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -197,6 +224,16 @@ export const StudentTrialCard: React.FC<StudentTrialCardProps> = ({
               <div className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4 text-purple-600" />
                 <span className="text-sm font-medium text-purple-800">Payment Link</span>
+                {/* Show URL type indicator */}
+                {student.paymentLink.stripeCheckoutUrl ? (
+                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                    Secure URL
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
+                    Legacy
+                  </Badge>
+                )}
               </div>
               <Badge className={`${
                 student.paymentLink.status === 'paid' ? 'bg-green-100 text-green-800' :
