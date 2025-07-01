@@ -45,6 +45,12 @@ export const CompleteFollowUpModal: React.FC<CompleteFollowUpModalProps> = ({
     }
   };
 
+  const handleOutcomeChange = (value: string) => {
+    if (value === 'awaiting-payment' || value === 'paid' || value === 'dropped') {
+      setOutcome(value);
+    }
+  };
+
   const outcomeOptions = [
     {
       value: 'awaiting-payment' as const,
@@ -94,7 +100,7 @@ export const CompleteFollowUpModal: React.FC<CompleteFollowUpModalProps> = ({
           {/* Outcome Selection */}
           <div className="space-y-2">
             <Label>Follow-up Outcome</Label>
-            <Select value={outcome} onValueChange={setOutcome}>
+            <Select value={outcome} onValueChange={handleOutcomeChange}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
