@@ -92,14 +92,14 @@ export const useSimpleSalesAvailability = () => {
         isMultiStudent 
       });
       
-      // PHASE 4: Use the selected date directly (no conversion)
-      const bookingDateString = selectedDate.toISOString().split('T')[0];
+      // FIXED: Use proper local date formatting instead of toISOString()
+      const bookingDateString = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
       console.log('Date being sent to booking function:', bookingDateString);
       
       const { data, error } = await supabase.rpc('simple_book_trial_session', {
         p_booking_data: bookingData,
         p_is_multi_student: isMultiStudent,
-        p_selected_date: bookingDateString, // Preserve original selected date
+        p_selected_date: bookingDateString, // Now using proper local date formatting
         p_utc_start_time: selectedSlot.utcStartTime,
         p_teacher_type: teacherType,
         p_teacher_id: selectedSlot.teacherId

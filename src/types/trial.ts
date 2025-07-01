@@ -33,6 +33,7 @@ export interface PaymentLink {
   currency: string;
   amount: number;
   stripeSessionId?: string;
+  stripeCheckoutUrl?: string;
   createdBy: string;
   expiresAt: string;
   clickedAt?: string;
