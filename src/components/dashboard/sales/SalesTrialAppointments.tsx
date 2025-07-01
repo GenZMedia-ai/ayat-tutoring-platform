@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, Calendar } from 'lucide-react';
 import { useMixedStudentData, MixedStudentItem } from '@/hooks/useMixedStudentData';
-import { useFamilyGroups } from '@/hooks/useFamilyGroups';
 import { useStudentFollowUp } from '@/hooks/useStudentFollowUp';
 import { UnifiedTrialCard } from '@/components/shared/UnifiedTrialCard';
 import { StudentEditModal } from '@/components/sales/StudentEditModal';
@@ -21,7 +20,6 @@ import { toast } from 'sonner';
 
 const SalesTrialAppointments: React.FC = () => {
   const { items, loading, refetchData, getStatsCount } = useMixedStudentData();
-  const { familyGroups, loading: familyLoading, fetchFamilyGroups } = useFamilyGroups();
   const { getFollowUpData } = useStudentFollowUp();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -35,15 +33,8 @@ const SalesTrialAppointments: React.FC = () => {
     followUpData: any;
   } | null>(null);
 
-  // Combine individual items and family groups
-  const combinedItems = [...items, ...familyGroups.map(family => ({
-    type: 'family' as const,
-    id: family.id,
-    data: family
-  }))];
-
-  // Filter combined items
-  const filteredItems = combinedItems.filter(item => {
+  // Filter items directly from useMixedStudentData (which already includes both individual and family items)
+  const filteredItems = items.filter(item => {
     const data = item.data;
     const name = item.type === 'family' 
       ? (data as FamilyGroup).parent_name 
@@ -123,10 +114,9 @@ const SalesTrialAppointments: React.FC = () => {
     
     setPaymentLinkItem(null);
     refetchData();
-    fetchFamilyGroups();
   };
 
-  if (loading || familyLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -149,7 +139,6 @@ const SalesTrialAppointments: React.FC = () => {
         </div>
         <Button onClick={() => {
           refetchData();
-          fetchFamilyGroups();
         }} variant="outline" size="sm">
           <Search className="h-4 w-4 mr-2" />
           Refresh
@@ -266,7 +255,6 @@ const SalesTrialAppointments: React.FC = () => {
               onCompleteFollowUp={handleCompleteFollowUp}
               onRefresh={() => {
                 refetchData();
-                fetchFamilyGroups();
               }}
             />
           ))}
@@ -323,7 +311,6 @@ const SalesTrialAppointments: React.FC = () => {
           onSuccess={() => {
             setSchedulingFollowUpItem(null);
             refetchData();
-            fetchFamilyGroups();
           }}
         />
       )}
@@ -337,7 +324,6 @@ const SalesTrialAppointments: React.FC = () => {
           onSuccess={() => {
             setCompletingFollowUpItem(null);
             refetchData();
-            fetchFamilyGroups();
           }}
         />
       )}
