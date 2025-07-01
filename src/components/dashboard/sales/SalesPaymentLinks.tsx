@@ -1,93 +1,113 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, ExternalLink, Copy, CreditCard, Calendar, User } from 'lucide-react';
+import { Search, Filter, ExternalLink, Copy, RefreshCw, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 
-interface PaymentLinkData {
+interface PaymentLink {
   id: string;
   student_ids: string[];
-  currency: string;
-  amount: number;
-  stripe_session_id: string | null;
-  stripe_checkout_url?: string | null; // Make this optional
-  created_by: string;
-  expires_at: string;
-  clicked_at: string | null;
-  paid_at: string | null;
-  status: 'pending' | 'clicked' | 'expired' | 'paid';
+  status: string;
   created_at: string;
-  updated_at: string;
-  students?: Array<{
-    id: string;
-    name: string;
-    unique_id: string;
-    phone: string;
-  }>;
+  expires_at: string;
+  paid_at?: string;
+  clicked_at?: string;
+  stripe_session_id?: string;
+  created_by: string;
+  student_names?: string[];
+  family_group_id?: string;
+  payment_type: string;
+  package_session_count: number;
 }
 
 const SalesPaymentLinks: React.FC = () => {
-  const { user } = useAuth();
-  const [paymentLinks, setPaymentLinks] = useState<PaymentLinkData[]>([]);
+  const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState('thismonth');
 
-  const fetchPaymentLinks = async () => {
-    if (!user) return;
+  // Get date range based on filter
+  const getDateRange = () => {
+    const now = new Date();
+    switch (dateFilter) {
+      case 'today':
+        return { from: now, to: now };
+      case 'yesterday':
+        const yesterday = subDays(now, 1);
+        return { from: yesterday, to: yesterday };
+      case 'last7days':
+        return { from: subDays(now, 7), to: now };
+      case 'thismonth':
+        return { from: startOfMonth(now), to: endOfMonth(now) };
+      case 'lastmonth':
+        const lastMonth = subDays(startOfMonth(now), 1);
+        return { from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) };
+      case 'alltime':
+        return { from: new Date('2024-01-01'), to: now };
+      default:
+        return { from: startOfMonth(now), to: endOfMonth(now) };
+    }
+  };
 
+  // Load payment links
+  const loadPaymentLinks = async () => {
     try {
       setLoading(true);
-      
-      // First get all payment links created by this sales agent
-      const { data: links, error: linksError } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { from, to } = getDateRange();
+      const fromStr = format(from, 'yyyy-MM-dd');
+      const toStr = format(to, 'yyyy-MM-dd');
+
+      const { data: links, error } = await supabase
         .from('payment_links')
         .select('*')
         .eq('created_by', user.id)
+        .gte('created_at', fromStr)
+        .lte('created_at', toStr + 'T23:59:59')
         .order('created_at', { ascending: false });
 
-      if (linksError) {
-        console.error('Error fetching payment links:', linksError);
-        throw linksError;
-      }
+      if (error) throw error;
 
-      // Then fetch student details for each payment link
-      const enrichedLinks: PaymentLinkData[] = [];
-      
-      for (const link of links || []) {
-        const { data: students, error: studentsError } = await supabase
-          .from('students')
-          .select('id, name, unique_id, phone')
-          .in('id', link.student_ids);
+      // Fetch student names for each payment link
+      const linksWithNames = await Promise.all(
+        (links || []).map(async (link) => {
+          if (link.family_group_id) {
+            // For family payments, get family info
+            const { data: family } = await supabase
+              .from('family_groups')
+              .select('parent_name, student_count')
+              .eq('id', link.family_group_id)
+              .single();
+            
+            return {
+              ...link,
+              student_names: family ? [`${family.parent_name} (${family.student_count} students)`] : ['Family Group']
+            };
+          } else {
+            // For individual payments, get student names
+            const { data: students } = await supabase
+              .from('students')
+              .select('name')
+              .in('id', link.student_ids);
+            
+            return {
+              ...link,
+              student_names: students?.map(s => s.name) || []
+            };
+          }
+        })
+      );
 
-        if (studentsError) {
-          console.error('Error fetching students for payment link:', studentsError);
-        }
-
-        enrichedLinks.push({
-          ...link,
-          status: link.status as 'pending' | 'clicked' | 'expired' | 'paid', // Type assertion for status
-          students: students || []
-        });
-      }
-
-      console.log('📋 Payment links loaded:', {
-        total: enrichedLinks.length,
-        statusBreakdown: {
-          pending: enrichedLinks.filter(l => l.status === 'pending').length,
-          clicked: enrichedLinks.filter(l => l.status === 'clicked').length,
-          paid: enrichedLinks.filter(l => l.status === 'paid').length,
-          expired: enrichedLinks.filter(l => l.status === 'expired').length,
-        }
-      });
-
-      setPaymentLinks(enrichedLinks);
+      setPaymentLinks(linksWithNames);
     } catch (error) {
       console.error('Error loading payment links:', error);
       toast.error('Failed to load payment links');
@@ -97,74 +117,53 @@ const SalesPaymentLinks: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchPaymentLinks();
-  }, [user]);
+    loadPaymentLinks();
+  }, [dateFilter]);
 
   // Filter payment links
   const filteredLinks = paymentLinks.filter(link => {
-    const studentNames = link.students?.map(s => s.name.toLowerCase()).join(' ') || '';
-    const studentIds = link.students?.map(s => s.unique_id.toLowerCase()).join(' ') || '';
-    const matchesSearch = studentNames.includes(searchTerm.toLowerCase()) || 
-                         studentIds.includes(searchTerm.toLowerCase()) ||
-                         link.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = link.student_names?.some(name => 
+      name.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || link.id.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || link.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
 
-  const handleCopyLink = async (link: PaymentLinkData) => {
-    if (!link.stripe_session_id) {
-      toast.error('No payment session available');
-      return;
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'clicked':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'expired':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     }
+  };
 
-    // Construct the correct Stripe checkout URL
-    const checkoutUrl = `https://checkout.stripe.com/c/pay/${link.stripe_session_id}`;
-    
-    try {
-      await navigator.clipboard.writeText(checkoutUrl);
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'clicked':
+        return <Clock className="h-4 w-4" />;
+      case 'expired':
+        return <XCircle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  const copyPaymentLink = (sessionId: string) => {
+    if (sessionId) {
+      const url = `https://checkout.stripe.com/pay/${sessionId}`;
+      navigator.clipboard.writeText(url);
       toast.success('Payment link copied to clipboard');
-    } catch (error) {
-      console.error('Failed to copy link:', error);
-      toast.error('Failed to copy link');
     }
   };
-
-  const handleOpenLink = (link: PaymentLinkData) => {
-    if (!link.stripe_session_id) {
-      toast.error('No payment session available');
-      return;
-    }
-
-    // Construct the correct Stripe checkout URL
-    const checkoutUrl = `https://checkout.stripe.com/c/pay/${link.stripe_session_id}`;
-    window.open(checkoutUrl, '_blank');
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { color: string; label: string }> = {
-      'pending': { color: 'bg-orange-100 text-orange-800 border-orange-200', label: 'Pending' },
-      'clicked': { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Clicked' },
-      'paid': { color: 'bg-green-100 text-green-800 border-green-200', label: 'Paid' },
-      'expired': { color: 'bg-red-100 text-red-800 border-red-200', label: 'Expired' }
-    };
-
-    const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800 border-gray-200', label: status };
-    return (
-      <Badge className={`${config.color} border`}>
-        {config.label}
-      </Badge>
-    );
-  };
-
-  const statusOptions = [
-    { value: 'all', label: 'All Statuses' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'clicked', label: 'Clicked' },
-    { value: 'paid', label: 'Paid' },
-    { value: 'expired', label: 'Expired' }
-  ];
 
   if (loading) {
     return (
@@ -182,106 +181,129 @@ const SalesPaymentLinks: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-primary">Payment Links</h3>
+          <h3 className="text-lg font-semibold">Payment Links</h3>
           <p className="text-sm text-muted-foreground">
-            Manage and track payment links for your students
+            Manage all created payment links and track their status
           </p>
         </div>
-        <Button 
-          onClick={fetchPaymentLinks} 
-          variant="outline" 
-          size="sm"
-          className="border-primary/30 text-primary hover:bg-primary/5"
-        >
-          <Search className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">
+            {filteredLinks.length} payment links
+          </Badge>
+          <Button onClick={loadPaymentLinks} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      {/* Search and Filter Controls */}
-      <Card className="border-primary/10">
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by student name, ID, or payment link ID..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 border-primary/30 focus:border-primary"
-                />
-              </div>
-            </div>
-            <div className="sm:w-48">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="border-primary/30">
-                  <Filter className="h-4 w-4 mr-2 text-primary" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label} ({option.value === 'all' ? filteredLinks.length : filteredLinks.filter(l => l.status === option.value).length})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-orange-500">
+      {/* Summary Cards - No amounts shown */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
-                {paymentLinks.filter(l => l.status === 'pending').length}
+              <div className="text-2xl font-bold text-yellow-600">
+                {filteredLinks.filter(l => l.status === 'pending').length}
               </div>
               <div className="text-sm text-muted-foreground">Pending</div>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-blue-500">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {paymentLinks.filter(l => l.status === 'clicked').length}
+                {filteredLinks.filter(l => l.status === 'clicked').length}
               </div>
               <div className="text-sm text-muted-foreground">Clicked</div>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-green-500">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {paymentLinks.filter(l => l.status === 'paid').length}
+                {filteredLinks.filter(l => l.status === 'paid').length}
               </div>
               <div className="text-sm text-muted-foreground">Paid</div>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-red-500">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
-                {paymentLinks.filter(l => l.status === 'expired').length}
+              <div className="text-2xl font-bold text-primary">
+                {filteredLinks.length}
               </div>
-              <div className="text-sm text-muted-foreground">Expired</div>
+              <div className="text-sm text-muted-foreground">Total Links</div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Payment Links List */}
+      {/* Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Date Filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Date Filter</label>
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="yesterday">Yesterday</SelectItem>
+                  <SelectItem value="last7days">Last 7 Days</SelectItem>
+                  <SelectItem value="thismonth">This Month</SelectItem>
+                  <SelectItem value="lastmonth">Last Month</SelectItem>
+                  <SelectItem value="alltime">All Time</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Status Filter */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status Filter</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="clicked">Clicked</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Search */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Student name or ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Payment Links List - No amounts displayed */}
       {filteredLinks.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">
-              <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium text-muted-foreground mb-2">
                 No payment links found
               </h3>
@@ -295,92 +317,90 @@ const SalesPaymentLinks: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-4">
           {filteredLinks.map((link) => (
-            <Card key={link.id} className="border-l-4 border-l-primary/20 hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <CreditCard className="h-4 w-4 text-primary" />
-                      <CardTitle className="text-base">
-                        {link.currency.toUpperCase()} {(link.amount / 100).toFixed(2)}
-                      </CardTitle>
-                      {getStatusBadge(link.status)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Created: {format(new Date(link.created_at), 'MMM dd, yyyy HH:mm')}
-                    </div>
+            <Card key={link.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {getStatusIcon(link.status)}
+                    <Badge className={getStatusColor(link.status)}>
+                      {link.status.toUpperCase()}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {link.payment_type === 'family' ? 'Family' : 'Individual'}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {link.package_session_count} sessions
                   </div>
                 </div>
+                <CardTitle className="text-lg">
+                  {link.student_names?.join(', ') || 'Unknown Student'}
+                </CardTitle>
+                <CardDescription>
+                  Payment Link ID: {link.id.slice(0, 8)}...
+                </CardDescription>
               </CardHeader>
-
               <CardContent className="space-y-4">
-                {/* Students */}
-                <div>
-                  <p className="text-sm font-medium mb-2 flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    Students ({link.students?.length || 0})
-                  </p>
-                  <div className="space-y-1">
-                    {link.students?.map((student) => (
-                      <div key={student.id} className="text-sm bg-muted/50 p-2 rounded border border-primary/10">
-                        <div className="font-medium">{student.name}</div>
-                        <div className="text-muted-foreground">ID: {student.unique_id}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Payment Details */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">Expires:</span>
-                    <div className="text-muted-foreground">
-                      {format(new Date(link.expires_at), 'MMM dd, yyyy')}
-                    </div>
+                    <span className="font-medium">Created:</span> {format(new Date(link.created_at), 'MMM dd, yyyy HH:mm')}
+                  </div>
+                  <div>
+                    <span className="font-medium">Expires:</span> {format(new Date(link.expires_at), 'MMM dd, yyyy HH:mm')}
                   </div>
                   {link.clicked_at && (
                     <div>
-                      <span className="font-medium">Clicked:</span>
-                      <div className="text-muted-foreground">
-                        {format(new Date(link.clicked_at), 'MMM dd, HH:mm')}
-                      </div>
+                      <span className="font-medium">Clicked:</span> {format(new Date(link.clicked_at), 'MMM dd, yyyy HH:mm')}
                     </div>
                   )}
                   {link.paid_at && (
                     <div>
-                      <span className="font-medium">Paid:</span>
-                      <div className="text-muted-foreground">
-                        {format(new Date(link.paid_at), 'MMM dd, HH:mm')}
-                      </div>
+                      <span className="font-medium">Paid:</span> {format(new Date(link.paid_at), 'MMM dd, yyyy HH:mm')}
                     </div>
                   )}
                 </div>
 
-                {/* Actions */}
-                <div className="flex gap-2 pt-2 border-t border-primary/10">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopyLink(link)}
-                    className="flex-1 border-primary/30 text-primary hover:bg-primary/5"
-                    disabled={!link.stripe_session_id}
-                  >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy Link
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => handleOpenLink(link)}
-                    className="flex-1 bg-primary hover:bg-primary/90"
-                    disabled={!link.stripe_session_id}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Open Link
-                  </Button>
+                <div className="flex flex-wrap gap-2">
+                  {link.stripe_session_id && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => copyPaymentLink(link.stripe_session_id!)}
+                      >
+                        <Copy className="h-4 w-4 mr-1" />
+                        Copy Link
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open(`https://checkout.stripe.com/pay/${link.stripe_session_id}`, '_blank')}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-1" />
+                        Open Link
+                      </Button>
+                    </>
+                  )}
                 </div>
+
+                {/* Status Messages */}
+                {link.status === 'pending' && (
+                  <div className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
+                    ⏳ Payment link created and ready to be shared with the client
+                  </div>
+                )}
+                {link.status === 'clicked' && (
+                  <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                    👁️ Client has viewed the payment link but hasn't completed payment yet
+                  </div>
+                )}
+                {link.status === 'paid' && (
+                  <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
+                    ✅ Payment completed successfully! Student is ready for activation
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

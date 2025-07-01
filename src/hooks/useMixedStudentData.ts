@@ -36,7 +36,7 @@ export const useMixedStudentData = () => {
         familyGroupsQuery = familyGroupsQuery.eq('assigned_sales_agent_id', user.id);
       }
 
-      // Fetch individual students (those not part of family groups) - NO STATUS FILTERING
+      // Fetch individual students (those not part of family groups)
       const { data: individualStudents, error: studentsError } = await studentsQuery
         .is('family_group_id', null)
         .order('created_at', { ascending: false });
@@ -46,7 +46,7 @@ export const useMixedStudentData = () => {
         throw studentsError;
       }
 
-      // Fetch family groups - NO STATUS FILTERING  
+      // Fetch family groups
       const { data: familyGroups, error: familyError } = await familyGroupsQuery
         .order('created_at', { ascending: false });
 
@@ -213,24 +213,6 @@ export const useMixedStudentData = () => {
         return bDate.getTime() - aDate.getTime();
       });
 
-      console.log('📊 Mixed data stats:', {
-        total: allItems.length,
-        individuals: transformedIndividuals.length,
-        families: transformedFamilies.length,
-        statusBreakdown: {
-          pending: allItems.filter(i => i.data.status === 'pending').length,
-          confirmed: allItems.filter(i => i.data.status === 'confirmed').length,
-          trialCompleted: allItems.filter(i => i.data.status === 'trial-completed').length,
-          followUp: allItems.filter(i => i.data.status === 'follow-up').length,
-          awaitingPayment: allItems.filter(i => i.data.status === 'awaiting-payment').length,
-          paid: allItems.filter(i => i.data.status === 'paid').length,
-          active: allItems.filter(i => i.data.status === 'active').length,
-          expired: allItems.filter(i => i.data.status === 'expired').length,
-          cancelled: allItems.filter(i => i.data.status === 'cancelled').length,
-          dropped: allItems.filter(i => i.data.status === 'dropped').length,
-        }
-      });
-
       setItems(allItems);
     } catch (error) {
       console.error('Error in fetchMixedData:', error);
@@ -260,7 +242,6 @@ export const useMixedStudentData = () => {
   };
 
   const getStatsCount = (status: string) => {
-    if (status === 'all') return items.length;
     return getItemsByStatus(status).length;
   };
 

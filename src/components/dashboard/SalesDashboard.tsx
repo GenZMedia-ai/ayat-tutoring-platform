@@ -12,6 +12,7 @@ const SalesDashboard: React.FC = () => {
     { value: 'payment-links', label: 'Payment Links', path: '/sales/payment-links' },
     { value: 'followup', label: 'Follow-up', path: '/sales/followup' },
     { value: 'students', label: 'Students', path: '/sales/students' },
+    { value: 'analytics', label: 'Analytics', path: '/sales/analytics' },
   ];
 
   return (
@@ -26,7 +27,7 @@ const SalesDashboard: React.FC = () => {
             </Badge>
           </div>
 
-          <DashboardNavigation tabs={tabs} gridCols="grid-cols-5" />
+          <DashboardNavigation tabs={tabs} gridCols="grid-cols-6" />
           
           <Outlet />
         </div>

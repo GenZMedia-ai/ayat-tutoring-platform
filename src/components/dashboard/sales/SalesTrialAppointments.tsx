@@ -142,7 +142,7 @@ const SalesTrialAppointments: React.FC = () => {
       {/* Header and Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-primary">Trial Appointments</h3>
+          <h3 className="text-lg font-semibold">Trial Appointments</h3>
           <p className="text-sm text-muted-foreground">
             Manage all trial sessions, payments, and follow-ups
           </p>
@@ -150,14 +150,14 @@ const SalesTrialAppointments: React.FC = () => {
         <Button onClick={() => {
           refetchData();
           fetchFamilyGroups();
-        }} variant="outline" size="sm" className="border-primary/30 text-primary hover:bg-primary/5">
+        }} variant="outline" size="sm">
           <Search className="h-4 w-4 mr-2" />
           Refresh
         </Button>
       </div>
 
       {/* Search and Filter Controls */}
-      <Card className="border-primary/10">
+      <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
@@ -167,14 +167,14 @@ const SalesTrialAppointments: React.FC = () => {
                   placeholder="Search by name, ID, or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 border-primary/30 focus:border-primary"
+                  className="pl-10"
                 />
               </div>
             </div>
             <div className="sm:w-48">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="border-primary/30">
-                  <Filter className="h-4 w-4 mr-2 text-primary" />
+                <SelectTrigger>
+                  <Filter className="h-4 w-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -192,7 +192,7 @@ const SalesTrialAppointments: React.FC = () => {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-orange-500">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">
@@ -202,7 +202,7 @@ const SalesTrialAppointments: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-blue-500">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
@@ -212,23 +212,23 @@ const SalesTrialAppointments: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-green-500">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {getStatsCount('paid')}
+                {getStatsCount('trial-completed')}
               </div>
-              <div className="text-sm text-muted-foreground">Paid</div>
+              <div className="text-sm text-muted-foreground">Completed</div>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-cyan-500">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-cyan-600">
-                {getStatsCount('active')}
+              <div className="text-2xl font-bold text-purple-600">
+                {getStatsCount('awaiting-payment')}
               </div>
-              <div className="text-sm text-muted-foreground">Active</div>
+              <div className="text-sm text-muted-foreground">Awaiting Payment</div>
             </div>
           </CardContent>
         </Card>
