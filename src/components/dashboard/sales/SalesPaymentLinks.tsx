@@ -13,7 +13,7 @@ import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 interface PaymentLink {
   id: string;
   student_ids: string[];
-  status: 'pending' | 'clicked' | 'expired' | 'paid';
+  status: string;
   created_at: string;
   expires_at: string;
   paid_at?: string;
@@ -24,9 +24,6 @@ interface PaymentLink {
   family_group_id?: string;
   payment_type: string;
   package_session_count: number;
-  amount: number;
-  currency: string;
-  stripe_checkout_url?: string;
 }
 
 const SalesPaymentLinks: React.FC = () => {
@@ -83,11 +80,6 @@ const SalesPaymentLinks: React.FC = () => {
       // Fetch student names for each payment link
       const linksWithNames = await Promise.all(
         (links || []).map(async (link) => {
-          let linkData: PaymentLink = {
-            ...link,
-            status: link.status as 'pending' | 'clicked' | 'expired' | 'paid'
-          };
-
           if (link.family_group_id) {
             // For family payments, get family info
             const { data: family } = await supabase
@@ -96,7 +88,10 @@ const SalesPaymentLinks: React.FC = () => {
               .eq('id', link.family_group_id)
               .single();
             
-            linkData.student_names = family ? [`${family.parent_name} (${family.student_count} students)`] : ['Family Group'];
+            return {
+              ...link,
+              student_names: family ? [`${family.parent_name} (${family.student_count} students)`] : ['Family Group']
+            };
           } else {
             // For individual payments, get student names
             const { data: students } = await supabase
@@ -104,15 +99,11 @@ const SalesPaymentLinks: React.FC = () => {
               .select('name')
               .in('id', link.student_ids);
             
-            linkData.student_names = students?.map(s => s.name) || [];
+            return {
+              ...link,
+              student_names: students?.map(s => s.name) || []
+            };
           }
-
-          // Construct the correct Stripe checkout URL
-          if (link.stripe_session_id) {
-            linkData.stripe_checkout_url = `https://checkout.stripe.com/c/pay/${link.stripe_session_id}`;
-          }
-
-          return linkData;
         })
       );
 
@@ -166,20 +157,11 @@ const SalesPaymentLinks: React.FC = () => {
     }
   };
 
-  const copyPaymentLink = (link: PaymentLink) => {
-    if (link.stripe_checkout_url) {
-      navigator.clipboard.writeText(link.stripe_checkout_url);
+  const copyPaymentLink = (sessionId: string) => {
+    if (sessionId) {
+      const url = `https://checkout.stripe.com/pay/${sessionId}`;
+      navigator.clipboard.writeText(url);
       toast.success('Payment link copied to clipboard');
-    } else {
-      toast.error('Payment link not available');
-    }
-  };
-
-  const openPaymentLink = (link: PaymentLink) => {
-    if (link.stripe_checkout_url) {
-      window.open(link.stripe_checkout_url, '_blank');
-    } else {
-      toast.error('Payment link not available');
     }
   };
 
@@ -215,7 +197,7 @@ const SalesPaymentLinks: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - No amounts shown */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4">
@@ -316,7 +298,7 @@ const SalesPaymentLinks: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Payment Links List */}
+      {/* Payment Links List - No amounts displayed */}
       {filteredLinks.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
@@ -381,12 +363,12 @@ const SalesPaymentLinks: React.FC = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {link.stripe_checkout_url && (
+                  {link.stripe_session_id && (
                     <>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => copyPaymentLink(link)}
+                        onClick={() => copyPaymentLink(link.stripe_session_id!)}
                       >
                         <Copy className="h-4 w-4 mr-1" />
                         Copy Link
@@ -394,7 +376,7 @@ const SalesPaymentLinks: React.FC = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => openPaymentLink(link)}
+                        onClick={() => window.open(`https://checkout.stripe.com/pay/${link.stripe_session_id}`, '_blank')}
                       >
                         <ExternalLink className="h-4 w-4 mr-1" />
                         Open Link

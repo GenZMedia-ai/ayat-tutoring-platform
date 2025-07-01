@@ -30,6 +30,7 @@ import SalesTrialAppointments from "./components/dashboard/sales/SalesTrialAppoi
 import SalesPaymentLinks from "./components/dashboard/sales/SalesPaymentLinks";
 import SalesFollowup from "./components/dashboard/sales/SalesFollowup";
 import SalesStudents from "./components/dashboard/sales/SalesStudents";
+import SalesAnalytics from "./components/dashboard/sales/SalesAnalytics";
 
 // Admin Tab Components
 import AdminHomepage from "./components/dashboard/admin/AdminHomepage";
@@ -79,7 +80,7 @@ const App = () => (
               <Route index element={<Navigate to="homepage" replace />} />
             </Route>
 
-            {/* Sales Routes - ANALYTICS REMOVED */}
+            {/* Sales Routes - FIXED */}
             <Route path="/sales" element={<Navigate to="/sales/homepage" replace />} />
             <Route path="/sales/*" element={<SalesDashboard />}>
               <Route path="homepage" element={<SalesHomepage />} />
@@ -87,6 +88,7 @@ const App = () => (
               <Route path="payment-links" element={<SalesPaymentLinks />} />
               <Route path="followup" element={<SalesFollowup />} />
               <Route path="students" element={<SalesStudents />} />
+              <Route path="analytics" element={<SalesAnalytics />} />
               <Route index element={<Navigate to="homepage" replace />} />
             </Route>
 
