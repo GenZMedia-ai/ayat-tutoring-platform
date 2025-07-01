@@ -102,6 +102,7 @@ export type StudentStatus =
   | 'confirmed' 
   | 'trial-completed' 
   | 'trial-ghosted'
+  | 'follow-up'
   | 'awaiting-payment'
   | 'paid' 
   | 'active' 

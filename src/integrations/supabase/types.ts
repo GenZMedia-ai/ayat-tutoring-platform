@@ -508,6 +508,7 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
+          notification_sent: boolean | null
           outcome: string | null
           reason: string
           sales_agent_id: string
@@ -521,6 +522,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          notification_sent?: boolean | null
           outcome?: string | null
           reason: string
           sales_agent_id: string
@@ -534,6 +536,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          notification_sent?: boolean | null
           outcome?: string | null
           reason?: string
           sales_agent_id?: string
@@ -968,6 +971,10 @@ export type Database = {
         }
         Returns: Json
       }
+      complete_student_followup: {
+        Args: { p_followup_id: string; p_outcome: string; p_notes?: string }
+        Returns: Json
+      }
       complete_student_registration: {
         Args: { p_student_id: string; p_session_data: Json }
         Returns: Json
@@ -1102,6 +1109,16 @@ export type Database = {
       }
       reject_user_with_audit: {
         Args: { p_user_id: string; p_reason: string }
+        Returns: Json
+      }
+      schedule_student_followup: {
+        Args: {
+          p_student_id: string
+          p_sales_agent_id: string
+          p_scheduled_date_utc: string
+          p_reason: string
+          p_notes?: string
+        }
         Returns: Json
       }
       search_available_teachers: {
