@@ -17,7 +17,8 @@ import {
   Video,
   Users,
   Plus,
-  AlertCircle
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
 import { MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { FamilyGroup } from '@/types/family';
@@ -30,6 +31,8 @@ interface UnifiedTrialCardProps {
   onStatusChange?: (item: MixedStudentItem) => void;
   onContact?: (item: MixedStudentItem) => void;
   onCreatePaymentLink?: (item: MixedStudentItem) => void;
+  onScheduleFollowUp?: (item: MixedStudentItem) => void;
+  onCompleteFollowUp?: (item: MixedStudentItem) => void;
   onRefresh?: () => void;
   showActions?: boolean;
 }
@@ -40,6 +43,8 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
   onStatusChange,
   onContact,
   onCreatePaymentLink,
+  onScheduleFollowUp,
+  onCompleteFollowUp,
   onRefresh,
   showActions = true
 }) => {
@@ -52,6 +57,7 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
       'confirmed': { color: 'bg-blue-100 text-blue-800', label: 'Confirmed' },
       'trial-completed': { color: 'bg-green-100 text-green-800', label: 'Trial Completed' },
       'trial-ghosted': { color: 'bg-red-100 text-red-800', label: 'Trial Ghosted' },
+      'follow-up': { color: 'bg-yellow-100 text-yellow-800', label: 'Follow-up' },
       'awaiting-payment': { color: 'bg-purple-100 text-purple-800', label: 'Awaiting Payment' },
       'paid': { color: 'bg-emerald-100 text-emerald-800', label: 'Paid' },
       'active': { color: 'bg-cyan-100 text-cyan-800', label: 'Active' },
@@ -104,9 +110,20 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
     return (status === 'trial-completed' || status === 'trial-ghosted') && !getPaymentLink();
   };
 
-  const shouldShowFollowUpSchedule = () => {
+  // FIXED: Only show for trial-completed and follow-up statuses
+  const shouldShowScheduleFollowUp = () => {
     const status = getStatus();
-    return (status === 'trial-completed' || status === 'trial-ghosted' || status === 'awaiting-payment') && !getPendingFollowUp();
+    return status === 'trial-completed' && !getPendingFollowUp();
+  };
+
+  const shouldShowCompleteFollowUp = () => {
+    const status = getStatus();
+    return status === 'follow-up' && getPendingFollowUp() && !getPendingFollowUp()!.completed;
+  };
+
+  const shouldShowRescheduleFollowUp = () => {
+    const status = getStatus();
+    return status === 'follow-up' && getPendingFollowUp() && !getPendingFollowUp()!.completed;
   };
 
   return (
@@ -278,8 +295,7 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
                 onClick={() => onContact(item)}
               >
                 <MessageCircle className="h-4 w-4 mr-2" />
-                Contact {isFamily ?
-                 'Family' : 'Student'}
+                Contact {isFamily ? 'Family' : 'Student'}
               </Button>
             )}
 
@@ -296,18 +312,42 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
               </Button>
             )}
 
-            {/* Schedule Follow-up Button */}
-            {shouldShowFollowUpSchedule() && (
+            {/* Schedule Follow-up Button - Only for trial-completed */}
+            {shouldShowScheduleFollowUp() && onScheduleFollowUp && (
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => {
-                  // This would trigger follow-up scheduling
-                  console.log('Schedule follow-up for:', getName());
-                }}
+                onClick={() => onScheduleFollowUp(item)}
+                className="border-orange-200 text-orange-700 hover:bg-orange-50"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Schedule Follow-up
+              </Button>
+            )}
+
+            {/* Complete Follow-up Button - Only for follow-up status */}
+            {shouldShowCompleteFollowUp() && onCompleteFollowUp && (
+              <Button 
+                variant="default" 
+                size="sm"
+                onClick={() => onCompleteFollowUp(item)}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Complete Follow-up
+              </Button>
+            )}
+
+            {/* Reschedule Follow-up Button - Only for follow-up status */}
+            {shouldShowRescheduleFollowUp() && onScheduleFollowUp && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => onScheduleFollowUp(item)}
+                className="border-yellow-200 text-yellow-700 hover:bg-yellow-50"
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                Reschedule Follow-up
               </Button>
             )}
 

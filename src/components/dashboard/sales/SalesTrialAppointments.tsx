@@ -7,11 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Filter, Calendar } from 'lucide-react';
 import { useMixedStudentData, MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { useFamilyGroups } from '@/hooks/useFamilyGroups';
+import { useStudentFollowUp } from '@/hooks/useStudentFollowUp';
 import { UnifiedTrialCard } from '@/components/shared/UnifiedTrialCard';
 import { StudentEditModal } from '@/components/sales/StudentEditModal';
 import { StatusChangeModal } from '@/components/sales/StatusChangeModal';
 import { PaymentLinkModal } from '@/components/sales/PaymentLinkModal';
 import { PaymentLinkSuccessModal } from '@/components/sales/PaymentLinkSuccessModal';
+import { ScheduleFollowUpModal } from '@/components/sales/ScheduleFollowUpModal';
+import { CompleteFollowUpModal } from '@/components/sales/CompleteFollowUpModal';
 import { FamilyGroup } from '@/types/family';
 import { TrialSessionFlowStudent } from '@/types/trial';
 import { toast } from 'sonner';
@@ -19,12 +22,18 @@ import { toast } from 'sonner';
 const SalesTrialAppointments: React.FC = () => {
   const { items, loading, refetchData, getStatsCount } = useMixedStudentData();
   const { familyGroups, loading: familyLoading, fetchFamilyGroups } = useFamilyGroups();
+  const { getFollowUpData } = useStudentFollowUp();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [editingItem, setEditingItem] = useState<MixedStudentItem | null>(null);
   const [changingStatusItem, setChangingStatusItem] = useState<MixedStudentItem | null>(null);
   const [paymentLinkItem, setPaymentLinkItem] = useState<MixedStudentItem | null>(null);
   const [paymentSuccessData, setPaymentSuccessData] = useState<any>(null);
+  const [schedulingFollowUpItem, setSchedulingFollowUpItem] = useState<MixedStudentItem | null>(null);
+  const [completingFollowUpItem, setCompletingFollowUpItem] = useState<{
+    item: MixedStudentItem;
+    followUpData: any;
+  } | null>(null);
 
   // Combine individual items and family groups
   const combinedItems = [...items, ...familyGroups.map(family => ({
@@ -58,6 +67,7 @@ const SalesTrialAppointments: React.FC = () => {
     { value: 'confirmed', label: 'Confirmed' },
     { value: 'trial-completed', label: 'Trial Completed' },
     { value: 'trial-ghosted', label: 'Trial Ghosted' },
+    { value: 'follow-up', label: 'Follow-up' },
     { value: 'awaiting-payment', label: 'Awaiting Payment' },
     { value: 'paid', label: 'Paid' },
     { value: 'active', label: 'Active' },
@@ -74,6 +84,28 @@ const SalesTrialAppointments: React.FC = () => {
     
     const whatsappUrl = `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=Hello ${name}! This is regarding your trial session booking.`;
     window.open(whatsappUrl, '_blank');
+  };
+
+  const handleScheduleFollowUp = (item: MixedStudentItem) => {
+    setSchedulingFollowUpItem(item);
+  };
+
+  const handleCompleteFollowUp = async (item: MixedStudentItem) => {
+    if (item.type === 'individual') {
+      const studentData = item.data as TrialSessionFlowStudent;
+      const followUpData = await getFollowUpData(studentData.id);
+      
+      if (followUpData) {
+        setCompletingFollowUpItem({
+          item,
+          followUpData
+        });
+      } else {
+        toast.error('No pending follow-up found for this student');
+      }
+    } else {
+      toast.info('Family follow-up completion coming soon');
+    }
   };
 
   const handlePaymentLinkSuccess = (paymentData: any, studentData: any) => {
@@ -230,6 +262,8 @@ const SalesTrialAppointments: React.FC = () => {
               onStatusChange={setChangingStatusItem}
               onContact={handleContact}
               onCreatePaymentLink={setPaymentLinkItem}
+              onScheduleFollowUp={handleScheduleFollowUp}
+              onCompleteFollowUp={handleCompleteFollowUp}
               onRefresh={() => {
                 refetchData();
                 fetchFamilyGroups();
@@ -278,6 +312,33 @@ const SalesTrialAppointments: React.FC = () => {
           open={!!paymentSuccessData}
           onClose={() => setPaymentSuccessData(null)}
           paymentData={paymentSuccessData}
+        />
+      )}
+
+      {schedulingFollowUpItem && (
+        <ScheduleFollowUpModal
+          student={schedulingFollowUpItem.data}
+          open={!!schedulingFollowUpItem}
+          onClose={() => setSchedulingFollowUpItem(null)}
+          onSuccess={() => {
+            setSchedulingFollowUpItem(null);
+            refetchData();
+            fetchFamilyGroups();
+          }}
+        />
+      )}
+
+      {completingFollowUpItem && (
+        <CompleteFollowUpModal
+          student={completingFollowUpItem.item.data}
+          followUpData={completingFollowUpItem.followUpData}
+          open={!!completingFollowUpItem}
+          onClose={() => setCompletingFollowUpItem(null)}
+          onSuccess={() => {
+            setCompletingFollowUpItem(null);
+            refetchData();
+            fetchFamilyGroups();
+          }}
         />
       )}
     </div>
