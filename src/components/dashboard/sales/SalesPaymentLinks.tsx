@@ -72,6 +72,7 @@ const SalesPaymentLinks: React.FC = () => {
 
         enrichedLinks.push({
           ...link,
+          status: link.status as 'pending' | 'clicked' | 'expired' | 'paid', // Type assertion for status
           students: students || []
         });
       }
