@@ -17,11 +17,15 @@ import {
   Users,
   Plus,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  FileText,
+  Target,
+  Star
 } from 'lucide-react';
 import { MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { FamilyGroup } from '@/types/family';
 import { TrialSessionFlowStudent } from '@/types/trial';
+import { useRoleBasedPermissions, useDisplayPriority } from '@/hooks/useRoleBasedPermissions';
 import { format } from 'date-fns';
 
 interface UnifiedTrialCardProps {
@@ -49,6 +53,28 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
 }) => {
   const isFamily = item.type === 'family';
   const data = item.data;
+  const permissions = useRoleBasedPermissions();
+
+  // Helper functions for accessing data
+  const getName = () => isFamily ? (data as FamilyGroup).parent_name : (data as TrialSessionFlowStudent).name;
+  const getUniqueId = () => isFamily ? (data as FamilyGroup).unique_id : (data as TrialSessionFlowStudent).uniqueId;
+  const getStatus = () => data.status;
+  const getPhone = () => data.phone;
+  const getCountry = () => data.country;
+  const getPlatform = () => data.platform;
+  const getNotes = () => data.notes;
+  const getTrialDate = () => isFamily ? (data as FamilyGroup).trial_date : (data as TrialSessionFlowStudent).trialDate;
+  const getTrialTime = () => isFamily ? (data as FamilyGroup).trial_time : (data as TrialSessionFlowStudent).trialTime;
+  const getTeacherType = () => isFamily ? (data as FamilyGroup).teacher_type : (data as TrialSessionFlowStudent).teacherType;
+  const getStudentCount = () => isFamily ? (data as FamilyGroup).student_count : 1;
+  const getAge = () => !isFamily ? (data as TrialSessionFlowStudent).age : null;
+  const getParentName = () => !isFamily ? (data as TrialSessionFlowStudent).parentName : null;
+
+  const getLastWhatsAppContact = () => !isFamily ? (data as TrialSessionFlowStudent).lastWhatsAppContact : null;
+  const getPaymentLink = () => !isFamily ? (data as TrialSessionFlowStudent).paymentLink : null;
+  const getPendingFollowUp = () => !isFamily ? (data as TrialSessionFlowStudent).pendingFollowUp : null;
+
+  const displayPriority = useDisplayPriority(getStatus());
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; label: string }> = {
@@ -83,23 +109,6 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
     }
   };
 
-  const getName = () => isFamily ? (data as FamilyGroup).parent_name : (data as TrialSessionFlowStudent).name;
-  const getUniqueId = () => isFamily ? (data as FamilyGroup).unique_id : (data as TrialSessionFlowStudent).uniqueId;
-  const getStatus = () => data.status;
-  const getPhone = () => data.phone;
-  const getCountry = () => data.country;
-  const getPlatform = () => data.platform;
-  const getNotes = () => data.notes;
-  const getTrialDate = () => isFamily ? (data as FamilyGroup).trial_date : (data as TrialSessionFlowStudent).trialDate;
-  const getTrialTime = () => isFamily ? (data as FamilyGroup).trial_time : (data as TrialSessionFlowStudent).trialTime;
-  const getTeacherType = () => isFamily ? (data as FamilyGroup).teacher_type : (data as TrialSessionFlowStudent).teacherType;
-  const getStudentCount = () => isFamily ? (data as FamilyGroup).student_count : 1;
-  const getAge = () => !isFamily ? (data as TrialSessionFlowStudent).age : null;
-  const getParentName = () => !isFamily ? (data as TrialSessionFlowStudent).parentName : null;
-
-  const getLastWhatsAppContact = () => !isFamily ? (data as TrialSessionFlowStudent).lastWhatsAppContact : null;
-  const getPaymentLink = () => !isFamily ? (data as TrialSessionFlowStudent).paymentLink : null;
-  const getPendingFollowUp = () => !isFamily ? (data as TrialSessionFlowStudent).pendingFollowUp : null;
 
   const shouldShowPaymentLink = () => {
     const status = getStatus();
@@ -124,6 +133,156 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
   const shouldShowViewPaymentLink = () => {
     const paymentLink = getPaymentLink();
     return paymentLink && paymentLink.status === 'pending';
+  };
+
+  const renderSmartNotesDisplay = () => {
+    const sections = [];
+    const studentData = !isFamily ? (data as TrialSessionFlowStudent) : null;
+
+    // 1. Last Contact Information (for all roles when available)
+    if (!isFamily && getLastWhatsAppContact() && permissions.canViewSalesNotes) {
+      sections.push(
+        <div key="contact" className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex items-center gap-2 mb-1">
+            <MessageCircle className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-800">Last Contact</span>
+          </div>
+          <p className="text-sm text-blue-700">
+            {getLastWhatsAppContact()!.success ? 'Successful' : 'Failed'} contact on{' '}
+            {format(new Date(getLastWhatsAppContact()!.contactedAt), 'MMM dd, yyyy')}
+          </p>
+          {getLastWhatsAppContact()!.notes && (
+            <p className="text-sm text-blue-600 mt-1">
+              {getLastWhatsAppContact()!.notes}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    // 2. Trial Outcome Details (for completed/ghosted trials)
+    if (!isFamily && studentData?.trialOutcome && permissions.canViewTrialOutcomes) {
+      const outcome = studentData.trialOutcome;
+      const isCompleted = outcome.outcome === 'completed';
+      
+      sections.push(
+        <div key="trial-outcome" className={`p-3 rounded-lg border ${
+          isCompleted 
+            ? 'bg-green-50 border-green-200' 
+            : 'bg-red-50 border-red-200'
+        }`}>
+          <div className="flex items-center gap-2 mb-2">
+            {isCompleted ? (
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            ) : (
+              <AlertCircle className="h-4 w-4 text-red-600" />
+            )}
+            <span className={`text-sm font-medium ${
+              isCompleted ? 'text-green-800' : 'text-red-800'
+            }`}>
+              Trial {outcome.outcome === 'completed' ? 'Completed' : 'Outcome'}
+            </span>
+          </div>
+          
+          {permissions.canViewTeacherNotes && outcome.teacherNotes && (
+            <div className="mb-2">
+              <div className="flex items-center gap-1 mb-1">
+                <FileText className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Teacher Notes</span>
+              </div>
+              <p className="text-sm">{outcome.teacherNotes}</p>
+            </div>
+          )}
+          
+          {permissions.canViewStudentBehavior && outcome.studentBehavior && (
+            <div className="mb-2">
+              <div className="flex items-center gap-1 mb-1">
+                <Star className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Student Behavior</span>
+              </div>
+              <p className="text-sm">{outcome.studentBehavior}</p>
+            </div>
+          )}
+          
+          {permissions.canViewRecommendedPackages && outcome.recommendedPackage && (
+            <div>
+              <div className="flex items-center gap-1 mb-1">
+                <Target className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Recommended Package</span>
+              </div>
+              <p className="text-sm">{outcome.recommendedPackage}</p>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // 3. Payment Link (ONLY for admin role)
+    if (!isFamily && getPaymentLink() && permissions.canViewPaymentLinks && permissions.canViewFinancialData) {
+      sections.push(
+        <div key="payment" className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-medium text-purple-800">Payment Link</span>
+            </div>
+            <Badge className={`${
+              getPaymentLink()!.status === 'paid' ? 'bg-green-100 text-green-800 border-green-200' :
+              getPaymentLink()!.status === 'clicked' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+              getPaymentLink()!.status === 'expired' ? 'bg-red-100 text-red-800 border-red-200' :
+              'bg-purple-100 text-purple-800 border-purple-200'
+            } border`}>
+              {getPaymentLink()!.status}
+            </Badge>
+          </div>
+          <p className="text-sm text-purple-700">
+            Amount: {getPaymentLink()!.currency.toUpperCase()} {(getPaymentLink()!.amount / 100).toFixed(2)}
+          </p>
+        </div>
+      );
+    }
+
+    // 4. Payment Status (for non-admin roles) - shows status without amounts
+    if (!isFamily && getPaymentLink() && !permissions.canViewFinancialData) {
+      sections.push(
+        <div key="payment-status" className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-medium text-purple-800">Payment Status</span>
+            </div>
+            <Badge className={`${
+              getPaymentLink()!.status === 'paid' ? 'bg-green-100 text-green-800 border-green-200' :
+              getPaymentLink()!.status === 'clicked' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+              getPaymentLink()!.status === 'expired' ? 'bg-red-100 text-red-800 border-red-200' :
+              'bg-purple-100 text-purple-800 border-purple-200'
+            } border`}>
+              {getPaymentLink()!.status}
+            </Badge>
+          </div>
+        </div>
+      );
+    }
+
+    // 5. Follow-up Information (only for sales and admin)
+    if (!isFamily && getPendingFollowUp() && !getPendingFollowUp()!.completed && permissions.canViewFollowUpData) {
+      sections.push(
+        <div key="followup" className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+          <div className="flex items-center gap-2 mb-1">
+            <Clock className="h-4 w-4 text-amber-600" />
+            <span className="text-sm font-medium text-amber-800">Pending Follow-up</span>
+          </div>
+          <p className="text-sm text-amber-700">
+            Scheduled: {format(new Date(getPendingFollowUp()!.scheduledDate), 'MMM dd, yyyy')}
+          </p>
+          <p className="text-sm text-amber-600">
+            Reason: {getPendingFollowUp()!.reason}
+          </p>
+        </div>
+      );
+    }
+
+    return <div className="space-y-3">{sections}</div>;
   };
 
   return (
@@ -221,64 +380,8 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
           </div>
         )}
 
-        {!isFamily && (
-          <>
-            {getLastWhatsAppContact() && (
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <MessageCircle className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-800">Last Contact</span>
-                </div>
-                <p className="text-sm text-blue-700">
-                  {getLastWhatsAppContact()!.success ? 'Successful' : 'Failed'} contact on{' '}
-                  {format(new Date(getLastWhatsAppContact()!.contactedAt), 'MMM dd, yyyy')}
-                </p>
-                {getLastWhatsAppContact()!.notes && (
-                  <p className="text-sm text-blue-600 mt-1">
-                    {getLastWhatsAppContact()!.notes}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {getPaymentLink() && (
-              <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-purple-600" />
-                    <span className="text-sm font-medium text-purple-800">Payment Link</span>
-                  </div>
-                  <Badge className={`${
-                    getPaymentLink()!.status === 'paid' ? 'bg-green-100 text-green-800 border-green-200' :
-                    getPaymentLink()!.status === 'clicked' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-                    getPaymentLink()!.status === 'expired' ? 'bg-red-100 text-red-800 border-red-200' :
-                    'bg-purple-100 text-purple-800 border-purple-200'
-                  } border`}>
-                    {getPaymentLink()!.status}
-                  </Badge>
-                </div>
-                <p className="text-sm text-purple-700">
-                  Amount: {getPaymentLink()!.currency.toUpperCase()} {(getPaymentLink()!.amount / 100).toFixed(2)}
-                </p>
-              </div>
-            )}
-
-            {getPendingFollowUp() && !getPendingFollowUp()!.completed && (
-              <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <Clock className="h-4 w-4 text-amber-600" />
-                  <span className="text-sm font-medium text-amber-800">Pending Follow-up</span>
-                </div>
-                <p className="text-sm text-amber-700">
-                  Scheduled: {format(new Date(getPendingFollowUp()!.scheduledDate), 'MMM dd, yyyy')}
-                </p>
-                <p className="text-sm text-amber-600">
-                  Reason: {getPendingFollowUp()!.reason}
-                </p>
-              </div>
-            )}
-          </>
-        )}
+        {/* Smart Role-Based Information Display */}
+        {renderSmartNotesDisplay()}
 
         {showActions && (
           <div className="flex flex-wrap gap-2 pt-2 border-t border-primary/10">
@@ -294,7 +397,7 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
               </Button>
             )}
 
-            {shouldShowPaymentLink() && onCreatePaymentLink && (
+            {shouldShowPaymentLink() && onCreatePaymentLink && permissions.canViewFinancialData && (
               <Button 
                 variant="default" 
                 size="sm"
@@ -306,7 +409,7 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
               </Button>
             )}
 
-            {shouldShowViewPaymentLink() && (
+            {shouldShowViewPaymentLink() && permissions.canViewFinancialData && (
               <Button 
                 variant="outline" 
                 size="sm"
@@ -324,7 +427,7 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
               </Button>
             )}
 
-            {shouldShowScheduleFollowUp() && onScheduleFollowUp && (
+            {shouldShowScheduleFollowUp() && onScheduleFollowUp && permissions.canViewFollowUpData && (
               <Button 
                 variant="outline" 
                 size="sm"
@@ -336,7 +439,7 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
               </Button>
             )}
 
-            {shouldShowCompleteFollowUp() && onCompleteFollowUp && (
+            {shouldShowCompleteFollowUp() && onCompleteFollowUp && permissions.canViewFollowUpData && (
               <Button 
                 variant="default" 
                 size="sm"
@@ -348,7 +451,7 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
               </Button>
             )}
 
-            {shouldShowRescheduleFollowUp() && onScheduleFollowUp && (
+            {shouldShowRescheduleFollowUp() && onScheduleFollowUp && permissions.canViewFollowUpData && (
               <Button 
                 variant="outline" 
                 size="sm"
