@@ -34,6 +34,8 @@ interface UnifiedTeacherStudentCardProps {
   onMarkCompleted: (item: TeacherMixedTrialItem) => void;
   onMarkGhosted: (item: TeacherMixedTrialItem) => void;
   onReschedule: (item: TeacherMixedTrialItem) => void;
+  // Phase 3: Add complete registration callback
+  onCompleteRegistration?: (item: TeacherMixedTrialItem) => void;
 }
 
 interface RescheduleInfo {
@@ -49,7 +51,8 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
   onConfirm,
   onMarkCompleted,
   onMarkGhosted,
-  onReschedule
+  onReschedule,
+  onCompleteRegistration
 }) => {
   const [rescheduleInfo, setRescheduleInfo] = useState<RescheduleInfo | null>(null);
   const isFamily = item.type === 'family';
@@ -126,6 +129,7 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
       'confirmed': { color: 'bg-blue-100 text-blue-800', label: 'Confirmed' },
       'trial-completed': { color: 'bg-green-100 text-green-800', label: 'Trial Completed' },
       'trial-ghosted': { color: 'bg-red-100 text-red-800', label: 'Trial Ghosted' },
+      'paid': { color: 'bg-purple-100 text-purple-800', label: 'Paid' },
     };
 
     const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', label: status };
@@ -184,6 +188,14 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
           }, 
           icon: RotateCcw 
         },
+        { label: `Contact ${isFamily ? 'Family' : 'Student'}`, action: () => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name), icon: MessageCircle }
+      );
+    } else if (data.status === 'paid' && onCompleteRegistration) {
+      // Phase 3: Only paid students get "Complete Registration" button
+      options.push(
+        { label: 'Complete Registration', action: () => onCompleteRegistration(item), icon: Users }
+      );
+      options.push(
         { label: `Contact ${isFamily ? 'Family' : 'Student'}`, action: () => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name), icon: MessageCircle }
       );
     } else {

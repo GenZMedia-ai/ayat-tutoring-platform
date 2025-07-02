@@ -11,6 +11,11 @@ interface TeacherStatistics {
   completedTrials: number;
   rescheduledTrials: number;
   ghostedTrials: number;
+  // Phase 1: New paid student statistics
+  paidStudents: number;
+  totalStudents: number;
+  expiredStudents: number;
+  completedRegistrations: number;
 }
 
 const getDateRangeFilter = (dateRange: DateRange): { startDate: string; endDate: string } => {
@@ -68,6 +73,10 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
     completedTrials: 0,
     rescheduledTrials: 0,
     ghostedTrials: 0,
+    paidStudents: 0,
+    totalStudents: 0,
+    expiredStudents: 0,
+    completedRegistrations: 0,
   });
   const [loading, setLoading] = useState(false);
 
@@ -126,6 +135,25 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
 
       console.log('✅ PHASE 1: Family groups in date range:', familyGroups?.length || 0);
 
+      // Phase 1: Fetch paid student statistics with efficient parallel queries
+      const [paidData, totalData, expiredData, completedData] = await Promise.all([
+        supabase.from('students').select('id', { count: 'exact', head: true })
+          .eq('assigned_teacher_id', user.id).in('status', ['active', 'paid']),
+        supabase.from('students').select('id', { count: 'exact', head: true })
+          .eq('assigned_teacher_id', user.id),
+        supabase.from('students').select('id', { count: 'exact', head: true })
+          .eq('assigned_teacher_id', user.id).eq('status', 'expired'),
+        supabase.from('students').select('id', { count: 'exact', head: true })
+          .eq('assigned_teacher_id', user.id).eq('status', 'active')
+      ]);
+
+      console.log('✅ PHASE 1: Paid student statistics:', {
+        paid: paidData.count || 0,
+        total: totalData.count || 0,
+        expired: expiredData.count || 0,
+        completed: completedData.count || 0
+      });
+
       // Calculate statistics
       const individualsByStatus = {
         pending: individualStudents?.filter(s => s.status === 'pending').length || 0,
@@ -151,6 +179,11 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
         completedTrials: individualsByStatus.completed + familiesByStatus.completed,
         rescheduledTrials: individualsByStatus.rescheduled + familiesByStatus.rescheduled,
         ghostedTrials: individualsByStatus.ghosted + familiesByStatus.ghosted,
+        // Phase 1: Add new paid student statistics
+        paidStudents: paidData.count || 0,
+        totalStudents: totalData.count || 0,
+        expiredStudents: expiredData.count || 0,
+        completedRegistrations: completedData.count || 0,
       };
 
       console.log('📊 PHASE 1: Calculated statistics with enhanced filtering:', {

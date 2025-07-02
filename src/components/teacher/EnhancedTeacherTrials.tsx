@@ -13,11 +13,11 @@ import TrialOutcomeModal from '@/components/teacher/TrialOutcomeModal';
 import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
 import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialData';
 import { Badge } from '@/components/ui/badge';
-import { Filter, Wrench } from 'lucide-react';
+import { Filter, RefreshCw, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-type StatusFilter = 'all' | 'pending' | 'confirmed' | 'trial-completed' | 'trial-ghosted' | 'rescheduled';
+type StatusFilter = 'all' | 'pending' | 'confirmed' | 'trial-completed' | 'trial-ghosted' | 'rescheduled' | 'paid';
 
 const EnhancedTeacherTrials: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -25,6 +25,7 @@ const EnhancedTeacherTrials: React.FC = () => {
   const [rescheduleItem, setRescheduleItem] = useState<TeacherMixedTrialItem | null>(null);
   const [trialOutcomeItem, setTrialOutcomeItem] = useState<TeacherMixedTrialItem | null>(null);
   const [trialOutcomeType, setTrialOutcomeType] = useState<'completed' | 'ghosted'>('completed');
+  const [refreshing, setRefreshing] = useState(false);
   
   const { trialData, loading: trialsLoading, confirmTrial, refreshTrialData } = useTeacherMixedTrialData();
   const { logContact, openWhatsApp } = useWhatsAppContact();
@@ -43,6 +44,11 @@ const EnhancedTeacherTrials: React.FC = () => {
   
   const completedItems = filteredItems.filter(item => 
     item.data.status === 'trial-completed' || item.data.status === 'trial-ghosted'
+  );
+
+  // Phase 2: Add paid items section
+  const paidItems = filteredItems.filter(item => 
+    item.data.status === 'paid'
   );
 
   // Enhanced contact handling with family support
@@ -156,16 +162,31 @@ const EnhancedTeacherTrials: React.FC = () => {
     refreshTrialData();
   };
 
-  // Manual repair function for troubleshooting
-  const handleManualRepair = async () => {
+  // Phase 2: Smart refresh function (replaces manual repair)
+  const handleSmartRefresh = async () => {
+    setRefreshing(true);
     try {
-      toast.info('Running session links repair...');
+      toast.info('Refreshing trial data...');
+      // Keep repair functionality but rename button
       await repairFamilySessionLinks();
       await refreshTrialData();
+      toast.success('Data refreshed successfully');
     } catch (error) {
-      console.error('❌ Manual repair failed:', error);
+      toast.error('Refresh failed. Please try again.');
+    } finally {
+      setRefreshing(false);
     }
   };
+
+  // Phase 2: Auto-refresh every 30 seconds when page is active
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.hasFocus() && !refreshing) {
+        handleSmartRefresh();
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [refreshing]);
 
   return (
     <div className="space-y-6">
@@ -179,11 +200,12 @@ const EnhancedTeacherTrials: React.FC = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleManualRepair}
+            onClick={handleSmartRefresh}
+            disabled={refreshing}
             className="flex items-center gap-2"
           >
-            <Wrench className="h-4 w-4" />
-            Repair Links
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
@@ -198,6 +220,7 @@ const EnhancedTeacherTrials: React.FC = () => {
                 <SelectItem value="trial-completed">Completed</SelectItem>
                 <SelectItem value="trial-ghosted">Ghosted</SelectItem>
                 <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -231,6 +254,37 @@ const EnhancedTeacherTrials: React.FC = () => {
               <CardContent>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {pendingConfirmedItems.map((item) => (
+                    <UnifiedTeacherStudentCard
+                      key={item.id}
+                      item={item}
+                      onContact={handleContactItem}
+                      onConfirm={handleConfirmTrial}
+                      onMarkCompleted={handleMarkCompleted}
+                      onMarkGhosted={handleMarkGhosted}
+                      onReschedule={handleReschedule}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Phase 2: Paid Students Section */}
+          {paidItems.length > 0 && (
+            <Card className="dashboard-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Paid Students Ready for Registration
+                  <Badge variant="outline">{paidItems.length}</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Students who have paid and need registration completion
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {paidItems.map((item) => (
                     <UnifiedTeacherStudentCard
                       key={item.id}
                       item={item}

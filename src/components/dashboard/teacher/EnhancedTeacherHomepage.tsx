@@ -106,6 +106,35 @@ const EnhancedTeacherHomepage: React.FC = () => {
       icon: XCircle,
       color: 'text-red-600',
       bg: 'bg-red-50'
+    },
+    // Phase 1: Add 4 critical paid student cards with brand colors
+    {
+      title: 'Paid Students',
+      value: stats.paidStudents,
+      icon: Users,
+      color: 'text-primary',
+      bg: 'bg-primary/10'
+    },
+    {
+      title: 'Active Registrations',
+      value: stats.completedRegistrations,
+      icon: CheckCircle,
+      color: 'text-secondary-foreground',
+      bg: 'bg-secondary/10'
+    },
+    {
+      title: 'Total Students',
+      value: stats.totalStudents,
+      icon: Users,
+      color: 'text-accent-foreground',
+      bg: 'bg-accent'
+    },
+    {
+      title: 'Completed Subscriptions',
+      value: stats.expiredStudents,
+      icon: CheckCircle,
+      color: 'text-muted-foreground',
+      bg: 'bg-muted'
     }
   ];
 
