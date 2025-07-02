@@ -142,17 +142,17 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
     // 1. Last Contact Information (for all roles when available)
     if (!isFamily && getLastWhatsAppContact() && permissions.canViewSalesNotes) {
       sections.push(
-        <div key="contact" className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <div key="contact" className="p-3 bg-accent rounded-lg border border-border">
           <div className="flex items-center gap-2 mb-1">
-            <MessageCircle className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-medium text-blue-800">Last Contact</span>
+            <MessageCircle className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">Last Contact</span>
           </div>
-          <p className="text-sm text-blue-700">
+          <p className="text-sm text-muted-foreground">
             {getLastWhatsAppContact()!.success ? 'Successful' : 'Failed'} contact on{' '}
             {format(new Date(getLastWhatsAppContact()!.contactedAt), 'MMM dd, yyyy')}
           </p>
           {getLastWhatsAppContact()!.notes && (
-            <p className="text-sm text-blue-600 mt-1">
+            <p className="text-sm text-foreground mt-1">
               {getLastWhatsAppContact()!.notes}
             </p>
           )}
@@ -166,20 +166,14 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
       const isCompleted = outcome.outcome === 'completed';
       
       sections.push(
-        <div key="trial-outcome" className={`p-3 rounded-lg border ${
-          isCompleted 
-            ? 'bg-green-50 border-green-200' 
-            : 'bg-red-50 border-red-200'
-        }`}>
+        <div key="trial-outcome" className="p-3 bg-muted rounded-lg border border-border">
           <div className="flex items-center gap-2 mb-2">
             {isCompleted ? (
-              <CheckCircle className="h-4 w-4 text-green-600" />
+              <CheckCircle className="h-4 w-4 text-primary" />
             ) : (
-              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertCircle className="h-4 w-4 text-destructive" />
             )}
-            <span className={`text-sm font-medium ${
-              isCompleted ? 'text-green-800' : 'text-red-800'
-            }`}>
+            <span className="text-sm font-medium text-foreground">
               Trial {outcome.outcome === 'completed' ? 'Completed' : 'Outcome'}
             </span>
           </div>
@@ -220,22 +214,22 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
     // 3. Payment Link (ONLY for admin role)
     if (!isFamily && getPaymentLink() && permissions.canViewPaymentLinks && permissions.canViewFinancialData) {
       sections.push(
-        <div key="payment" className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+        <div key="payment" className="p-3 bg-accent rounded-lg border border-border">
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-purple-600" />
-              <span className="text-sm font-medium text-purple-800">Payment Link</span>
+              <CreditCard className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">Payment Link</span>
             </div>
             <Badge className={`${
-              getPaymentLink()!.status === 'paid' ? 'bg-green-100 text-green-800 border-green-200' :
-              getPaymentLink()!.status === 'clicked' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-              getPaymentLink()!.status === 'expired' ? 'bg-red-100 text-red-800 border-red-200' :
-              'bg-purple-100 text-purple-800 border-purple-200'
-            } border`}>
+              getPaymentLink()!.status === 'paid' ? 'status-paid' :
+              getPaymentLink()!.status === 'clicked' ? 'status-pending' :
+              getPaymentLink()!.status === 'expired' ? 'status-expired' :
+              'bg-secondary/10 text-secondary border border-secondary/20'
+            }`}>
               {getPaymentLink()!.status}
             </Badge>
           </div>
-          <p className="text-sm text-purple-700">
+          <p className="text-sm text-muted-foreground">
             Amount: {getPaymentLink()!.currency.toUpperCase()} {(getPaymentLink()!.amount / 100).toFixed(2)}
           </p>
         </div>
@@ -245,18 +239,18 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
     // 4. Payment Status (for non-admin roles) - shows status without amounts
     if (!isFamily && getPaymentLink() && !permissions.canViewFinancialData) {
       sections.push(
-        <div key="payment-status" className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+        <div key="payment-status" className="p-3 bg-accent rounded-lg border border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-purple-600" />
-              <span className="text-sm font-medium text-purple-800">Payment Status</span>
+              <CreditCard className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">Payment Status</span>
             </div>
             <Badge className={`${
-              getPaymentLink()!.status === 'paid' ? 'bg-green-100 text-green-800 border-green-200' :
-              getPaymentLink()!.status === 'clicked' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-              getPaymentLink()!.status === 'expired' ? 'bg-red-100 text-red-800 border-red-200' :
-              'bg-purple-100 text-purple-800 border-purple-200'
-            } border`}>
+              getPaymentLink()!.status === 'paid' ? 'status-paid' :
+              getPaymentLink()!.status === 'clicked' ? 'status-pending' :
+              getPaymentLink()!.status === 'expired' ? 'status-expired' :
+              'bg-secondary/10 text-secondary border border-secondary/20'
+            }`}>
               {getPaymentLink()!.status}
             </Badge>
           </div>
@@ -267,15 +261,15 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
     // 5. Follow-up Information (only for sales and admin)
     if (!isFamily && getPendingFollowUp() && !getPendingFollowUp()!.completed && permissions.canViewFollowUpData) {
       sections.push(
-        <div key="followup" className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+        <div key="followup" className="p-3 bg-muted rounded-lg border border-border">
           <div className="flex items-center gap-2 mb-1">
-            <Clock className="h-4 w-4 text-amber-600" />
-            <span className="text-sm font-medium text-amber-800">Pending Follow-up</span>
+            <Clock className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">Pending Follow-up</span>
           </div>
-          <p className="text-sm text-amber-700">
+          <p className="text-sm text-muted-foreground">
             Scheduled: {format(new Date(getPendingFollowUp()!.scheduledDate), 'MMM dd, yyyy')}
           </p>
-          <p className="text-sm text-amber-600">
+          <p className="text-sm text-foreground">
             Reason: {getPendingFollowUp()!.reason}
           </p>
         </div>
