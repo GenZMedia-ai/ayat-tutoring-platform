@@ -37,18 +37,21 @@ const EnhancedTeacherTrials: React.FC = () => {
     return statusMatch;
   });
 
-  // Better item categorization with consistent status handling
+  // Simple status filtering like sales dashboard
   const pendingConfirmedItems = filteredItems.filter(item => 
     item.data.status === 'pending' || item.data.status === 'confirmed'
   );
   
-  const completedItems = filteredItems.filter(item => 
-    item.data.status === 'trial-completed' || item.data.status === 'trial-ghosted'
+  const trialCompletedItems = filteredItems.filter(item => 
+    item.data.status === 'trial-completed'
+  );
+  
+  const trialGhostedItems = filteredItems.filter(item => 
+    item.data.status === 'trial-ghosted'
   );
 
-  // Phase 2: Add paid items section
   const paidItems = filteredItems.filter(item => 
-    item.data.status === 'paid'
+    item.data.status === 'paid' || item.data.status === 'awaiting-payment'
   );
 
   // Enhanced contact handling with family support
@@ -269,13 +272,73 @@ const EnhancedTeacherTrials: React.FC = () => {
             </Card>
           )}
 
-          {/* Phase 2: Paid Students Section */}
+          {/* Trial Completed Section */}
+          {trialCompletedItems.length > 0 && (
+            <Card className="dashboard-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Trial Completed
+                  <Badge variant="outline">{trialCompletedItems.length}</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Students who completed their trial sessions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {trialCompletedItems.map((item) => (
+                    <UnifiedTeacherStudentCard
+                      key={item.id}
+                      item={item}
+                      onContact={handleContactItem}
+                      onConfirm={handleConfirmTrial}
+                      onMarkCompleted={handleMarkCompleted}
+                      onMarkGhosted={handleMarkGhosted}
+                      onReschedule={handleReschedule}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Trial Ghosted Section */}
+          {trialGhostedItems.length > 0 && (
+            <Card className="dashboard-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Trial Ghosted
+                  <Badge variant="outline">{trialGhostedItems.length}</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Students who didn't show up for their trial sessions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {trialGhostedItems.map((item) => (
+                    <UnifiedTeacherStudentCard
+                      key={item.id}
+                      item={item}
+                      onContact={handleContactItem}
+                      onConfirm={handleConfirmTrial}
+                      onMarkCompleted={handleMarkCompleted}
+                      onMarkGhosted={handleMarkGhosted}
+                      onReschedule={handleReschedule}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Paid Students Section */}
           {paidItems.length > 0 && (
             <Card className="dashboard-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Paid Students Ready for Registration
+                  Paid Students
                   <Badge variant="outline">{paidItems.length}</Badge>
                 </CardTitle>
                 <CardDescription>
@@ -293,36 +356,10 @@ const EnhancedTeacherTrials: React.FC = () => {
                       onMarkCompleted={handleMarkCompleted}
                       onMarkGhosted={handleMarkGhosted}
                       onReschedule={handleReschedule}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Completed, Ghosted, and Rescheduled Trials */}
-          {completedItems.length > 0 && (
-            <Card className="dashboard-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  Trial History
-                  <Badge variant="outline">{completedItems.length}</Badge>
-                </CardTitle>
-                <CardDescription>
-                  Completed, ghosted, and rescheduled trial sessions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {completedItems.map((item) => (
-                    <UnifiedTeacherStudentCard
-                      key={item.id}
-                      item={item}
-                      onContact={handleContactItem}
-                      onConfirm={handleConfirmTrial}
-                      onMarkCompleted={handleMarkCompleted}
-                      onMarkGhosted={handleMarkGhosted}
-                      onReschedule={handleReschedule}
+                      onCompleteRegistration={() => {
+                        // TODO: Add complete registration handler
+                        console.log('Complete registration for:', item.id);
+                      }}
                     />
                   ))}
                 </div>
