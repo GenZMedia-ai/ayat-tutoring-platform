@@ -52,7 +52,7 @@ export const useTeacherMixedTrialData = () => {
     try {
       console.log('🔍 Fetching mixed trial data for teacher:', user.id);
 
-      // Fetch individual students - UPDATED: Fetch ALL statuses like sales dashboard
+      // Fetch individual students with current statuses
       const { data: individualStudents, error: studentsError } = await supabase
         .from('students')
         .select(`
@@ -71,14 +71,15 @@ export const useTeacherMixedTrialData = () => {
           family_group_id
         `)
         .eq('assigned_teacher_id', user.id)
-        .is('family_group_id', null);
+        .is('family_group_id', null)
+        .in('status', ['pending', 'confirmed', 'awaiting-payment']);
 
       if (studentsError) {
         console.error('❌ Error fetching individual students:', studentsError);
         throw studentsError;
       }
 
-      // Fetch family groups - UPDATED: Fetch ALL statuses like sales dashboard
+      // Fetch family groups with current statuses  
       const { data: familyGroups, error: familyError } = await supabase
         .from('family_groups')
         .select(`
@@ -94,11 +95,29 @@ export const useTeacherMixedTrialData = () => {
           status,
           student_count
         `)
-        .eq('assigned_teacher_id', user.id);
+        .eq('assigned_teacher_id', user.id)
+        .in('status', ['pending', 'confirmed', 'awaiting-payment']);
 
       if (familyError) {
         console.error('❌ Error fetching family groups:', familyError);
         throw familyError;
+      }
+
+      // Fetch completed/ghosted trials from trial_outcomes table  
+      const { data: trialOutcomes, error: outcomesError } = await supabase
+        .from('trial_outcomes')
+        .select(`
+          student_id,
+          outcome,
+          session_id,
+          submitted_at
+        `)
+        .eq('submitted_by', user.id)
+        .in('outcome', ['completed', 'ghosted']);
+
+      if (outcomesError) {
+        console.error('❌ Error fetching trial outcomes:', outcomesError);
+        throw outcomesError;
       }
 
       // Enhanced session linking for both individuals and families
@@ -200,6 +219,9 @@ export const useTeacherMixedTrialData = () => {
             }
           }
 
+          // Map awaiting-payment to "paid" for teacher UI
+          const displayStatus = family.status === 'awaiting-payment' ? 'paid' : family.status;
+
           processedData.push({
             id: family.id,
             type: 'family',
@@ -213,7 +235,7 @@ export const useTeacherMixedTrialData = () => {
               trialDate: family.trial_date,
               trialTime: family.trial_time,
               notes: family.notes,
-              status: family.status,
+              status: displayStatus,
               studentCount: family.student_count,
               sessionId
             }
@@ -221,10 +243,76 @@ export const useTeacherMixedTrialData = () => {
         }
       }
 
+      // Process completed/ghosted trials from trial_outcomes
+      if (trialOutcomes) {
+        for (const outcome of trialOutcomes) {
+          // Fetch student data for this outcome
+          const { data: student } = await supabase
+            .from('students')
+            .select(`
+              id,
+              unique_id,
+              name,
+              age,
+              phone,
+              country,
+              platform,
+              parent_name,
+              trial_date,
+              trial_time,
+              notes,
+              family_group_id
+            `)
+            .eq('id', outcome.student_id)
+            .single();
+          
+          if (!student) continue;
+          
+          // Determine if this is an individual or family student
+          if (student.family_group_id) {
+            // Skip family members - we'll handle family groups separately
+            continue;
+          }
+          
+          // Map trial outcome to status for UI display
+          const displayStatus = outcome.outcome === 'completed' ? 'trial-completed' : 'trial-ghosted';
+          
+          processedData.push({
+            id: student.id,
+            type: 'individual',
+            data: {
+              id: student.id,
+              uniqueId: student.unique_id,
+              name: student.name,
+              age: student.age,
+              phone: student.phone,
+              country: student.country,
+              platform: student.platform,
+              parentName: student.parent_name,
+              trialDate: student.trial_date,
+              trialTime: student.trial_time,
+              notes: student.notes,
+              status: displayStatus,
+              sessionId: outcome.session_id
+            }
+          });
+        }
+      }
+
+      // Map awaiting-payment to "paid" for individual students too
+      processedData.forEach(item => {
+        if (item.data.status === 'awaiting-payment') {
+          item.data.status = 'paid';
+        }
+      });
+
       console.log('📋 Processed mixed trial data:', {
         totalItems: processedData.length,
         individuals: processedData.filter(item => item.type === 'individual').length,
-        families: processedData.filter(item => item.type === 'family').length
+        families: processedData.filter(item => item.type === 'family').length,
+        completed: processedData.filter(item => item.data.status === 'trial-completed').length,
+        ghosted: processedData.filter(item => item.data.status === 'trial-ghosted').length,
+        paid: processedData.filter(item => item.data.status === 'paid').length
       });
 
       setTrialData(processedData);
@@ -342,6 +430,19 @@ export const useTeacherMixedTrialData = () => {
         },
         (payload) => {
           console.log('🔄 Session update received:', payload);
+          fetchMixedTrialData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'trial_outcomes',
+          filter: `submitted_by=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('🔄 Trial outcome update received:', payload);
           fetchMixedTrialData();
         }
       )

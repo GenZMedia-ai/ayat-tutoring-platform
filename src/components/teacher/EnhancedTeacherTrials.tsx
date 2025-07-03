@@ -51,7 +51,7 @@ const EnhancedTeacherTrials: React.FC = () => {
   );
 
   const paidItems = filteredItems.filter(item => 
-    item.data.status === 'paid' || item.data.status === 'awaiting-payment'
+    item.data.status === 'paid'
   );
 
   // Enhanced contact handling with family support
@@ -220,10 +220,9 @@ const EnhancedTeacherTrials: React.FC = () => {
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="trial-completed">Completed</SelectItem>
-                <SelectItem value="trial-ghosted">Ghosted</SelectItem>
-                <SelectItem value="rescheduled">Rescheduled</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="trial-completed">Trial Completed</SelectItem>
+                <SelectItem value="trial-ghosted">Trial Ghosted</SelectItem>
+                <SelectItem value="paid">Paid Students</SelectItem>
               </SelectContent>
             </Select>
           </div>
