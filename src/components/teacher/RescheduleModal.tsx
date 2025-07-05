@@ -148,11 +148,16 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
       return;
     }
 
-    console.log('🔄 CRITICAL FIX: Rescheduling student with proper validation:', {
+    // CRITICAL FIX: Find the selected time slot to get both 12-hour and 24-hour formats
+    const selectedSlot = timeSlots.find(slot => slot.time === selectedTimeSlot);
+    const timeForDB = selectedSlot?.time24 || selectedTimeSlot; // Use 24-hour format if available
+
+    console.log('🔄 CRITICAL FIX: Rescheduling student with proper time format validation:', {
       studentId: student.id,
       reason: rescheduleReason,
       newDate: selectedDate,
-      newTime: selectedTimeSlot,
+      selectedTimeSlot: selectedTimeSlot, // 12-hour format from UI
+      timeForDB: timeForDB, // 24-hour format for database
       currentDate: student.trialDate,
       currentTime: student.trialTime
     });
@@ -160,7 +165,7 @@ export const RescheduleModal: React.FC<RescheduleModalProps> = ({
     const success = await rescheduleStudent(
       student.id, 
       selectedDate, 
-      selectedTimeSlot, 
+      timeForDB, // CRITICAL FIX: Use 24-hour format or let formatTimeForDB handle conversion
       rescheduleReason,
       student.trialDate,
       student.trialTime

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useStatusValidation } from './useStatusValidation';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
+import { formatTimeForDB } from '@/utils/timeUtils';
 
 const EGYPT_TIMEZONE = 'Africa/Cairo';
 
@@ -23,30 +24,6 @@ export const useStudentStatusManagement = () => {
     if (!validStatuses.includes(newStatus)) {
       throw new Error(`Invalid status: ${newStatus}. Must be one of: ${validStatuses.join(', ')}`);
     }
-  };
-
-  // CRITICAL FIX: Robust time format standardization
-  const formatTimeForDB = (time: string): string => {
-    console.log('🕐 CRITICAL FIX: Formatting time for database:', time);
-    
-    if (!time) {
-      throw new Error('Time is required');
-    }
-    
-    // If time is already in HH:MM:SS format, return as is
-    if (time.match(/^\d{2}:\d{2}:\d{2}$/)) {
-      console.log('✅ Time already in HH:MM:SS format:', time);
-      return time;
-    }
-    
-    // If time is in HH:MM format, add :00 seconds
-    if (time.match(/^\d{2}:\d{2}$/)) {
-      const formattedTime = `${time}:00`;
-      console.log('✅ CRITICAL FIX: Converted HH:MM to HH:MM:SS:', { input: time, output: formattedTime });
-      return formattedTime;
-    }
-    
-    throw new Error(`Invalid time format: ${time}. Expected HH:MM or HH:MM:SS`);
   };
 
   // CRITICAL FIX: Check if a date is today in Egypt timezone
