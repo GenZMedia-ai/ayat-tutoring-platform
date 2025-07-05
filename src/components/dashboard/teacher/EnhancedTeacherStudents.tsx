@@ -8,6 +8,8 @@ import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
 import { CompactStudentCard } from '@/components/teacher/CompactStudentCard';
 import { UnifiedFamilyCard } from '@/components/teacher/UnifiedFamilyCard';
 import { SessionEditModal } from '@/components/teacher/SessionEditModal';
+import { useWhatsAppContact } from '@/hooks/useWhatsAppContact';
+import { toast } from 'sonner';
 
 interface EditingSession {
   sessionData: any;
@@ -20,6 +22,7 @@ const EnhancedTeacherStudents: React.FC = () => {
   const [editingSession, setEditingSession] = useState<EditingSession | null>(null);
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
+  const { openWhatsApp, logContact, loading: contactLoading } = useWhatsAppContact();
 
   // Type guards
   const isIndividualStudent = (item: ActiveStudentItem): item is StudentProgress => {
@@ -40,8 +43,28 @@ const EnhancedTeacherStudents: React.FC = () => {
   };
 
   const handleContactFamily = (phone: string, name: string) => {
-    // Implement family contact logic
     console.log('Contact family:', name, phone);
+    // Basic contact without logging for families (since we don't have individual student IDs easily accessible)
+    const message = `Hello ${name}! I'm reaching out regarding your family's learning progress. I'd like to discuss how your children are doing in their sessions and address any questions you might have.`;
+    openWhatsApp(phone, message);
+    toast.success(`WhatsApp opened for ${name}`);
+  };
+
+  const handleWhatsAppContact = async (phone: string, name: string) => {
+    const message = `Hello ${name}! I'm reaching out regarding your family's learning progress. I'd like to discuss how your children are doing in their sessions and address any questions you might have.`;
+    openWhatsApp(phone, message);
+    
+    // For families, we'll log contact against the first student in the family
+    const familyItem = students.find(item => 
+      'type' in item && item.type === 'family' && item.parentName === name
+    ) as ActiveFamilyGroup;
+    
+    if (familyItem && familyItem.students.length > 0) {
+      const firstStudentId = familyItem.students[0].studentId;
+      await logContact(firstStudentId, 'follow_up', true, `Family contact via WhatsApp for ${name}`);
+    }
+    
+    toast.success(`WhatsApp opened for ${name}`);
   };
 
   const handleEditSuccess = () => {
@@ -96,6 +119,7 @@ const EnhancedTeacherStudents: React.FC = () => {
                     family={item}
                     mode="progress"
                     onContact={handleContactFamily}
+                    onWhatsAppContact={handleWhatsAppContact}
                     onEditSession={handleEditSession}
                   />
                 </div>

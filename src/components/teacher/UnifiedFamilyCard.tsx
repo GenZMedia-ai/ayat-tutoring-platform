@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Users, Phone, CheckCircle, User, Edit2, BarChart3 } from 'lucide-react';
+import { Users, Phone, CheckCircle, User, BarChart3 } from 'lucide-react';
 import { PaidStudent, FamilyCardData } from '@/hooks/useTeacherPaidStudents';
+import { StudentSessionActions } from './StudentSessionActions';
+import { FamilyReportModal } from './FamilyReportModal';
 
 interface UnifiedFamilyCardProps {
   family: FamilyCardData | import('@/hooks/useTeacherActiveStudents').ActiveFamilyGroup;
@@ -12,6 +14,7 @@ interface UnifiedFamilyCardProps {
   onScheduleStudent?: (student: PaidStudent | import('@/hooks/useTeacherActiveStudents').StudentProgress) => void;
   onContact: (phone: string, name: string) => void;
   onEditSession?: (sessionData: any, studentName: string, studentId: string) => void;
+  onWhatsAppContact?: (phone: string, name: string) => void;
 }
 
 export const UnifiedFamilyCard: React.FC<UnifiedFamilyCardProps> = ({
@@ -19,8 +22,10 @@ export const UnifiedFamilyCard: React.FC<UnifiedFamilyCardProps> = ({
   mode = 'registration',
   onScheduleStudent,
   onContact,
-  onEditSession
+  onEditSession,
+  onWhatsAppContact
 }) => {
+  const [showFamilyReport, setShowFamilyReport] = useState(false);
   // Handle both registration and progress mode data structures
   const isRegistrationMode = mode === 'registration';
   const progressPercentage = isRegistrationMode 
@@ -130,22 +135,11 @@ export const UnifiedFamilyCard: React.FC<UnifiedFamilyCardProps> = ({
                   )
                 ) : (
                   <div className="flex items-center gap-2">
-                    {onEditSession && (student as any).nextSessionDate && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onEditSession({}, (student as any).studentName, student.id || (student as any).studentId)}
-                        className="border-primary/30 text-primary hover:bg-primary/5 hover-scale"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <div className="text-right">
-                      <div className="text-xs font-medium text-green-600">
-                        {Math.round(((student as any).completedPaidSessions / (student as any).totalPaidSessions) * 100)}%
-                      </div>
-                      <div className="text-xs text-muted-foreground">Complete</div>
-                    </div>
+                    <StudentSessionActions
+                      student={student as any}
+                      onEditSession={onEditSession}
+                      onViewHistory={(studentId) => console.log('View history for:', studentId)}
+                    />
                   </div>
                 )}
               </div>
@@ -159,16 +153,17 @@ export const UnifiedFamilyCard: React.FC<UnifiedFamilyCardProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onContact(family.parentPhone, family.parentName)}
+              onClick={() => onWhatsAppContact ? onWhatsAppContact(family.parentPhone, family.parentName) : onContact(family.parentPhone, family.parentName)}
               className="flex-1 border-primary/30 text-primary hover:bg-primary/5 hover-scale pulse"
             >
               <Phone className="h-4 w-4 mr-2" />
-              Smart Contact {family.parentName}
+              Contact {family.parentName}
             </Button>
             {!isRegistrationMode && (
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setShowFamilyReport(true)}
                 className="border-secondary/30 text-secondary hover:bg-secondary/5 hover-scale"
               >
                 <BarChart3 className="h-4 w-4 mr-2" />
@@ -178,6 +173,15 @@ export const UnifiedFamilyCard: React.FC<UnifiedFamilyCardProps> = ({
           </div>
         </div>
       </CardContent>
+      
+      {/* Family Report Modal */}
+      {!isRegistrationMode && showFamilyReport && (
+        <FamilyReportModal
+          family={family as import('@/hooks/useTeacherActiveStudents').ActiveFamilyGroup}
+          open={showFamilyReport}
+          onClose={() => setShowFamilyReport(false)}
+        />
+      )}
     </Card>
   );
 };
