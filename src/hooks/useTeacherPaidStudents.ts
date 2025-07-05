@@ -21,11 +21,27 @@ export interface PaidStudent {
   notes?: string;
   hasCompletedRegistration?: boolean;
   isFamilyMember?: boolean;
+  isScheduled?: boolean;
 }
+
+export interface FamilyCardData {
+  id: string;
+  type: 'family';
+  familyName: string;
+  parentName: string;
+  parentPhone: string;
+  students: PaidStudent[];
+  totalStudents: number;
+  scheduledStudents: number;
+  totalSessions: number;
+  completedSessions: number;
+}
+
+export type PaidStudentItem = PaidStudent | FamilyCardData;
 
 export const useTeacherPaidStudents = () => {
   const { user } = useAuth();
-  const [paidStudents, setPaidStudents] = useState<PaidStudent[]>([]);
+  const [paidStudents, setPaidStudents] = useState<PaidStudentItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchPaidStudents = async () => {

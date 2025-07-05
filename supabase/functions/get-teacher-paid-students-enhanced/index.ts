@@ -71,12 +71,39 @@ serve(async (req) => {
 
     logStep("Found paid students", { count: paidStudents?.length || 0 });
 
-    // Transform data for frontend with individual package data
-    const transformedStudents = (paidStudents || []).map(student => {
-      // Check if student has completed registration (has active sessions)
-      const hasCompletedRegistration = false; // We'll check this separately if needed
+    // Get family groups for family members
+    const familyIds = [...new Set(paidStudents?.filter(s => s.family_group_id).map(s => s.family_group_id))];
+    const { data: familyGroups, error: familyError } = familyIds.length > 0 
+      ? await supabaseClient
+          .from('family_groups')
+          .select('id, parent_name, phone')
+          .in('id', familyIds)
+      : { data: [], error: null };
 
-      return {
+    if (familyError) {
+      logStep("Error fetching family groups", { error: familyError });
+    }
+
+    // Check registration status for students
+    const studentIds = paidStudents?.map(s => s.id) || [];
+    const { data: sessions } = studentIds.length > 0
+      ? await supabaseClient
+          .from('session_students')
+          .select('student_id, sessions!inner(session_number)')
+          .in('student_id', studentIds)
+          .gt('sessions.session_number', 1)
+      : { data: [] };
+
+    const registeredStudentIds = new Set(sessions?.map(s => s.student_id) || []);
+
+    // Group students by family
+    const familyMap = new Map();
+    const individualStudents = [];
+
+    for (const student of paidStudents || []) {
+      const hasCompletedRegistration = registeredStudentIds.has(student.id);
+      
+      const transformedStudent = {
         id: student.id,
         uniqueId: student.unique_id,
         name: student.name,
@@ -91,23 +118,59 @@ serve(async (req) => {
         paymentCurrency: (student.payment_currency || 'USD').toUpperCase(),
         paymentDate: student.created_at,
         notes: student.notes,
-        hasCompletedRegistration: hasCompletedRegistration,
-        isFamilyMember: !!student.family_group_id
+        hasCompletedRegistration,
+        isFamilyMember: !!student.family_group_id,
+        isScheduled: hasCompletedRegistration
       };
-    });
 
-    // Filter out students who already have scheduled sessions (completed registration)
-    const studentsNeedingRegistration = transformedStudents.filter(student => 
-      !student.hasCompletedRegistration
+      if (student.family_group_id) {
+        const familyGroup = familyGroups?.find(f => f.id === student.family_group_id);
+        if (!familyMap.has(student.family_group_id)) {
+          familyMap.set(student.family_group_id, {
+            id: student.family_group_id,
+            type: 'family',
+            familyName: familyGroup?.parent_name || student.parent_name || 'Unknown Family',
+            parentName: familyGroup?.parent_name || student.parent_name,
+            parentPhone: familyGroup?.phone || student.phone,
+            students: [],
+            totalStudents: 0,
+            scheduledStudents: 0,
+            totalSessions: 0,
+            completedSessions: 0
+          });
+        }
+        
+        const family = familyMap.get(student.family_group_id);
+        family.students.push(transformedStudent);
+        family.totalStudents++;
+        family.totalSessions += transformedStudent.packageSessionCount;
+        if (transformedStudent.isScheduled) {
+          family.scheduledStudents++;
+        }
+      } else {
+        // Only include individual students who haven't completed registration
+        if (!hasCompletedRegistration) {
+          individualStudents.push(transformedStudent);
+        }
+      }
+    }
+
+    // Convert family map to array and filter out fully scheduled families
+    const familyCards = Array.from(familyMap.values()).filter(family => 
+      family.scheduledStudents < family.totalStudents
     );
 
+    // Combine individual students and family cards
+    const result = [...individualStudents, ...familyCards];
+
     logStep("Completed processing", { 
-      totalPaidStudents: transformedStudents.length,
-      needingRegistration: studentsNeedingRegistration.length,
-      familyMembers: transformedStudents.filter(s => s.isFamilyMember).length
+      totalPaidStudents: paidStudents?.length || 0,
+      individualStudents: individualStudents.length,
+      familyCards: familyCards.length,
+      totalItems: result.length
     });
 
-    return new Response(JSON.stringify(studentsNeedingRegistration), {
+    return new Response(JSON.stringify(result), {
       headers: { 
         ...corsHeaders, 
         "Content-Type": "application/json" 

@@ -2,13 +2,13 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useTeacherPaidStudents } from '@/hooks/useTeacherPaidStudents';
+import { useTeacherPaidStudents, PaidStudentItem, PaidStudent, FamilyCardData } from '@/hooks/useTeacherPaidStudents';
 import { useWhatsAppContact } from '@/hooks/useWhatsAppContact';
 import { SmartSchedulingModal } from './SmartSchedulingModal';
-import { MinimalStudentCard } from './MinimalStudentCard';
+import { UnifiedFamilyCard, IndividualStudentCard } from './UnifiedFamilyCard';
 import { LoadingSpinner } from './LoadingSpinner';
 import { DateRange } from '@/components/teacher/DateFilter';
-import { DollarSign, GraduationCap } from 'lucide-react';
+import { GraduationCap } from 'lucide-react';
 
 interface PaidStudentsSectionProps {
   dateRange?: DateRange;
@@ -19,6 +19,15 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
   const { openWhatsApp, logContact } = useWhatsAppContact();
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
+  // Type guards
+  const isIndividualStudent = (item: PaidStudentItem): item is PaidStudent => {
+    return !('type' in item) || (item as any).type !== 'family';
+  };
+
+  const isFamilyCard = (item: PaidStudentItem): item is FamilyCardData => {
+    return 'type' in item && (item as FamilyCardData).type === 'family';
+  };
+
   // Filter students based on date range
   const filteredStudents = React.useMemo(() => {
     if (!dateRange || dateRange === 'all-time') return paidStudents;
@@ -26,7 +35,11 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    return paidStudents.filter(student => {
+    return paidStudents.filter(item => {
+      // For family cards, we don't filter by date as they represent ongoing family groupings
+      if (isFamilyCard(item)) return true;
+      
+      const student = item as PaidStudent;
       if (!student.paymentDate) return false;
       
       const paymentDate = new Date(student.paymentDate);
@@ -60,10 +73,12 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
     });
   }, [paidStudents, dateRange]);
 
-  const handleContactStudent = async (studentId: string, phone: string) => {
+  const handleContactStudent = async (phone: string, name: string, studentId?: string) => {
     try {
       openWhatsApp(phone);
-      await logContact(studentId, 'follow_up', true, 'WhatsApp contact for registration setup');
+      if (studentId) {
+        await logContact(studentId, 'follow_up', true, 'WhatsApp contact for registration setup');
+      }
       await refreshPaidStudents();
     } catch (error) {
       console.error('Error handling contact:', error);
@@ -134,10 +149,10 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
             )}
           </CardTitle>
           <CardDescription>
-            Students who have completed payment and need their session schedule configured
+            Students and families who have completed payment and need their session schedules configured
             {filteredStudents.length !== paidStudents.length && (
               <span className="block mt-1 text-primary font-medium">
-                Showing {filteredStudents.length} of {paidStudents.length} students
+                Showing {filteredStudents.length} of {paidStudents.length} items
               </span>
             )}
           </CardDescription>
@@ -162,15 +177,29 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredStudents.map((student) => (
-                <MinimalStudentCard
-                  key={student.id}
-                  student={student}
-                  onContact={() => handleContactStudent(student.id, student.phone)}
-                  onCompleteRegistration={() => handleCompleteRegistration(student)}
-                />
-              ))}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {filteredStudents.map((item) => {
+                if (isFamilyCard(item)) {
+                  return (
+                    <UnifiedFamilyCard
+                      key={item.id}
+                      family={item}
+                      mode="registration"
+                      onScheduleStudent={handleCompleteRegistration}
+                      onContact={handleContactStudent}
+                    />
+                  );
+                } else {
+                  return (
+                    <IndividualStudentCard
+                      key={item.id}
+                      student={item}
+                      onScheduleStudent={handleCompleteRegistration}
+                      onContact={(phone, name) => handleContactStudent(phone, name, item.id)}
+                    />
+                  );
+                }
+              })}
             </div>
           )}
         </CardContent>
