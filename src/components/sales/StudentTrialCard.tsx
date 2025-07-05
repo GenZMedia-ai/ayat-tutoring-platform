@@ -197,77 +197,75 @@ export const StudentTrialCard: React.FC<StudentTrialCardProps> = ({
         </div>
 
         {/* Last Contact Info */}
-        {student.lastWhatsAppContact && (
-          <div className="p-3 bg-blue-50 rounded-lg">
-            <div className="flex items-center gap-2 mb-1">
-              <MessageCircle className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-800">Last Contact</span>
-            </div>
-            <p className="text-sm text-blue-700">
-              {student.lastWhatsAppContact.success ? 'Successful' : 'Failed'} contact on{' '}
-              {format(new Date(student.lastWhatsAppContact.contactedAt), 'MMM dd, yyyy')}
-            </p>
-            {student.lastWhatsAppContact.notes && (
-              <p className="text-sm text-blue-600 mt-1">
-                {student.lastWhatsAppContact.notes}
-              </p>
-            )}
+        <div className={`p-3 bg-blue-50 rounded-lg ${!student.lastWhatsAppContact ? 'invisible' : ''}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <MessageCircle className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-800">Last Contact</span>
           </div>
-        )}
+          <p className="text-sm text-blue-700">
+            {student.lastWhatsAppContact?.success ? 'Successful' : 'Failed'} contact on{' '}
+            {student.lastWhatsAppContact ? format(new Date(student.lastWhatsAppContact.contactedAt), 'MMM dd, yyyy') : 'N/A'}
+          </p>
+          {student.lastWhatsAppContact?.notes && (
+            <p className="text-sm text-blue-600 mt-1">
+              {student.lastWhatsAppContact.notes}
+            </p>
+          )}
+        </div>
 
         {/* Payment Link Info */}
-        {student.paymentLink && (
-          <div className="p-3 bg-purple-50 rounded-lg">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-purple-600" />
-                <span className="text-sm font-medium text-purple-800">Payment Link</span>
-                {/* Show URL type indicator */}
-                {student.paymentLink.stripeCheckoutUrl ? (
-                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
-                    Secure URL
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
-                    Legacy
-                  </Badge>
-                )}
-              </div>
-              <Badge className={`${
-                student.paymentLink.status === 'paid' ? 'bg-green-100 text-green-800' :
-                student.paymentLink.status === 'clicked' ? 'bg-yellow-100 text-yellow-800' :
-                student.paymentLink.status === 'expired' ? 'bg-red-100 text-red-800' :
-                'bg-purple-100 text-purple-800'
-              } border-0`}>
-                {student.paymentLink.status}
-              </Badge>
+        <div className={`p-3 bg-purple-50 rounded-lg ${!student.paymentLink ? 'invisible' : ''}`}>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-medium text-purple-800">Payment Link</span>
+              {/* Show URL type indicator */}
+              {student.paymentLink?.stripeCheckoutUrl ? (
+                <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                  Secure URL
+                </Badge>
+              ) : student.paymentLink ? (
+                <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
+                  Legacy
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs bg-gray-50 text-gray-700">
+                  N/A
+                </Badge>
+              )}
             </div>
-            <p className="text-sm text-purple-700">
-              Amount: {student.paymentLink.currency.toUpperCase()} {(student.paymentLink.amount / 100).toFixed(2)}
-            </p>
-            {student.paymentLink.clickedAt && (
-              <p className="text-sm text-purple-600">
-                Clicked: {format(new Date(student.paymentLink.clickedAt), 'MMM dd, yyyy HH:mm')}
-              </p>
-            )}
+            <Badge className={`${
+              student.paymentLink?.status === 'paid' ? 'bg-green-100 text-green-800' :
+              student.paymentLink?.status === 'clicked' ? 'bg-yellow-100 text-yellow-800' :
+              student.paymentLink?.status === 'expired' ? 'bg-red-100 text-red-800' :
+              'bg-purple-100 text-purple-800'
+            } border-0`}>
+              {student.paymentLink?.status || 'None'}
+            </Badge>
           </div>
-        )}
+          <p className="text-sm text-purple-700">
+            Amount: {student.paymentLink ? `${student.paymentLink.currency.toUpperCase()} ${(student.paymentLink.amount / 100).toFixed(2)}` : 'N/A'}
+          </p>
+          {student.paymentLink?.clickedAt && (
+            <p className="text-sm text-purple-600">
+              Clicked: {format(new Date(student.paymentLink.clickedAt), 'MMM dd, yyyy HH:mm')}
+            </p>
+          )}
+        </div>
 
         {/* Follow-up Info */}
-        {student.pendingFollowUp && !student.pendingFollowUp.completed && (
-          <div className="p-3 bg-yellow-50 rounded-lg">
-            <div className="flex items-center gap-2 mb-1">
-              <Clock className="h-4 w-4 text-yellow-600" />
-              <span className="text-sm font-medium text-yellow-800">Pending Follow-up</span>
-            </div>
-            <p className="text-sm text-yellow-700">
-              Scheduled: {format(new Date(student.pendingFollowUp.scheduledDate), 'MMM dd, yyyy')}
-            </p>
-            <p className="text-sm text-yellow-600">
-              Reason: {student.pendingFollowUp.reason}
-            </p>
+        <div className={`p-3 bg-yellow-50 rounded-lg ${!student.pendingFollowUp || student.pendingFollowUp.completed ? 'invisible' : ''}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <Clock className="h-4 w-4 text-yellow-600" />
+            <span className="text-sm font-medium text-yellow-800">Pending Follow-up</span>
           </div>
-        )}
+          <p className="text-sm text-yellow-700">
+            Scheduled: {student.pendingFollowUp ? format(new Date(student.pendingFollowUp.scheduledDate), 'MMM dd, yyyy') : 'N/A'}
+          </p>
+          <p className="text-sm text-yellow-600">
+            Reason: {student.pendingFollowUp?.reason || 'N/A'}
+          </p>
+        </div>
 
         {/* Action Buttons */}
         {(permissions.canCreatePaymentLink || permissions.canCreateFollowUp) && (
