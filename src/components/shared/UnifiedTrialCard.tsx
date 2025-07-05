@@ -366,11 +366,13 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
           </div>
         </div>
 
-        <div className="p-3 bg-muted/50 rounded-lg border border-primary/10">
-          <p className={`text-sm ${!getNotes() || getNotes()?.trim() === '' ? 'invisible' : ''}`}>
-            <strong>Notes:</strong> {getNotes()}
-          </p>
-        </div>
+        {getNotes() && (
+          <div className="p-3 bg-muted/50 rounded-lg border border-primary/10">
+            <p className="text-sm">
+              <strong>Notes:</strong> {getNotes()}
+            </p>
+          </div>
+        )}
 
         {/* Smart Role-Based Information Display */}
         {renderSmartNotesDisplay()}
