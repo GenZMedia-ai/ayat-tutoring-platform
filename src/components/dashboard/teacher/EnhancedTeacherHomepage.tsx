@@ -304,29 +304,6 @@ const EnhancedTeacherHomepage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Debug information for development */}
-      {process.env.NODE_ENV === 'development' && (
-        <Card className="bg-gray-50 border-dashed">
-          <CardHeader>
-            <CardTitle className="text-sm">Debug Information</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <strong>Statistics Loading:</strong> {statsLoading ? 'Yes' : 'No'}<br/>
-                <strong>Sessions Loading:</strong> {sessionsLoading ? 'Yes' : 'No'}<br/>
-                <strong>Date Range:</strong> {dateRange}
-              </div>
-              <div>
-                <strong>Total Stats:</strong> {Object.values(stats).reduce((a, b) => a + b, 0)}<br/>
-                <strong>Sessions Count:</strong> {sessions.length}<br/>
-                <strong>Current Time:</strong> {new Date().toLocaleTimeString()}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
