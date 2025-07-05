@@ -79,7 +79,7 @@ export const useTeacherMixedTrialData = () => {
         throw studentsError;
       }
 
-      // Fetch family groups with current statuses  
+      // Fetch family groups with current statuses including trial-completed
       const { data: familyGroups, error: familyError } = await supabase
         .from('family_groups')
         .select(`
@@ -96,7 +96,7 @@ export const useTeacherMixedTrialData = () => {
           student_count
         `)
         .eq('assigned_teacher_id', user.id)
-        .in('status', ['pending', 'confirmed', 'awaiting-payment']);
+        .in('status', ['pending', 'confirmed', 'awaiting-payment', 'trial-completed', 'trial-ghosted']);
 
       if (familyError) {
         console.error('❌ Error fetching family groups:', familyError);
@@ -270,7 +270,7 @@ export const useTeacherMixedTrialData = () => {
           
           // Determine if this is an individual or family student
           if (student.family_group_id) {
-            // Skip family members - we'll handle family groups separately
+            // Skip family members - family groups are handled in the main query above
             continue;
           }
           

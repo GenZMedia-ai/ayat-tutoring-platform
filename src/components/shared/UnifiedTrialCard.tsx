@@ -26,6 +26,8 @@ import { MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { FamilyGroup } from '@/types/family';
 import { TrialSessionFlowStudent } from '@/types/trial';
 import { useRoleBasedPermissions, useDisplayPriority } from '@/hooks/useRoleBasedPermissions';
+import { useSalesPermissions } from '@/hooks/useSalesPermissions';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 
 interface UnifiedTrialCardProps {
@@ -54,6 +56,8 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
   const isFamily = item.type === 'family';
   const data = item.data;
   const permissions = useRoleBasedPermissions();
+  const { user } = useAuth();
+  const salesPermissions = useSalesPermissions(data.status as any);
 
   // Helper functions for accessing data
   const getName = () => isFamily ? (data as FamilyGroup).parent_name : (data as TrialSessionFlowStudent).name;
@@ -391,7 +395,9 @@ export const UnifiedTrialCard: React.FC<UnifiedTrialCardProps> = ({
               </Button>
             )}
 
-            {shouldShowPaymentLink() && onCreatePaymentLink && permissions.canViewFinancialData && (
+            {shouldShowPaymentLink() && onCreatePaymentLink && (
+              (permissions.canViewFinancialData || (user?.role === 'sales' && salesPermissions.canCreatePaymentLink))
+            ) && (
               <Button 
                 variant="default" 
                 size="sm"
