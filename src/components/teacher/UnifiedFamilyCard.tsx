@@ -3,25 +3,29 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Users, Phone, CheckCircle, User } from 'lucide-react';
+import { Users, Phone, CheckCircle, User, Edit2, BarChart3 } from 'lucide-react';
 import { PaidStudent, FamilyCardData } from '@/hooks/useTeacherPaidStudents';
 
 interface UnifiedFamilyCardProps {
-  family: FamilyCardData;
+  family: FamilyCardData | import('@/hooks/useTeacherActiveStudents').ActiveFamilyGroup;
   mode: 'registration' | 'progress';
-  onScheduleStudent: (student: PaidStudent) => void;
+  onScheduleStudent?: (student: PaidStudent | import('@/hooks/useTeacherActiveStudents').StudentProgress) => void;
   onContact: (phone: string, name: string) => void;
+  onEditSession?: (sessionData: any, studentName: string, studentId: string) => void;
 }
 
 export const UnifiedFamilyCard: React.FC<UnifiedFamilyCardProps> = ({
   family,
   mode = 'registration',
   onScheduleStudent,
-  onContact
+  onContact,
+  onEditSession
 }) => {
-  const progressPercentage = family.totalStudents > 0 
-    ? (family.scheduledStudents / family.totalStudents) * 100 
-    : 0;
+  // Handle both registration and progress mode data structures
+  const isRegistrationMode = mode === 'registration';
+  const progressPercentage = isRegistrationMode 
+    ? (family.totalStudents > 0 ? ((family as any).scheduledStudents / family.totalStudents) * 100 : 0)
+    : (family.totalSessions > 0 ? ((family as any).completedSessions / family.totalSessions) * 100 : 0);
 
   const getStudentIcon = (age: number) => {
     if (age <= 6) return '👶';
@@ -48,15 +52,28 @@ export const UnifiedFamilyCard: React.FC<UnifiedFamilyCardProps> = ({
             <div className="flex items-center gap-3 mb-2">
               <div className="flex-1">
                 <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="text-muted-foreground">Sessions Scheduled</span>
+                  <span className="text-muted-foreground">
+                    {isRegistrationMode ? 'Sessions Scheduled' : 'Overall Progress'}
+                  </span>
                   <span className="font-medium text-primary">
-                    {family.scheduledStudents}/{family.totalStudents}
+                    {isRegistrationMode 
+                      ? `${(family as any).scheduledStudents}/${family.totalStudents}`
+                      : `${(family as any).completedSessions}/${family.totalSessions}`
+                    }
                   </span>
                 </div>
                 <Progress 
                   value={progressPercentage} 
-                  className="h-2"
+                  className="h-2 animate-fade-in"
                 />
+                {!isRegistrationMode && (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
+                    <span>{(family as any).totalMinutes} minutes completed</span>
+                    {(family as any).nextFamilySession && (
+                      <span>Next: {(family as any).nextFamilySession.studentName}</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -65,39 +82,71 @@ export const UnifiedFamilyCard: React.FC<UnifiedFamilyCardProps> = ({
 
       <CardContent className="space-y-4">
         {/* Students List */}
-        <div className="space-y-3">
-          {family.students.map((student) => (
+        <div className="space-y-3 animate-fade-in">
+          {family.students.map((student, index) => (
             <div 
-              key={student.id} 
-              className="flex items-center justify-between p-3 rounded-lg border bg-muted/20"
+              key={student.id || student.studentId} 
+              className="flex items-center justify-between p-3 rounded-lg border bg-muted/20 hover:bg-muted/30 transition-colors duration-200"
+              style={{ animationDelay: `${index * 100}ms` }}
             >
               <div className="flex items-center gap-3 flex-1">
                 <span className="text-lg">{getStudentIcon(student.age)}</span>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-medium text-foreground">{student.name}</h4>
+                    <h4 className="font-medium text-foreground">
+                      {student.name || (student as any).studentName}
+                    </h4>
                     <span className="text-sm text-muted-foreground">({student.age})</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {student.packageSessionCount} sessions • {student.packageName}
+                    {isRegistrationMode 
+                      ? `${student.packageSessionCount || (student as any).totalPaidSessions} sessions • ${student.packageName || 'Standard Package'}`
+                      : `${(student as any).completedPaidSessions}/${(student as any).totalPaidSessions} completed • ${(student as any).totalMinutes}min`
+                    }
                   </p>
+                  {!isRegistrationMode && (student as any).nextSessionDate && (
+                    <p className="text-xs text-primary font-medium mt-1">
+                      Next: {new Date((student as any).nextSessionDate).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
               </div>
               
               <div className="flex items-center gap-2">
-                {student.isScheduled || student.hasCompletedRegistration ? (
-                  <div className="flex items-center gap-2 text-green-600">
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="text-sm font-medium">Sessions Scheduled</span>
-                  </div>
+                {isRegistrationMode ? (
+                  student.isScheduled || student.hasCompletedRegistration ? (
+                    <div className="flex items-center gap-2 text-green-600 animate-scale-in">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Sessions Scheduled</span>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => onScheduleStudent?.(student)}
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground hover-scale"
+                    >
+                      Schedule Sessions
+                    </Button>
+                  )
                 ) : (
-                  <Button
-                    size="sm"
-                    onClick={() => onScheduleStudent(student)}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                  >
-                    Schedule Sessions
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {onEditSession && (student as any).nextSessionDate && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onEditSession({}, (student as any).studentName, student.id || (student as any).studentId)}
+                        className="border-primary/30 text-primary hover:bg-primary/5 hover-scale"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <div className="text-right">
+                      <div className="text-xs font-medium text-green-600">
+                        {Math.round(((student as any).completedPaidSessions / (student as any).totalPaidSessions) * 100)}%
+                      </div>
+                      <div className="text-xs text-muted-foreground">Complete</div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -106,15 +155,27 @@ export const UnifiedFamilyCard: React.FC<UnifiedFamilyCardProps> = ({
 
         {/* Contact Button */}
         <div className="pt-3 border-t border-primary/10">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onContact(family.parentPhone, family.parentName)}
-            className="w-full border-primary/30 text-primary hover:bg-primary/5"
-          >
-            <Phone className="h-4 w-4 mr-2" />
-            Contact Parent: {family.parentName}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onContact(family.parentPhone, family.parentName)}
+              className="flex-1 border-primary/30 text-primary hover:bg-primary/5 hover-scale pulse"
+            >
+              <Phone className="h-4 w-4 mr-2" />
+              Smart Contact {family.parentName}
+            </Button>
+            {!isRegistrationMode && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-secondary/30 text-secondary hover:bg-secondary/5 hover-scale"
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Family Report
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface StudentProgress {
+export interface StudentProgress {
   studentId: string;
   studentName: string;
   uniqueId: string;
@@ -20,9 +20,10 @@ interface StudentProgress {
   nextSessionTime?: string;
   sessionHistory: SessionHistory[];
   totalMinutes: number;
+  familyGroupId?: string;
 }
 
-interface SessionHistory {
+export interface SessionHistory {
   sessionNumber: number;
   date: string;
   status: string;
@@ -32,9 +33,29 @@ interface SessionHistory {
   isTrialSession: boolean;
 }
 
+export interface ActiveFamilyGroup {
+  id: string;
+  type: 'family';
+  familyName: string;
+  parentName: string;
+  parentPhone: string;
+  students: StudentProgress[];
+  totalStudents: number;
+  totalSessions: number;
+  completedSessions: number;
+  totalMinutes: number;
+  nextFamilySession?: {
+    date: string;
+    time: string;
+    studentName: string;
+  };
+}
+
+export type ActiveStudentItem = StudentProgress | ActiveFamilyGroup;
+
 export const useTeacherActiveStudents = () => {
   const { user } = useAuth();
-  const [students, setStudents] = useState<StudentProgress[]>([]);
+  const [students, setStudents] = useState<ActiveStudentItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchActiveStudents = async () => {
@@ -47,7 +68,10 @@ export const useTeacherActiveStudents = () => {
       // Get active students assigned to this teacher
       const { data: activeStudents, error: studentsError } = await supabase
         .from('students')
-        .select('*')
+        .select(`
+          *,
+          family_groups!students_family_group_id_fkey(id, parent_name, phone)
+        `)
         .eq('assigned_teacher_id', user.id)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
@@ -139,13 +163,79 @@ export const useTeacherActiveStudents = () => {
             nextSessionDate: nextPaidSession?.scheduled_date,
             nextSessionTime: nextPaidSession?.scheduled_time,
             sessionHistory,
-            totalMinutes
+            totalMinutes,
+            familyGroupId: student.family_group_id
           };
         })
       );
 
-      console.log('📊 Students with corrected progress:', studentsWithProgress);
-      setStudents(studentsWithProgress);
+      // Group students by family
+      const familyMap = new Map<string, StudentProgress[]>();
+      const individualStudents: StudentProgress[] = [];
+
+      studentsWithProgress.forEach(student => {
+        if (student.familyGroupId) {
+          const familyId = student.familyGroupId;
+          if (!familyMap.has(familyId)) {
+            familyMap.set(familyId, []);
+          }
+          familyMap.get(familyId)!.push(student);
+        } else {
+          individualStudents.push(student);
+        }
+      });
+
+      // Create family group objects
+      const familyGroups: ActiveFamilyGroup[] = [];
+      for (const [familyId, familyStudents] of familyMap) {
+        const firstStudent = familyStudents[0];
+        const familyInfo = activeStudents.find(s => s.id === firstStudent.studentId)?.family_groups;
+        
+        // Calculate family totals
+        const totalSessions = familyStudents.reduce((sum, s) => sum + s.totalPaidSessions, 0);
+        const completedSessions = familyStudents.reduce((sum, s) => sum + s.completedPaidSessions, 0);
+        const totalMinutes = familyStudents.reduce((sum, s) => sum + s.totalMinutes, 0);
+        
+        // Find next family session (earliest next session among all family members)
+        const nextSessions = familyStudents
+          .filter(s => s.nextSessionDate && s.nextSessionTime)
+          .map(s => ({
+            date: s.nextSessionDate!,
+            time: s.nextSessionTime!,
+            studentName: s.studentName,
+            dateTime: new Date(`${s.nextSessionDate}T${s.nextSessionTime}`)
+          }))
+          .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+
+        familyGroups.push({
+          id: familyId,
+          type: 'family',
+          familyName: familyInfo?.parent_name || firstStudent.parentName || 'Unknown Family',
+          parentName: familyInfo?.parent_name || firstStudent.parentName || 'Unknown',
+          parentPhone: familyInfo?.phone || firstStudent.phone,
+          students: familyStudents,
+          totalStudents: familyStudents.length,
+          totalSessions,
+          completedSessions,
+          totalMinutes,
+          nextFamilySession: nextSessions.length > 0 ? {
+            date: nextSessions[0].date,
+            time: nextSessions[0].time,
+            studentName: nextSessions[0].studentName
+          } : undefined
+        });
+      }
+
+      // Combine individual students and family groups
+      const result: ActiveStudentItem[] = [...individualStudents, ...familyGroups];
+      
+      console.log('📊 Active students with family grouping:', {
+        total: result.length,
+        individuals: individualStudents.length,
+        families: familyGroups.length
+      });
+      
+      setStudents(result);
     } catch (error) {
       console.error('❌ Error in fetchActiveStudents:', error);
     } finally {

@@ -132,13 +132,28 @@ const TeacherSessionManagement: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {activeStudents.map((student) => (
-                  <SessionProgressTracker
-                    key={student.studentId}
-                    studentId={student.studentId}
-                    studentName={student.studentName}
-                  />
-                ))}
+                {activeStudents.map((item) => {
+                  // Handle both individual students and family groups
+                  if ('studentId' in item) {
+                    // Individual student
+                    return (
+                      <SessionProgressTracker
+                        key={item.studentId}
+                        studentId={item.studentId}
+                        studentName={item.studentName}
+                      />
+                    );
+                  } else {
+                    // Family group - render for each student in the family
+                    return item.students.map((student) => (
+                      <SessionProgressTracker
+                        key={student.studentId}
+                        studentId={student.studentId}
+                        studentName={student.studentName}
+                      />
+                    ));
+                  }
+                })}
                 
                 {activeStudents.length === 0 && !studentsLoading && (
                   <div className={`text-center py-8 ${isRTL ? 'text-right' : 'text-left'}`}>

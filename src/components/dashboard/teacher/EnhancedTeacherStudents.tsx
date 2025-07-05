@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useTeacherActiveStudents } from '@/hooks/useTeacherActiveStudents';
+import { useTeacherActiveStudents, ActiveStudentItem, StudentProgress, ActiveFamilyGroup } from '@/hooks/useTeacherActiveStudents';
 import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
 import { CompactStudentCard } from '@/components/teacher/CompactStudentCard';
+import { UnifiedFamilyCard } from '@/components/teacher/UnifiedFamilyCard';
 import { SessionEditModal } from '@/components/teacher/SessionEditModal';
 
 interface EditingSession {
@@ -20,6 +21,15 @@ const EnhancedTeacherStudents: React.FC = () => {
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
 
+  // Type guards
+  const isIndividualStudent = (item: ActiveStudentItem): item is StudentProgress => {
+    return !('type' in item) || (item as any).type !== 'family';
+  };
+
+  const isFamilyGroup = (item: ActiveStudentItem): item is ActiveFamilyGroup => {
+    return 'type' in item && (item as ActiveFamilyGroup).type === 'family';
+  };
+
   const handleEditSession = (sessionData: any, studentName: string, studentId: string) => {
     console.log('Edit session:', sessionData);
     setEditingSession({
@@ -27,6 +37,11 @@ const EnhancedTeacherStudents: React.FC = () => {
       studentName,
       studentId
     });
+  };
+
+  const handleContactFamily = (phone: string, name: string) => {
+    // Implement family contact logic
+    console.log('Contact family:', name, phone);
   };
 
   const handleEditSuccess = () => {
@@ -72,16 +87,32 @@ const EnhancedTeacherStudents: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {students.map((student) => (
-            <CompactStudentCard
-              key={student.studentId}
-              student={student}
-              onEditSession={(sessionData) => 
-                handleEditSession(sessionData, student.studentName, student.studentId)
-              }
-            />
-          ))}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
+          {students.map((item, index) => {
+            if (isFamilyGroup(item)) {
+              return (
+                <div key={item.id} style={{ animationDelay: `${index * 150}ms` }}>
+                  <UnifiedFamilyCard
+                    family={item}
+                    mode="progress"
+                    onContact={handleContactFamily}
+                    onEditSession={handleEditSession}
+                  />
+                </div>
+              );
+            } else {
+              return (
+                <div key={item.studentId} style={{ animationDelay: `${index * 150}ms` }}>
+                  <CompactStudentCard
+                    student={item}
+                    onEditSession={(sessionData) => 
+                      handleEditSession(sessionData, item.studentName, item.studentId)
+                    }
+                  />
+                </div>
+              );
+            }
+          })}
         </div>
       )}
 
