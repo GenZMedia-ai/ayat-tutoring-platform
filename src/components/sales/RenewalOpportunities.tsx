@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useRenewalOpportunities } from '@/hooks/useRenewalOpportunities';
 import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
+import { PaymentLinkModal } from '@/components/sales/PaymentLinkModal';
+import { PaymentLinkSuccessModal } from '@/components/sales/PaymentLinkSuccessModal';
 import { toast } from 'sonner';
-// PaymentLinkModal integration will be added in next phase
 import { 
   RefreshCw, 
   User, 
@@ -22,7 +23,12 @@ const RenewalOpportunities: React.FC = () => {
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
   const { opportunities, loading, refreshOpportunities } = useRenewalOpportunities();
-  // Future: Payment modal integration for renewals
+  
+  // Payment modal states
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState<any>(null);
 
   const getProbabilityColor = (probability: number) => {
     if (probability >= 80) return 'text-green-600';
@@ -40,16 +46,44 @@ const RenewalOpportunities: React.FC = () => {
     return `$${(amount / 100).toFixed(0)}`;
   };
 
-  const handleCreateRenewalLink = async (studentId: string) => {
-    try {
-      console.log(`🔄 Creating renewal payment link for student ${studentId}`);
-      // Future: Integrate with enhanced PaymentLinkModal for renewals
-      // This will use the process_renewal_payment function we created
-      toast.success('Renewal link creation feature coming soon!');
-    } catch (error) {
-      console.error('❌ Error creating renewal link:', error);
-      toast.error('Failed to create renewal link');
-    }
+  const handleCreateRenewalLink = (opportunity: any) => {
+    // Convert opportunity to student format for PaymentLinkModal
+    const studentForModal = {
+      id: opportunity.id,
+      uniqueId: `RENEWAL_${opportunity.id}`,
+      name: opportunity.name,
+      age: opportunity.age,
+      phone: opportunity.phone,
+      country: opportunity.country,
+      status: 'expired', // This makes it a renewal
+      subscription_cycle: opportunity.subscriptionCycle,
+      lifetime_revenue: opportunity.lifetimeRevenue,
+      renewal_count: opportunity.renewalCount
+    };
+    
+    setSelectedStudent(studentForModal);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handlePaymentSuccess = (stripeData: any, paymentDetails: any) => {
+    const paymentData = {
+      url: stripeData.stripe_checkout_url || stripeData.url || '#',
+      amount: paymentDetails.amount,
+      currency: paymentDetails.currency,
+      studentName: paymentDetails.studentName,
+      studentPhone: paymentDetails.studentPhone
+    };
+    
+    setPaymentSuccess(paymentData);
+    setIsPaymentModalOpen(false);
+    setIsSuccessModalOpen(true);
+    refreshOpportunities(); // Refresh the opportunities list
+  };
+
+  const handleSuccessModalClose = () => {
+    setIsSuccessModalOpen(false);
+    setPaymentSuccess(null);
+    setSelectedStudent(null);
   };
 
   const getUrgencyLevel = (expiredDays: number) => {
@@ -150,7 +184,7 @@ const RenewalOpportunities: React.FC = () => {
                       <Button
                         size="sm"
                         className="ayat-button-primary"
-                        onClick={() => handleCreateRenewalLink(opportunity.id)}
+                        onClick={() => handleCreateRenewalLink(opportunity)}
                       >
                         <DollarSign className="h-4 w-4 mr-2" />
                         Create Renewal Link
@@ -189,7 +223,24 @@ const RenewalOpportunities: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Future: Enhanced PaymentLinkModal with renewal support */}
+      {/* Enhanced PaymentLinkModal with renewal support */}
+      {selectedStudent && (
+        <PaymentLinkModal
+          student={selectedStudent}
+          open={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
+
+      {/* Payment Success Modal */}
+      {paymentSuccess && (
+        <PaymentLinkSuccessModal
+          open={isSuccessModalOpen}
+          onClose={handleSuccessModalClose}
+          paymentData={paymentSuccess}
+        />
+      )}
     </>
   );
 };
