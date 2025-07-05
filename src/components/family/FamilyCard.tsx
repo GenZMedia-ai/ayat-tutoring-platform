@@ -106,69 +106,30 @@ export const FamilyCard: React.FC<FamilyCardProps> = ({
           </div>
         </div>
 
-        {/* Trial Information - Always rendered for consistent height */}
-        <div className={`p-2 bg-muted/50 rounded-lg ${!family.trial_date ? 'invisible h-0 p-0' : ''}`}>
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-1">
-              <Calendar className="h-3 w-3 text-primary" />
-              <span className="font-medium text-primary">{formatDate(family.trial_date)}</span>
-            </div>
-            {family.trial_time && (
+        {/* Trial Information */}
+        {family.trial_date && (
+          <div className="p-2 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-4 text-sm">
               <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3 text-primary" />
-                <span className="font-medium text-primary">{formatTime(family.trial_time)}</span>
+                <Calendar className="h-3 w-3 text-primary" />
+                <span className="font-medium text-primary">{formatDate(family.trial_date)}</span>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Notes - Always rendered for consistent height */}
-        <div className={`text-xs text-muted-foreground bg-muted/30 p-2 rounded ${!family.notes ? 'invisible h-0 p-0' : ''}`}>
-          <span className="font-medium">Notes:</span> {family.notes || 'No notes'}
-        </div>
-
-        {/* Invisible placeholder sections to match UnifiedTrialCard structure */}
-        {/* Last Contact Information - Always invisible for families */}
-        <div className="invisible h-0 p-0">
-          <div className="p-3 bg-accent rounded-lg border border-border">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-medium text-foreground">Last Contact</span>
+              {family.trial_time && (
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-primary" />
+                  <span className="font-medium text-primary">{formatTime(family.trial_time)}</span>
+                </div>
+              )}
             </div>
-            <p className="text-sm text-muted-foreground">Placeholder</p>
           </div>
-        </div>
+        )}
 
-        {/* Trial Outcome - Always invisible for families */}
-        <div className="invisible h-0 p-0">
-          <div className="p-3 bg-muted rounded-lg border border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm font-medium text-foreground">Trial Outcome</span>
-            </div>
-            <p className="text-sm">Placeholder</p>
+        {/* Notes */}
+        {family.notes && (
+          <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
+            <span className="font-medium">Notes:</span> {family.notes}
           </div>
-        </div>
-
-        {/* Payment Link - Always invisible for families */}
-        <div className="invisible h-0 p-0">
-          <div className="p-3 bg-accent rounded-lg border border-border">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-foreground">Payment Link</span>
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground">Placeholder</p>
-          </div>
-        </div>
-
-        {/* Follow-up Information - Always invisible for families */}
-        <div className="invisible h-0 p-0">
-          <div className="p-3 bg-muted rounded-lg border border-border">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-medium text-foreground">Pending Follow-up</span>
-            </div>
-            <p className="text-sm text-muted-foreground">Placeholder</p>
-          </div>
-        </div>
+        )}
 
         {/* Actions */}
         {showActions && (
