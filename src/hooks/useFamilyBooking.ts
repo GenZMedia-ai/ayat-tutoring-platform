@@ -27,9 +27,12 @@ export const useFamilyBooking = () => {
         studentCount: bookingData.students?.length || 0
       });
 
+      // Use proper date formatting to prevent timezone shifting bug
+      const bookingDateString = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+
       const { data, error } = await supabase.rpc('book_family_trial_session', {
         p_booking_data: bookingData,
-        p_selected_date: selectedDate.toISOString().split('T')[0],
+        p_selected_date: bookingDateString,
         p_utc_start_time: selectedSlot.utcStartTime,
         p_teacher_type: teacherType,
         p_teacher_id: selectedSlot.teacherId
