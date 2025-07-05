@@ -28,23 +28,44 @@ export const useSessionProgress = (studentId: string) => {
     try {
       console.log('🔍 Checking session progress for student:', studentId);
 
-      const { data, error } = await supabase.rpc('check_subscription_completion', {
-        p_student_id: studentId
-      });
+      // Get session progress excluding trial sessions (session_number = 1)
+      const { data: progressData, error } = await supabase
+        .from('sessions')
+        .select(`
+          id,
+          status,
+          session_number,
+          session_students!inner(student_id)
+        `)
+        .eq('session_students.student_id', studentId)
+        .gt('session_number', 1); // Exclude trial sessions
 
       if (error) {
-        console.error('❌ Error checking progress:', error);
+        console.error('❌ Error fetching progress data:', error);
         return;
       }
 
-      console.log('📊 Session progress:', data);
-      const result = data as unknown as ProgressResult;
+      const totalSessions = progressData?.length || 0;
+      const completedSessions = progressData?.filter(s => s.status === 'completed').length || 0;
+      
+      // Get current student status
+      const { data: studentData } = await supabase
+        .from('students')
+        .select('status')
+        .eq('id', studentId)
+        .single();
+
+      const completionPercentage = totalSessions > 0 
+        ? Math.round((completedSessions / totalSessions) * 100) 
+        : 0;
+
+      console.log('📊 Session progress:', { totalSessions, completedSessions, completionPercentage });
 
       setProgress({
-        totalSessions: result.total_sessions,
-        completedSessions: result.completed_sessions,
-        studentStatus: result.student_status,
-        completionPercentage: result.completion_percentage
+        totalSessions,
+        completedSessions,
+        studentStatus: studentData?.status || 'unknown',
+        completionPercentage
       });
     } catch (error) {
       console.error('❌ Error in checkProgress:', error);
