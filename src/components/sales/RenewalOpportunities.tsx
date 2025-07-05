@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useRenewalOpportunities } from '@/hooks/useRenewalOpportunities';
 import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
-import { PaymentLinkModal } from '@/components/sales/PaymentLinkModal';
+import { toast } from 'sonner';
+// PaymentLinkModal integration will be added in next phase
 import { 
   RefreshCw, 
   User, 
@@ -21,8 +22,7 @@ const RenewalOpportunities: React.FC = () => {
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
   const { opportunities, loading, refreshOpportunities } = useRenewalOpportunities();
-  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  // Future: Payment modal integration for renewals
 
   const getProbabilityColor = (probability: number) => {
     if (probability >= 80) return 'text-green-600';
@@ -40,9 +40,16 @@ const RenewalOpportunities: React.FC = () => {
     return `$${(amount / 100).toFixed(0)}`;
   };
 
-  const handleCreateRenewalLink = (studentId: string) => {
-    setSelectedStudentIds([studentId]);
-    setIsPaymentModalOpen(true);
+  const handleCreateRenewalLink = async (studentId: string) => {
+    try {
+      console.log(`🔄 Creating renewal payment link for student ${studentId}`);
+      // Future: Integrate with enhanced PaymentLinkModal for renewals
+      // This will use the process_renewal_payment function we created
+      toast.success('Renewal link creation feature coming soon!');
+    } catch (error) {
+      console.error('❌ Error creating renewal link:', error);
+      toast.error('Failed to create renewal link');
+    }
   };
 
   const getUrgencyLevel = (expiredDays: number) => {
@@ -182,10 +189,7 @@ const RenewalOpportunities: React.FC = () => {
         </CardContent>
       </Card>
 
-      <PaymentLinkModal
-        open={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
-      />
+      {/* Future: Enhanced PaymentLinkModal with renewal support */}
     </>
   );
 };
