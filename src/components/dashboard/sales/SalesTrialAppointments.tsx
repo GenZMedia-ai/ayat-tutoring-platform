@@ -242,7 +242,7 @@ const SalesTrialAppointments: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 auto-rows-fr">
           {filteredItems.map((item) => (
             <UnifiedTrialCard
               key={`${item.type}-${item.id}`}

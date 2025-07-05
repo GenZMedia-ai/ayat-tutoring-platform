@@ -124,12 +124,10 @@ export const FamilyCard: React.FC<FamilyCardProps> = ({
           </div>
         )}
 
-        {/* Notes */}
-        {family.notes && (
-          <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
-            <span className="font-medium">Notes:</span> {family.notes}
-          </div>
-        )}
+        {/* Notes - Always rendered for consistent height */}
+        <div className={`text-xs text-muted-foreground bg-muted/30 p-2 rounded ${!family.notes ? 'invisible h-0 p-0' : ''}`}>
+          <span className="font-medium">Notes:</span> {family.notes || 'No notes'}
+        </div>
 
         {/* Actions */}
         {showActions && (
