@@ -261,19 +261,12 @@ export const useTeacherMixedTrialData = () => {
               trial_date,
               trial_time,
               notes,
-              family_group_id,
-              status
+              family_group_id
             `)
             .eq('id', outcome.student_id)
             .single();
           
           if (!student) continue;
-          
-          // CRITICAL FIX: Skip students who have progressed beyond trial stage
-          if (student.status === 'paid' || student.status === 'active' || student.status === 'expired') {
-            console.log(`⚠️ Skipping student ${student.name} - current status: ${student.status} (beyond trial stage)`);
-            continue;
-          }
           
           // Determine if this is an individual or family student
           if (student.family_group_id) {

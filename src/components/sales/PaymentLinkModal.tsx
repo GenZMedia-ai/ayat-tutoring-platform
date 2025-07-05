@@ -14,7 +14,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { TrialSessionFlowStudent } from '@/types/trial';
 import { FamilyGroup } from '@/types/family';
-import { RefreshCw, Trophy, DollarSign } from 'lucide-react';
 
 interface PaymentLinkModalProps {
   student: TrialSessionFlowStudent | FamilyGroup;
@@ -38,12 +37,6 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
   const [useCustomPrice, setUseCustomPrice] = useState(false);
   const [customPrice, setCustomPrice] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  
-  // Renewal states
-  const [isRenewal, setIsRenewal] = useState(false);
-  const [renewalCycle, setRenewalCycle] = useState(1);
-  const [lifetimeRevenue, setLifetimeRevenue] = useState(0);
-  const [renewalHistory, setRenewalHistory] = useState<any[]>([]);
 
   const enabledCurrencies = currencies.filter(c => c.is_enabled);
   const activePackages = packages.filter(p => p.is_active);
@@ -82,47 +75,6 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
       }
     }
   }, [familyCurrency, enabledCurrencies]);
-
-  // Fetch renewal data when modal opens
-  useEffect(() => {
-    if (open && !isFamily) {
-      fetchRenewalData();
-    }
-  }, [open, student.id, isFamily]);
-
-  const fetchRenewalData = async () => {
-    try {
-      // Check if this is a renewal (expired or awaiting-payment status)
-      const studentData = student as TrialSessionFlowStudent;
-      const isRenewalStatus = ['expired', 'awaiting-payment'].includes(studentData.status);
-      
-      if (isRenewalStatus) {
-        // Fetch renewal history and cycle info
-        const { data: renewalData, error } = await supabase
-          .from('students')
-          .select('subscription_cycle, lifetime_revenue, renewal_count')
-          .eq('id', student.id)
-          .single();
-
-        if (!error && renewalData) {
-          setIsRenewal(true);
-          setRenewalCycle(renewalData.subscription_cycle || 1);
-          setLifetimeRevenue(renewalData.lifetime_revenue || 0);
-          
-          // Fetch renewal history
-          const { data: historyData } = await supabase
-            .from('student_renewals')
-            .select('cycle_number, amount, currency, created_at')
-            .eq('student_id', student.id)
-            .order('cycle_number', { ascending: false });
-          
-          setRenewalHistory(historyData || []);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching renewal data:', error);
-    }
-  };
 
   // Helper functions to handle both individual students and family groups
   const getStudentId = () => student.id;
@@ -185,10 +137,9 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
       return false;
     }
     
-    // Allow renewals for expired students
-    const validStatuses = ['trial-completed', 'trial-ghosted', 'expired'];
+    const validStatuses = ['trial-completed', 'trial-ghosted'];
     if (!validStatuses.includes(studentStatus)) {
-      toast.error(`Cannot create payment link for student with status: ${studentStatus}. Student must have completed trial or be expired for renewal.`);
+      toast.error(`Cannot create payment link for student with status: ${studentStatus}. Student must have completed or ghosted trial.`);
       return false;
     }
     return true;
@@ -222,19 +173,13 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
       package_id: selectedPackage.id,
       currency: selectedCurrency.code,
       amount: finalPrice,
-      payment_type: isRenewal ? 'renewal' : 'single_student',
-      package_session_count: selectedPackage.session_count,
+      payment_type: 'single_student',
       metadata: {
         system_name: 'AyatWBian',
         student_unique_id: studentUniqueId,
-        payment_type: isRenewal ? 'renewal' : 'single_student',
+        payment_type: 'single_student',
         package_session_count: selectedPackage.session_count.toString(),
-        student_count: '1',
-        ...(isRenewal && {
-          renewal_cycle: renewalCycle.toString(),
-          previous_lifetime_revenue: lifetimeRevenue.toString(),
-          is_renewal: 'true'
-        })
+        student_count: '1'
       }
     };
 
@@ -362,35 +307,9 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Create Payment Link
-            {isRenewal && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <RefreshCw className="h-3 w-3" />
-                {renewalCycle === 1 ? '1st Renewal' : 
-                 renewalCycle === 2 ? '2nd Renewal' : 
-                 renewalCycle === 3 ? '3rd Renewal' : 
-                 `${renewalCycle}th Renewal`}
-              </Badge>
-            )}
-          </DialogTitle>
+          <DialogTitle>Create Payment Link</DialogTitle>
           <DialogDescription>
             Create a payment link for {getStudentName()} ({getStudentUniqueId()})
-            {isRenewal && (
-              <div className="mt-2 p-2 bg-blue-50 rounded-md text-sm">
-                <div className="flex items-center gap-2 text-blue-700">
-                  <Trophy className="h-4 w-4" />
-                  <span className="font-medium">Renewal Customer</span>
-                </div>
-                <div className="mt-1 text-blue-600">
-                  <div>Current cycle: {renewalCycle}</div>
-                  <div className="flex items-center gap-1">
-                    <DollarSign className="h-3 w-3" />
-                    Lifetime revenue: ${(lifetimeRevenue / 100).toFixed(0)}
-                  </div>
-                </div>
-              </div>
-            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -412,11 +331,6 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
               <div><span className="font-medium">Country:</span> {getStudentCountry()}</div>
               <div><span className="font-medium">Status:</span> 
                 <Badge variant="outline" className="ml-2">{getStudentStatus()}</Badge>
-                {isRenewal && (
-                  <Badge variant="default" className="ml-2">
-                    Renewal Ready
-                  </Badge>
-                )}
               </div>
               <div><span className="font-medium">Type:</span> 
                 <Badge variant="outline" className="ml-2">

@@ -9,8 +9,6 @@ const SalesDashboard: React.FC = () => {
   const tabs = [
     { value: 'homepage', label: 'Home Page', path: '/sales/homepage' },
     { value: 'trials', label: 'Trial Appointments', path: '/sales/trials' },
-    { value: 'renewals', label: 'Renewal Opportunities', path: '/sales/renewals' },
-    { value: 'analytics', label: 'MMR Analytics', path: '/sales/analytics' },
     { value: 'payment-links', label: 'Payment Links', path: '/sales/payment-links' },
     { value: 'followup', label: 'Follow-up', path: '/sales/followup' },
     { value: 'students', label: 'Students', path: '/sales/students' },
@@ -28,7 +26,7 @@ const SalesDashboard: React.FC = () => {
             </Badge>
           </div>
 
-          <DashboardNavigation tabs={tabs} gridCols="grid-cols-7" />
+          <DashboardNavigation tabs={tabs} gridCols="grid-cols-5" />
           
           <Outlet />
         </div>

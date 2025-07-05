@@ -10,8 +10,6 @@ import { useTeacherStatistics } from '@/hooks/useTeacherStatistics';
 import { useTodayPaidSessions } from '@/hooks/useTodayPaidSessions';
 import { useSessionCompletion } from '@/hooks/useSessionCompletion';
 import { LoadingSpinner } from '@/components/teacher/LoadingSpinner';
-import RecentlyCompletedStudents from '@/components/teacher/RecentlyCompletedStudents';
-import RenewalCandidates from '@/components/teacher/RenewalCandidates';
 import { 
   Users, 
   Clock, 
@@ -305,12 +303,6 @@ const EnhancedTeacherHomepage: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Phase 3: Teacher Dashboard Improvements - Renewal Management */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecentlyCompletedStudents />
-        <RenewalCandidates />
       </div>
     </div>
   );

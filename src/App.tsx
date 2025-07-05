@@ -29,8 +29,6 @@ import SalesTrialAppointments from "./components/dashboard/sales/SalesTrialAppoi
 import SalesPaymentLinks from "./components/dashboard/sales/SalesPaymentLinks";
 import SalesFollowup from "./components/dashboard/sales/SalesFollowup";
 import SalesStudents from "./components/dashboard/sales/SalesStudents";
-import RenewalOpportunitiesPage from "./pages/sales/RenewalOpportunities";
-import MMRAnalyticsPage from "./pages/sales/MMRAnalytics";
 
 // Admin Tab Components
 import AdminHomepage from "./components/dashboard/admin/AdminHomepage";
@@ -85,8 +83,6 @@ const App = () => (
             <Route path="/sales/*" element={<SalesDashboard />}>
               <Route path="homepage" element={<SalesHomepage />} />
               <Route path="trials" element={<SalesTrialAppointments />} />
-              <Route path="renewals" element={<RenewalOpportunitiesPage />} />
-              <Route path="analytics" element={<MMRAnalyticsPage />} />
               <Route path="payment-links" element={<SalesPaymentLinks />} />
               <Route path="followup" element={<SalesFollowup />} />
               <Route path="students" element={<SalesStudents />} />
