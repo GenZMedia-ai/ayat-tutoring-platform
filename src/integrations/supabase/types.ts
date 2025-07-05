@@ -666,6 +666,80 @@ export type Database = {
         }
         Relationships: []
       }
+      student_renewals: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          cycle_number: number
+          id: string
+          notes: string | null
+          package_id: string | null
+          package_session_count: number
+          payment_link_id: string | null
+          renewal_source: string
+          student_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          cycle_number: number
+          id?: string
+          notes?: string | null
+          package_id?: string | null
+          package_session_count?: number
+          payment_link_id?: string | null
+          renewal_source?: string
+          student_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          cycle_number?: number
+          id?: string
+          notes?: string | null
+          package_id?: string | null
+          package_session_count?: number
+          payment_link_id?: string | null
+          renewal_source?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_renewals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_renewals_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_renewals_payment_link_id_fkey"
+            columns: ["payment_link_id"]
+            isOneToOne: false
+            referencedRelation: "payment_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_renewals_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           age: number
@@ -675,7 +749,9 @@ export type Database = {
           country: string
           created_at: string
           family_group_id: string | null
+          first_payment_date: string | null
           id: string
+          lifetime_revenue: number | null
           name: string
           notes: string | null
           package_name: string | null
@@ -685,7 +761,9 @@ export type Database = {
           payment_currency: string | null
           phone: string
           platform: string
+          renewal_count: number | null
           status: string
+          subscription_cycle: number | null
           teacher_type: string
           trial_date: string | null
           trial_time: string | null
@@ -700,7 +778,9 @@ export type Database = {
           country: string
           created_at?: string
           family_group_id?: string | null
+          first_payment_date?: string | null
           id?: string
+          lifetime_revenue?: number | null
           name: string
           notes?: string | null
           package_name?: string | null
@@ -710,7 +790,9 @@ export type Database = {
           payment_currency?: string | null
           phone: string
           platform: string
+          renewal_count?: number | null
           status?: string
+          subscription_cycle?: number | null
           teacher_type: string
           trial_date?: string | null
           trial_time?: string | null
@@ -725,7 +807,9 @@ export type Database = {
           country?: string
           created_at?: string
           family_group_id?: string | null
+          first_payment_date?: string | null
           id?: string
+          lifetime_revenue?: number | null
           name?: string
           notes?: string | null
           package_name?: string | null
@@ -735,7 +819,9 @@ export type Database = {
           payment_currency?: string | null
           phone?: string
           platform?: string
+          renewal_count?: number | null
           status?: string
+          subscription_cycle?: number | null
           teacher_type?: string
           trial_date?: string | null
           trial_time?: string | null
@@ -1027,6 +1113,10 @@ export type Database = {
         Args: { p_student_id: string }
         Returns: Json
       }
+      get_mmr_analytics: {
+        Args: { p_sales_agent_id?: string }
+        Returns: Json
+      }
       get_notification_setting: {
         Args: { p_setting_key: string }
         Returns: string
@@ -1103,6 +1193,18 @@ export type Database = {
           p_recipient_user_id: string
           p_student_id?: string
           p_additional_data?: Json
+        }
+        Returns: Json
+      }
+      process_renewal_payment: {
+        Args: {
+          p_student_id: string
+          p_payment_link_id: string
+          p_amount: number
+          p_currency: string
+          p_package_id: string
+          p_package_session_count: number
+          p_renewal_source?: string
         }
         Returns: Json
       }
