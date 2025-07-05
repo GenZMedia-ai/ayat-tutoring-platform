@@ -74,15 +74,17 @@ export const useTodayPaidSessions = () => {
           const student = session.session_students[0]?.students;
           if (!student) return null;
 
-          // Get total and completed sessions for this student
+          // Get total and completed sessions for this student (excluding trial sessions)
           const { data: progressData } = await supabase
             .from('sessions')
             .select(`
               id,
               status,
+              session_number,
               session_students!inner(student_id)
             `)
-            .eq('session_students.student_id', student.id);
+            .eq('session_students.student_id', student.id)
+            .gt('session_number', 1);  // Exclude trial sessions
 
           const totalSessions = progressData?.length || 0;
           const completedSessions = progressData?.filter(s => s.status === 'completed').length || 0;
