@@ -228,21 +228,23 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
         </div>
 
         {/* Reschedule Information */}
-        <div className={`p-3 bg-yellow-50 border border-yellow-200 rounded-lg ${(!rescheduleInfo || rescheduleInfo.rescheduleCount === 0) ? 'invisible' : ''}`}>
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
-            <div className="text-sm">
-              <p className="font-medium text-yellow-800">
-                Session Rescheduled {rescheduleInfo?.rescheduleCount || 0} time{(rescheduleInfo?.rescheduleCount || 0) > 1 ? 's' : ''}
-              </p>
-              {rescheduleInfo?.rescheduleReason && (
-                <p className="text-yellow-700 mt-1">
-                  Reason: {rescheduleInfo.rescheduleReason.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+        {rescheduleInfo && rescheduleInfo.rescheduleCount > 0 && (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-yellow-800">
+                  Session Rescheduled {rescheduleInfo.rescheduleCount} time{rescheduleInfo.rescheduleCount > 1 ? 's' : ''}
                 </p>
-              )}
+                {rescheduleInfo.rescheduleReason && (
+                  <p className="text-yellow-700 mt-1">
+                    Reason: {rescheduleInfo.rescheduleReason.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Notes */}
         <div className={`p-3 bg-muted rounded-lg ${!student.notes ? 'invisible' : ''}`}>
