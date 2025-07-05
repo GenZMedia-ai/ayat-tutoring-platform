@@ -331,13 +331,11 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
         )}
 
         {/* Notes */}
-        {data.notes && (
-          <div className="p-3 bg-muted rounded-lg">
-            <p className="text-sm">
-              <strong>Notes:</strong> {data.notes}
-            </p>
-          </div>
-        )}
+        <div className={`p-3 bg-muted rounded-lg ${!data.notes ? 'invisible' : ''}`}>
+          <p className="text-sm">
+            <strong>Notes:</strong> {data.notes || 'No notes available'}
+          </p>
+        </div>
 
         {/* Quick Actions */}
         {data.status === 'pending' && (

@@ -190,13 +190,11 @@ export const StudentTrialCard: React.FC<StudentTrialCardProps> = ({
         </div>
 
         {/* Notes */}
-        {student.notes && (
-          <div className="p-3 bg-muted rounded-lg">
-            <p className="text-sm">
-              <strong>Notes:</strong> {student.notes}
-            </p>
-          </div>
-        )}
+        <div className={`p-3 bg-muted rounded-lg ${!student.notes ? 'invisible' : ''}`}>
+          <p className="text-sm">
+            <strong>Notes:</strong> {student.notes || 'No notes available'}
+          </p>
+        </div>
 
         {/* Last Contact Info */}
         {student.lastWhatsAppContact && (
