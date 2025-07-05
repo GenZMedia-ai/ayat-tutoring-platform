@@ -11,8 +11,7 @@ import {
   BookOpen, 
   TrendingUp, 
   Calendar,
-  FileText,
-  Download
+  FileText
 } from 'lucide-react';
 import { ActiveFamilyGroup } from '@/hooks/useTeacherActiveStudents';
 
@@ -27,39 +26,6 @@ export const FamilyReportModal: React.FC<FamilyReportModalProps> = ({
   open,
   onClose
 }) => {
-  const exportReport = () => {
-    const reportData = `
-Family Report - ${family.familyName}
-Generated: ${new Date().toLocaleDateString()}
-
-FAMILY OVERVIEW:
-- Parent: ${family.parentName}
-- Students: ${family.totalStudents}
-- Total Sessions: ${family.totalSessions}
-- Completed Sessions: ${family.completedSessions}
-- Total Minutes: ${family.totalMinutes}
-- Progress: ${Math.round((family.completedSessions / family.totalSessions) * 100)}%
-
-INDIVIDUAL STUDENT PROGRESS:
-${family.students.map(student => `
-Student: ${student.studentName} (Age ${student.age})
-- Sessions: ${student.completedPaidSessions}/${student.totalPaidSessions}
-- Minutes: ${student.totalMinutes}
-- Progress: ${Math.round((student.completedPaidSessions / student.totalPaidSessions) * 100)}%
-- Next Session: ${student.nextSessionDate ? new Date(student.nextSessionDate).toLocaleDateString() : 'Not scheduled'}
-`).join('')}
-    `.trim();
-
-    const blob = new Blob([reportData], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${family.familyName.replace(/\s+/g, '_')}_Family_Report.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
 
   const overallProgress = Math.round((family.completedSessions / family.totalSessions) * 100);
 
@@ -184,20 +150,25 @@ Student: ${student.studentName} (Age ${student.age})
                           <FileText className="h-4 w-4" />
                           Recent Sessions
                         </div>
-                        <div className="space-y-1 max-h-32 overflow-y-auto">
-                          {student.sessionHistory
-                            .filter(session => session.status === 'completed')
-                            .slice(-3)
-                            .map((session, sessionIndex) => (
+                         <div className="space-y-1 max-h-32 overflow-y-auto">
+                           {student.sessionHistory
+                             .filter(session => session.status === 'completed' && !session.isTrialSession)
+                             .slice(-3)
+                             .map((session, sessionIndex) => (
                               <div 
                                 key={sessionIndex} 
                                 className="text-xs bg-muted/50 p-2 rounded flex justify-between"
                               >
-                                <span>Session {session.sessionNumber}</span>
-                                <span>{new Date(session.date).toLocaleDateString()}</span>
-                                {session.actualMinutes && (
-                                  <span className="text-primary">{session.actualMinutes}min</span>
-                                )}
+                                 <span>Session {session.sessionNumber}</span>
+                                 <span>{new Date(session.date).toLocaleDateString()}</span>
+                                 {session.actualMinutes && (
+                                   <span className="text-primary">{session.actualMinutes}min</span>
+                                 )}
+                                 {session.notes && (
+                                   <div className="text-xs text-muted-foreground mt-1 col-span-3">
+                                     Notes: {session.notes}
+                                   </div>
+                                 )}
                               </div>
                             ))
                           }
@@ -213,13 +184,9 @@ Student: ${student.studentName} (Age ${student.age})
           </Card>
 
           {/* Action Buttons */}
-          <div className="flex justify-between gap-4">
+          <div className="flex justify-center">
             <Button variant="outline" onClick={onClose}>
               Close
-            </Button>
-            <Button onClick={exportReport} className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
-              Export Report
             </Button>
           </div>
         </div>

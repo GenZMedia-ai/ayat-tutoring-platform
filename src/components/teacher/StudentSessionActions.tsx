@@ -50,15 +50,7 @@ export const StudentSessionActions: React.FC<StudentSessionActionsProps> = ({
   if (!hasNextSession) {
     return (
       <div className="flex items-center gap-1">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleViewHistory}
-          className="border-muted-foreground/30 text-muted-foreground hover:bg-muted/50"
-          title="View session history"
-        >
-          <FileText className="h-4 w-4" />
-        </Button>
+        <div className="text-xs text-muted-foreground">Session history available</div>
         <span className="text-xs text-muted-foreground">No upcoming session</span>
       </div>
     );
@@ -91,20 +83,6 @@ export const StudentSessionActions: React.FC<StudentSessionActionsProps> = ({
           <DropdownMenuItem onClick={handleReschedule} className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
             Reschedule Session
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleViewHistory} className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            View History
-          </DropdownMenuItem>
-          <DropdownMenuItem 
-            onClick={() => {
-              // Quick start session logic could go here
-              console.log('Quick start session for:', student.studentName);
-            }}
-            className="flex items-center gap-2"
-          >
-            <PlayCircle className="h-4 w-4" />
-            Quick Start
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
