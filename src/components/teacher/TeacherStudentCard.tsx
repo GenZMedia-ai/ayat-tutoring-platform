@@ -247,11 +247,13 @@ export const TeacherStudentCard: React.FC<TeacherStudentCardProps> = ({
         )}
 
         {/* Notes */}
-        <div className={`p-3 bg-muted rounded-lg ${!student.notes ? 'invisible' : ''}`}>
-          <p className="text-sm">
-            <strong>Notes:</strong> {student.notes || 'No notes available'}
-          </p>
-        </div>
+        {student.notes && (
+          <div className="p-3 bg-muted rounded-lg">
+            <p className="text-sm">
+              <strong>Notes:</strong> {student.notes}
+            </p>
+          </div>
+        )}
 
         {/* Quick Actions */}
         {student.status === 'pending' && (
