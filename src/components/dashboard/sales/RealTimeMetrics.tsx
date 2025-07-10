@@ -1,6 +1,5 @@
+
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { useMixedStudentData } from '@/hooks/useMixedStudentData';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -55,7 +54,6 @@ export const RealTimeMetrics: React.FC = () => {
           table: 'students'
         },
         () => {
-          // Small delay to ensure data is updated
           setTimeout(updateMetrics, 100);
         }
       )
@@ -81,91 +79,108 @@ export const RealTimeMetrics: React.FC = () => {
     { 
       key: 'pending', 
       label: 'Pending', 
-      statusColor: '#6A1B9A',
+      borderColor: '#8B6F47',
+      needsAction: true,
       priority: 'high'
     },
     { 
       key: 'confirmed', 
       label: 'Confirmed', 
-      statusColor: '#495057',
+      borderColor: '#D4A574',
+      needsAction: false,
       priority: 'medium'
     },
     { 
       key: 'completed', 
-      label: 'Completed', 
-      statusColor: '#2E7D32',
+      label: 'Trial Completed', 
+      borderColor: '#28A745',
+      needsAction: true,
       priority: 'high'
     },
     { 
       key: 'awaiting_payment', 
       label: 'Awaiting Payment', 
-      statusColor: '#E65100',
+      borderColor: '#E65100',
+      needsAction: true,
       priority: 'high'
     },
     { 
       key: 'follow_up', 
       label: 'Follow-up', 
-      statusColor: '#8B6F47',
+      borderColor: '#A0826D',
+      needsAction: true,
       priority: 'medium'
     },
     { 
       key: 'paid', 
       label: 'Paid', 
-      statusColor: '#2E7D32',
+      borderColor: '#28A745',
+      needsAction: false,
       priority: 'low'
     },
     { 
       key: 'ghosted', 
       label: 'Ghosted', 
-      statusColor: '#C62828',
+      borderColor: '#DC3545',
+      needsAction: false,
       priority: 'medium'
     },
     { 
       key: 'dropped', 
       label: 'Dropped', 
-      statusColor: '#495057',
+      borderColor: '#6C757D',
+      needsAction: false,
       priority: 'low'
     }
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-5">
-      {metricsConfig.map((metric, index) => {
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {metricsConfig.map((metric) => {
         const count = metrics[metric.key as keyof MetricsData];
-        const isHighPriority = metric.priority === 'high' && count > 0;
         
         return (
           <div 
             key={metric.key}
-            className="bg-white rounded-lg border border-gray-200 p-5 text-center transition-all duration-200 hover:shadow-lg"
+            className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 relative overflow-hidden"
           >
-            {/* Status indicator */}
+            {/* Thick colored left border */}
             <div 
-              className="w-1 h-8 mx-auto mb-3 rounded-full"
-              style={{ backgroundColor: metric.statusColor }}
+              className="absolute left-0 top-0 bottom-0 w-1"
+              style={{ backgroundColor: metric.borderColor }}
             />
             
-            {/* Count */}
-            <div 
-              className="text-2xl font-semibold leading-none mb-2"
-              style={{ color: '#212529' }}
-            >
-              {count}
-            </div>
-            
-            {/* Label */}
-            <div className="text-xs font-medium uppercase tracking-wider text-gray-600 mb-1">
-              {metric.label}
-            </div>
-            
-            {/* Sublabel */}
-            <div className="text-xs text-gray-500">
-              {count === 1 ? 'item' : 'items'}
+            {/* Card content */}
+            <div className="p-6 pl-8">
+              {/* Count - Large and prominent */}
+              <div 
+                className="text-5xl font-bold leading-none mb-3"
+                style={{ color: '#212529' }}
+              >
+                {count}
+              </div>
+              
+              {/* Status label */}
+              <div className="text-sm font-medium text-gray-700 mb-2">
+                {metric.label}
+              </div>
+              
+              {/* Action needed indicator */}
+              {metric.needsAction && count > 0 && (
+                <div className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200">
+                  Action Needed
+                </div>
+              )}
+              
+              {/* Item count sublabel */}
+              <div className="text-xs text-gray-500 mt-2">
+                {count === 1 ? '1 item' : `${count} items`}
+              </div>
             </div>
 
-            {/* High priority indicator */}
-            {isHighPriority && (
-              <div className="absolute top-2 right-2">
+            {/* Priority indicator for high priority items */}
+            {metric.priority === 'high' && count > 0 && (
+              <div className="absolute top-3 right-3">
                 <div className="w-2 h-2 rounded-full bg-red-500" />
               </div>
             )}
