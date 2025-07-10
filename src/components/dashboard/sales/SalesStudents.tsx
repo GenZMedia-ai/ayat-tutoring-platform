@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -154,13 +153,13 @@ const SalesStudents: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'sales-badge-success';
+        return 'bg-green-100 text-green-800 border-green-200';
       case 'expired':
-        return 'sales-badge-danger';
+        return 'bg-red-100 text-red-800 border-red-200';
       case 'paid':
-        return 'sales-badge-info';
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       default:
-        return 'sales-badge';
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
@@ -180,7 +179,7 @@ const SalesStudents: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="sales-body mt-2">Loading paid students...</p>
+          <p className="text-muted-foreground mt-2">Loading paid students...</p>
         </div>
       </div>
     );
@@ -191,16 +190,16 @@ const SalesStudents: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h3 className="sales-heading-3">Paid Students</h3>
-          <p className="sales-body">
+          <h3 className="text-lg font-semibold">Paid Students</h3>
+          <p className="text-sm text-muted-foreground">
             Monitor your converted students and their learning progress
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className="sales-badge" variant="outline">
+          <Badge variant="outline">
             {paidStudents.length} paid students
           </Badge>
-          <Button onClick={loadPaidStudents} className="sales-btn-ghost" size="sm">
+          <Button onClick={loadPaidStudents} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -209,48 +208,48 @@ const SalesStudents: React.FC = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <Card className="sales-stat-card">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="sales-stat-number text-green-600">
+              <div className="text-2xl font-bold text-green-600">
                 {paidStudents.filter(s => s.status === 'active').length}
               </div>
-              <div className="sales-stat-label">Active Students</div>
+              <div className="text-sm text-muted-foreground">Active Students</div>
             </div>
           </CardContent>
         </Card>
-        <Card className="sales-stat-card">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="sales-stat-number text-blue-600">
+              <div className="text-2xl font-bold text-blue-600">
                 {paidStudents.filter(s => s.status === 'paid').length}
               </div>
-              <div className="sales-stat-label">Awaiting Activation</div>
+              <div className="text-sm text-muted-foreground">Awaiting Activation</div>
             </div>
           </CardContent>
         </Card>
-        <Card className="sales-stat-card">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="sales-stat-number text-red-600">
+              <div className="text-2xl font-bold text-red-600">
                 {paidStudents.filter(s => s.status === 'expired').length}
               </div>
-              <div className="sales-stat-label">Expired (Renewal)</div>
+              <div className="text-sm text-muted-foreground">Expired (Renewal)</div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Students List */}
+      {/* Students List - Optimized 2-Column Layout */}
       {paidStudents.length === 0 ? (
-        <Card className="sales-card">
+        <Card>
           <CardContent className="pt-6">
-            <div className="sales-empty-state">
+            <div className="text-center py-8">
               <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="sales-heading-4 text-muted-foreground mb-2">
+              <h3 className="text-lg font-medium text-muted-foreground mb-2">
                 No paid students found
               </h3>
-              <p className="sales-body">
+              <p className="text-sm text-muted-foreground">
                 Your converted students will appear here once they complete payment
               </p>
             </div>
@@ -259,7 +258,7 @@ const SalesStudents: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {paidStudents.map((student) => (
-            <Card key={student.id} className="sales-card">
+            <Card key={student.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -267,40 +266,40 @@ const SalesStudents: React.FC = () => {
                       {student.status.toUpperCase()}
                     </Badge>
                     {student.is_family_member && (
-                      <Badge className="sales-badge" variant="outline">Family Member</Badge>
+                      <Badge variant="outline" className="text-xs">Family Member</Badge>
                     )}
                   </div>
-                  <div className="sales-heading-4 text-green-600">
+                  <div className="text-sm font-medium text-green-600">
                     {student.payment_amount} {student.payment_currency}
                   </div>
                 </div>
-                <CardTitle className="sales-heading-4">{student.name}</CardTitle>
-                <CardDescription className="sales-body">
+                <CardTitle className="text-lg">{student.name}</CardTitle>
+                <CardDescription>
                   ID: {student.unique_id} • Age: {student.age}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <span className="sales-label">Phone:</span>
-                    <div className="sales-body">{student.phone}</div>
+                    <span className="font-medium">Phone:</span>
+                    <div className="text-muted-foreground">{student.phone}</div>
                   </div>
                   <div>
-                    <span className="sales-label">Country:</span>
-                    <div className="sales-body">{student.country}</div>
+                    <span className="font-medium">Country:</span>
+                    <div className="text-muted-foreground">{student.country}</div>
                   </div>
                   <div>
-                    <span className="sales-label">Platform:</span>
-                    <div className="sales-body">{student.platform}</div>
+                    <span className="font-medium">Platform:</span>
+                    <div className="text-muted-foreground">{student.platform}</div>
                   </div>
                   <div>
-                    <span className="sales-label">Teacher:</span>
-                    <div className="sales-body">{student.teacher_name}</div>
+                    <span className="font-medium">Teacher:</span>
+                    <div className="text-muted-foreground">{student.teacher_name}</div>
                   </div>
                   {student.parent_name && (
                     <div className="col-span-2">
-                      <span className="sales-label">Parent:</span>
-                      <div className="sales-body">{student.parent_name}</div>
+                      <span className="font-medium">Parent:</span>
+                      <div className="text-muted-foreground">{student.parent_name}</div>
                     </div>
                   )}
                 </div>
@@ -309,13 +308,13 @@ const SalesStudents: React.FC = () => {
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-muted-foreground" />
-                    <span className="sales-label">
+                    <span className="text-sm font-medium">
                       {student.package_name || 'Standard Package'}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <BookOpen className="h-4 w-4 text-muted-foreground" />
-                    <span className="sales-body">
+                    <span className="text-sm">
                       {student.sessions_completed}/{student.package_session_count}
                     </span>
                   </div>
@@ -325,8 +324,8 @@ const SalesStudents: React.FC = () => {
                 {student.status === 'active' && (
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="sales-label">Progress</span>
-                      <span className="sales-body">{getProgressPercentage(student.sessions_completed, student.package_session_count)}%</span>
+                      <span>Progress</span>
+                      <span>{getProgressPercentage(student.sessions_completed, student.package_session_count)}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
@@ -340,13 +339,13 @@ const SalesStudents: React.FC = () => {
                 )}
 
                 {/* Contact Button */}
-                <Button
+                <button
                   onClick={() => handleWhatsAppContact(student)}
-                  className="sales-btn-primary w-full"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors"
                 >
-                  <Phone className="h-4 w-4 mr-2" />
+                  <Phone className="h-4 w-4" />
                   Contact via WhatsApp
-                </Button>
+                </button>
 
                 {/* Status-specific messages */}
                 {student.status === 'paid' && (

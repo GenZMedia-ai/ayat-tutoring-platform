@@ -1,57 +1,57 @@
-
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
   Home, 
   Calendar, 
-  Link, 
-  Phone, 
+  CreditCard, 
+  UserPlus, 
   Users,
-  BookOpen
+  ChevronRight,
+  BarChart3
 } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 const navigationItems = [
   {
     title: 'Home Page',
-    description: 'Dashboard overview',
     url: '/sales/homepage',
     icon: Home,
+    description: 'Dashboard overview & quick actions'
   },
   {
     title: 'Trial Appointments',
-    description: 'Manage trial sessions',
     url: '/sales/trials',
     icon: Calendar,
+    description: 'Manage trial sessions & follow-ups'
   },
   {
     title: 'Payment Links',
-    description: 'Create & manage payments',
     url: '/sales/payment-links',
-    icon: Link,
+    icon: CreditCard,
+    description: 'Create and track payment links'
   },
   {
     title: 'Follow-up',
-    description: 'Track pending follow-ups',
     url: '/sales/followup',
-    icon: Phone,
+    icon: UserPlus,
+    description: 'Schedule and complete follow-ups'
   },
   {
     title: 'Students',
-    description: 'View all student profiles',
     url: '/sales/students',
     icon: Users,
+    description: 'View and manage all students'
   }
 ];
 
@@ -61,63 +61,51 @@ export function SalesSidebar() {
   const currentPath = location.pathname;
 
   const isActive = (path: string) => currentPath === path;
+  const isExpanded = navigationItems.some((item) => isActive(item.url));
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     cn(
-      "flex flex-col items-start gap-1 px-4 py-3 rounded-lg text-left transition-colors w-full",
-      "hover:bg-stone-50/50",
+      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
       isActive 
-        ? "bg-stone-100 text-stone-800 border-l-4 border-stone-600" 
-        : "text-gray-700 hover:text-gray-900"
+        ? "bg-primary text-primary-foreground shadow-sm" 
+        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
     );
 
   return (
     <Sidebar
       className={cn(
-        "bg-white border-r border-gray-200",
+        "border-r border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
         !open ? "w-16" : "w-64"
       )}
-      style={{ width: open ? '256px' : '64px' }}
-      variant="sidebar"
+      variant="inset"
     >
-      <SidebarContent className="gap-0 bg-white">
-        {/* Header with Logo */}
+      <SidebarContent className="gap-0">
+        {/* Header */}
         <div className={cn(
-          "flex items-center gap-3 px-6 py-6 border-b border-gray-100",
-          !open && "justify-center px-4"
+          "flex items-center gap-2 px-4 py-4 border-b border-border/40",
+          !open && "justify-center px-2"
         )}>
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-stone-100 text-stone-800">
-            <BookOpen className="h-5 w-5" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <BarChart3 className="h-4 w-4" />
           </div>
           {open && (
             <div className="flex flex-col">
-              <span className="text-lg font-semibold text-gray-900">Ayat & Bayan</span>
+              <span className="text-sm font-semibold">Sales Dashboard</span>
+              <span className="text-xs text-muted-foreground">Agent Portal</span>
             </div>
           )}
         </div>
 
-        {/* Profile Section */}
-        {open && (
-          <div className="px-6 py-4 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src="" alt="User" />
-                <AvatarFallback className="bg-stone-100 text-stone-800 font-medium">
-                  SA
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-gray-900">Sales Dashboard</span>
-                <span className="text-xs text-gray-500">Agent Portal</span>
-              </div>
-            </div>
-          </div>
-        )}
+        <SidebarGroup className="px-4 py-4">
+          <SidebarGroupLabel className={cn(
+            "text-xs font-medium text-muted-foreground mb-2",
+            !open && "sr-only"
+          )}>
+            Navigation
+          </SidebarGroupLabel>
 
-        {/* Navigation Items */}
-        <SidebarGroup className="px-4 py-6">
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-3">
+            <SidebarMenu className="space-y-1">
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
@@ -127,15 +115,18 @@ export function SalesSidebar() {
                       className={({ isActive }) => getNavCls({ isActive })}
                       title={!open ? item.title : undefined}
                     >
-                      <div className="flex items-center gap-3 w-full">
-                        <item.icon className="h-5 w-5 flex-shrink-0" />
-                        {open && (
-                          <div className="flex flex-col items-start">
-                            <span className="text-sm font-medium">{item.title}</span>
-                            <span className="text-xs text-gray-500">{item.description}</span>
-                          </div>
-                        )}
-                      </div>
+                      <item.icon className="h-4 w-4 flex-shrink-0" />
+                      {open && (
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="font-medium truncate">{item.title}</span>
+                          <span className="text-xs text-muted-foreground/80 truncate">
+                            {item.description}
+                          </span>
+                        </div>
+                      )}
+                      {open && (
+                        <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -143,6 +134,16 @@ export function SalesSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Footer */}
+        {open && (
+          <div className="mt-auto p-4 border-t border-border/40">
+            <div className="text-xs text-muted-foreground">
+              <div className="font-medium">Sales Agent Portal</div>
+              <div>Manage trials, payments & follow-ups</div>
+            </div>
+          </div>
+        )}
       </SidebarContent>
     </Sidebar>
   );

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -210,7 +209,7 @@ const SalesFollowup: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="sales-body mt-2">Loading follow-up tasks...</p>
+          <p className="text-muted-foreground mt-2">Loading follow-up tasks...</p>
         </div>
       </div>
     );
@@ -221,20 +220,20 @@ const SalesFollowup: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h3 className="sales-heading-3">Follow-up Management</h3>
-          <p className="sales-body">
+          <h3 className="text-lg font-semibold">Follow-up Management</h3>
+          <p className="text-sm text-muted-foreground">
             Manage scheduled follow-ups and track outreach activities
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className="sales-badge" variant="outline">
+          <Badge variant="outline">
             {filteredTasks.filter(t => !t.completed).length} pending tasks
           </Badge>
-          <Button onClick={createSampleData} className="sales-btn-ghost" size="sm">
+          <Button onClick={createSampleData} variant="outline" size="sm">
             <Plus className="h-4 w-4 mr-2" />
             Add Sample Data
           </Button>
-          <Button onClick={loadFollowUpTasks} className="sales-btn-ghost" size="sm">
+          <Button onClick={loadFollowUpTasks} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -242,13 +241,13 @@ const SalesFollowup: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <Card className="sales-card">
+      <Card>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="sales-label">Date Filter</label>
+              <label className="text-sm font-medium">Date Filter</label>
               <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger className="sales-input">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -263,14 +262,14 @@ const SalesFollowup: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="sales-label">Search</label>
+              <label className="text-sm font-medium">Search</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Student name or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="sales-search"
+                  className="pl-10"
                 />
               </div>
             </div>
@@ -278,16 +277,16 @@ const SalesFollowup: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Follow-up Tasks List */}
+      {/* Follow-up Tasks List - NEW 2-Column Layout */}
       {filteredTasks.length === 0 ? (
-        <Card className="sales-card">
+        <Card>
           <CardContent className="pt-6">
-            <div className="sales-empty-state">
+            <div className="text-center py-8">
               <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="sales-heading-4 text-muted-foreground mb-2">
+              <h3 className="text-lg font-medium text-muted-foreground mb-2">
                 No follow-up tasks found
               </h3>
-              <p className="sales-body mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 {searchTerm 
                   ? 'Try adjusting your search criteria'
                   : dateFilter === 'alltime'
@@ -295,7 +294,7 @@ const SalesFollowup: React.FC = () => {
                     : 'No follow-up tasks found for the selected date range. Try "All Time" to see all data.'
                 }
               </p>
-              <Button onClick={createSampleData} className="sales-btn-ghost">
+              <Button onClick={createSampleData} variant="outline">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Sample Follow-up Tasks
               </Button>
@@ -305,37 +304,37 @@ const SalesFollowup: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredTasks.map((task) => (
-            <Card key={task.id} className={`sales-card ${task.completed ? 'bg-green-50 border-green-200' : ''}`}>
+            <Card key={task.id} className={`hover:shadow-md transition-shadow ${task.completed ? 'bg-green-50 border-green-200' : ''}`}>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Badge className={task.completed ? 'sales-badge-success' : 'sales-badge-warning'}>
+                    <Badge className={task.completed ? 'bg-green-100 text-green-800 border-green-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}>
                       {task.completed ? 'COMPLETED' : 'PENDING'}
                     </Badge>
-                    <Badge className="sales-badge" variant="outline">
+                    <Badge variant="outline" className="text-xs">
                       {task.reason.replace('_', ' ').toUpperCase()}
                     </Badge>
                   </div>
-                  <div className="sales-body">
+                  <div className="text-sm text-muted-foreground">
                     {format(new Date(task.scheduled_date), 'MMM dd')}
                   </div>
                 </div>
-                <CardTitle className="sales-heading-4">{task.student_name}</CardTitle>
-                <CardDescription className="sales-body">
+                <CardTitle className="text-lg">{task.student_name}</CardTitle>
+                <CardDescription>
                   Phone: {task.student_phone}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {task.notes && (
                   <div className="text-sm">
-                    <span className="sales-label">Notes:</span> 
-                    <p className="sales-body mt-1 line-clamp-2">{task.notes}</p>
+                    <span className="font-medium">Notes:</span> 
+                    <p className="text-muted-foreground mt-1 line-clamp-2">{task.notes}</p>
                   </div>
                 )}
 
                 {task.completed && task.completed_at && (
                   <div className="text-sm text-green-600">
-                    <span className="sales-label">Completed:</span> {format(new Date(task.completed_at), 'MMM dd, HH:mm')}
+                    <span className="font-medium">Completed:</span> {format(new Date(task.completed_at), 'MMM dd, HH:mm')}
                   </div>
                 )}
 
@@ -345,15 +344,16 @@ const SalesFollowup: React.FC = () => {
                       <Button
                         size="sm"
                         onClick={() => handleWhatsAppContact(task)}
-                        className="sales-btn-primary"
+                        className="bg-green-600 hover:bg-green-700 text-white text-xs"
                       >
                         <MessageCircle className="h-3 w-3 mr-1" />
                         WhatsApp
                       </Button>
                       <Button
                         size="sm"
+                        variant="outline"
                         onClick={() => handleMarkCompleted(task.id)}
-                        className="sales-btn-ghost"
+                        className="text-xs"
                       >
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Mark Completed

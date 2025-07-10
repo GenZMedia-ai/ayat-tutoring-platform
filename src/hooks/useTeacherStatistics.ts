@@ -11,6 +11,7 @@ interface TeacherStatistics {
   completedTrials: number;
   rescheduledTrials: number;
   ghostedTrials: number;
+  // Phase 1: New paid student statistics
   paidStudents: number;
   totalStudents: number;
   expiredStudents: number;
@@ -19,31 +20,20 @@ interface TeacherStatistics {
 
 const getDateRangeFilter = (dateRange: DateRange): { startDate: string; endDate: string } => {
   const now = new Date();
-  
-  // FIXED: Use Egypt timezone consistently and handle date boundaries properly
-  const egyptNow = new Date(now.toLocaleString("en-US", {timeZone: "Africa/Cairo"}));
-  const today = new Date(egyptNow.getFullYear(), egyptNow.getMonth(), egyptNow.getDate());
-  
-  console.log('🕒 FIXED: Date calculation using Egypt timezone:', {
-    originalNow: now.toISOString(),
-    egyptNow: egyptNow.toISOString(),
-    calculatedToday: today.toDateString()
-  });
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   
   switch (dateRange) {
     case 'today':
-      const todayStr = today.toISOString().split('T')[0];
       return {
-        startDate: todayStr,
-        endDate: todayStr
+        startDate: today.toISOString().split('T')[0],
+        endDate: today.toISOString().split('T')[0]
       };
     case 'yesterday':
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
       return {
-        startDate: yesterdayStr,
-        endDate: yesterdayStr
+        startDate: yesterday.toISOString().split('T')[0],
+        endDate: yesterday.toISOString().split('T')[0]
       };
     case 'last-7-days':
       const lastWeek = new Date(today);
@@ -53,14 +43,14 @@ const getDateRangeFilter = (dateRange: DateRange): { startDate: string; endDate:
         endDate: today.toISOString().split('T')[0]
       };
     case 'this-month':
-      const firstDayThisMonth = new Date(egyptNow.getFullYear(), egyptNow.getMonth(), 1);
+      const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       return {
         startDate: firstDayThisMonth.toISOString().split('T')[0],
         endDate: today.toISOString().split('T')[0]
       };
     case 'last-month':
-      const firstDayLastMonth = new Date(egyptNow.getFullYear(), egyptNow.getMonth() - 1, 1);
-      const lastDayLastMonth = new Date(egyptNow.getFullYear(), egyptNow.getMonth(), 0);
+      const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
       return {
         startDate: firstDayLastMonth.toISOString().split('T')[0],
         endDate: lastDayLastMonth.toISOString().split('T')[0]
@@ -95,84 +85,60 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
 
     setLoading(true);
     try {
-      console.log('📊 FIXED: Starting teacher statistics fetch with improved filtering:', { teacherId: user.id, dateRange });
+      console.log('📊 PHASE 1: Fetching teacher statistics with enhanced filter logic:', { teacherId: user.id, dateRange });
 
       const { startDate, endDate } = getDateRangeFilter(dateRange);
-      console.log('📅 FIXED: Using date range:', { startDate, endDate, dateRange });
+      console.log('📅 PHASE 1: Date range filter:', { startDate, endDate });
 
-      // FIXED: Get current capacity with broader status filter
+      // Current capacity (all active students)
       const { data: activeStudents, error: activeError } = await supabase
         .from('students')
         .select('id')
         .eq('assigned_teacher_id', user.id)
-        .in('status', ['active', 'paid']); // FIXED: Include both active and paid students
+        .eq('status', 'active');
 
       if (activeError) {
-        console.error('❌ Error fetching active students:', activeError);
+        console.error('❌ PHASE 1: Error fetching active students:', activeError);
         throw activeError;
       }
 
-      console.log('✅ FIXED: Active students found:', activeStudents?.length || 0);
+      console.log('✅ PHASE 1: Active students found:', activeStudents?.length || 0);
 
-      // FIXED: Use created_at for broader data coverage when trial_date filtering is too restrictive
-      let individualStudents = [];
-      let familyGroups = [];
-
-      // Try trial_date filtering first
-      const { data: trialDateStudents } = await supabase
+      // PHASE 1 FIX: Use trial_date for filtering (session date, not creation date)
+      const { data: individualStudents, error: individualsError } = await supabase
         .from('students')
-        .select('id, status, trial_date, created_at')
+        .select('id, status, trial_date')
         .eq('assigned_teacher_id', user.id)
         .is('family_group_id', null)
         .gte('trial_date', startDate)
         .lte('trial_date', endDate);
 
-      // FIXED: Fallback to created_at if trial_date returns no results
-      if (!trialDateStudents || trialDateStudents.length === 0) {
-        console.log('📝 FIXED: No trial_date results, trying created_at filter');
-        const { data: createdAtStudents } = await supabase
-          .from('students')
-          .select('id, status, trial_date, created_at')
-          .eq('assigned_teacher_id', user.id)
-          .is('family_group_id', null)
-          .gte('created_at', startDate + 'T00:00:00')
-          .lte('created_at', endDate + 'T23:59:59');
-        
-        individualStudents = createdAtStudents || [];
-      } else {
-        individualStudents = trialDateStudents;
+      if (individualsError) {
+        console.error('❌ PHASE 1: Error fetching individual students:', individualsError);
+        throw individualsError;
       }
 
-      console.log('✅ FIXED: Individual students in date range:', individualStudents?.length || 0);
+      console.log('✅ PHASE 1: Individual students in date range:', individualStudents?.length || 0);
 
-      // FIXED: Same fallback logic for family groups
-      const { data: trialDateFamilies } = await supabase
+      // PHASE 1 FIX: Use trial_date for family groups filtering
+      const { data: familyGroups, error: familyError } = await supabase
         .from('family_groups')
-        .select('id, status, trial_date, student_count, created_at')
+        .select('id, status, trial_date, student_count')
         .eq('assigned_teacher_id', user.id)
         .gte('trial_date', startDate)
         .lte('trial_date', endDate);
 
-      if (!trialDateFamilies || trialDateFamilies.length === 0) {
-        console.log('📝 FIXED: No family trial_date results, trying created_at filter');
-        const { data: createdAtFamilies } = await supabase
-          .from('family_groups')
-          .select('id, status, trial_date, student_count, created_at')
-          .eq('assigned_teacher_id', user.id)
-          .gte('created_at', startDate + 'T00:00:00')
-          .lte('created_at', endDate + 'T23:59:59');
-        
-        familyGroups = createdAtFamilies || [];
-      } else {
-        familyGroups = trialDateFamilies;
+      if (familyError) {
+        console.error('❌ PHASE 1: Error fetching family groups:', familyError);
+        throw familyError;
       }
 
-      console.log('✅ FIXED: Family groups in date range:', familyGroups?.length || 0);
+      console.log('✅ PHASE 1: Family groups in date range:', familyGroups?.length || 0);
 
-      // FIXED: Enhanced paid student statistics with broader status coverage
+      // Phase 1: Fetch paid student statistics with efficient parallel queries
       const [paidData, totalData, expiredData, completedData] = await Promise.all([
         supabase.from('students').select('id', { count: 'exact', head: true })
-          .eq('assigned_teacher_id', user.id).in('status', ['active', 'paid']), // FIXED: Include paid status
+          .eq('assigned_teacher_id', user.id).in('status', ['active', 'paid']),
         supabase.from('students').select('id', { count: 'exact', head: true })
           .eq('assigned_teacher_id', user.id),
         supabase.from('students').select('id', { count: 'exact', head: true })
@@ -181,26 +147,27 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
           .eq('assigned_teacher_id', user.id).eq('status', 'active')
       ]);
 
-      console.log('✅ FIXED: Enhanced paid student statistics:', {
+      console.log('✅ PHASE 1: Paid student statistics:', {
         paid: paidData.count || 0,
         total: totalData.count || 0,
         expired: expiredData.count || 0,
         completed: completedData.count || 0
       });
 
-      // FIXED: Enhanced status categorization with better handling
+      // Calculate statistics
       const individualsByStatus = {
-        pending: individualStudents?.filter(s => ['pending', 'awaiting-payment'].includes(s.status)).length || 0,
+        pending: individualStudents?.filter(s => s.status === 'pending').length || 0,
         confirmed: individualStudents?.filter(s => s.status === 'confirmed').length || 0,
-        completed: individualStudents?.filter(s => ['trial-completed', 'follow-up'].includes(s.status)).length || 0,
+        completed: individualStudents?.filter(s => s.status === 'trial-completed').length || 0,
         ghosted: individualStudents?.filter(s => s.status === 'trial-ghosted').length || 0,
         rescheduled: individualStudents?.filter(s => s.status === 'rescheduled').length || 0,
       };
 
+      // Family groups count as single units for statistics
       const familiesByStatus = {
-        pending: familyGroups?.filter(f => ['pending', 'awaiting-payment'].includes(f.status)).length || 0,
+        pending: familyGroups?.filter(f => f.status === 'pending').length || 0,
         confirmed: familyGroups?.filter(f => f.status === 'confirmed').length || 0,
-        completed: familyGroups?.filter(f => ['trial-completed', 'follow-up'].includes(f.status)).length || 0,
+        completed: familyGroups?.filter(f => f.status === 'trial-completed').length || 0,
         ghosted: familyGroups?.filter(f => f.status === 'trial-ghosted').length || 0,
         rescheduled: familyGroups?.filter(f => f.status === 'rescheduled').length || 0,
       };
@@ -212,37 +179,25 @@ export const useTeacherStatistics = (dateRange: DateRange = 'today') => {
         completedTrials: individualsByStatus.completed + familiesByStatus.completed,
         rescheduledTrials: individualsByStatus.rescheduled + familiesByStatus.rescheduled,
         ghostedTrials: individualsByStatus.ghosted + familiesByStatus.ghosted,
+        // Phase 1: Add new paid student statistics
         paidStudents: paidData.count || 0,
         totalStudents: totalData.count || 0,
         expiredStudents: expiredData.count || 0,
         completedRegistrations: completedData.count || 0,
       };
 
-      console.log('📊 FIXED: Final statistics with enhanced filtering and fallbacks:', {
+      console.log('📊 PHASE 1: Calculated statistics with enhanced filtering:', {
         dateRange,
+        filterUsed: 'trial_date',
         dateRangeApplied: { startDate, endDate },
         individualsByStatus,
         familiesByStatus,
-        finalStats: newStats,
-        hasAnyData: newStats.totalStudents > 0
+        finalStats: newStats
       });
 
       setStats(newStats);
     } catch (error) {
-      console.error('❌ FIXED: Error fetching teacher statistics:', error);
-      // FIXED: Set empty stats instead of leaving undefined
-      setStats({
-        currentCapacity: 0,
-        pendingTrials: 0,
-        confirmedTrials: 0,
-        completedTrials: 0,
-        rescheduledTrials: 0,
-        ghostedTrials: 0,
-        paidStudents: 0,
-        totalStudents: 0,
-        expiredStudents: 0,
-        completedRegistrations: 0,
-      });
+      console.error('❌ PHASE 1: Error fetching teacher statistics:', error);
     } finally {
       setLoading(false);
     }

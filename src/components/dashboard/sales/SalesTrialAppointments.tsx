@@ -129,87 +129,86 @@ const SalesTrialAppointments: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6 space-y-6">
-      {/* Header Section */}
+    <div className="space-y-6">
+      {/* Header and Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h1 className="sales-heading-1">Trial Appointments</h1>
-          <p className="sales-body mt-2">
-            Manage all trial sessions, payments, and follow-ups with real-time updates
+          <h3 className="text-lg font-semibold">Trial Appointments</h3>
+          <p className="text-sm text-muted-foreground">
+            Manage all trial sessions, payments, and follow-ups
           </p>
         </div>
-        <Button 
-          onClick={() => refetchData()} 
-          className="sales-btn-ghost"
-        >
+        <Button onClick={() => {
+          refetchData();
+        }} variant="outline" size="sm">
           <Search className="h-4 w-4 mr-2" />
-          Refresh Data
+          Refresh
         </Button>
       </div>
 
       {/* Search and Filter Controls */}
-      <div className="sales-card">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, ID, or phone number..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="sales-search"
-              />
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name, ID, or phone..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div className="sm:w-48">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label} ({option.value === 'all' ? filteredItems.length : getStatsCount(option.value)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div className="sm:w-64">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="sales-input">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-card border border-border rounded-lg shadow-md">
-                {statusOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div className="flex items-center justify-between w-full">
-                      <span>{option.label}</span>
-                      <span className="sales-badge ml-2">
-                        {option.value === 'all' ? filteredItems.length : getStatsCount(option.value)}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Real-Time Metrics Dashboard */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="sales-heading-2">Live Performance Metrics</h2>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="sales-label">Live Updates Active</span>
+          <h4 className="text-lg font-semibold">Real-Time Metrics</h4>
+          <div className="text-xs text-muted-foreground">
+            Live updates • Auto-refresh enabled
           </div>
         </div>
         <RealTimeMetrics />
       </div>
 
-      {/* Trial Appointments Grid */}
+      {/* All Trials List */}
       {filteredItems.length === 0 ? (
-        <div className="sales-empty-state">
-          <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="sales-heading-3 text-center mb-2">
-            No Trial Appointments Found
-          </h3>
-          <p className="sales-body text-center">
-            {searchTerm || statusFilter !== 'all' 
-              ? 'Try adjusting your search criteria or filters to find more appointments'
-              : 'New trial appointments will appear here once they are scheduled'
-            }
-          </p>
-        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                No trial appointments found
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {searchTerm || statusFilter !== 'all' 
+                  ? 'Try adjusting your search or filter criteria'
+                  : 'You haven\'t created any trial appointments yet'
+                }
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredItems.map((item) => (
@@ -239,7 +238,7 @@ const SalesTrialAppointments: React.FC = () => {
         </div>
       )}
 
-      {/* Modals with Updated Styling */}
+      {/* Modals */}
       {editingItem && editingItem.type === 'individual' && (
         <StudentEditModal
           student={editingItem.data as TrialSessionFlowStudent}

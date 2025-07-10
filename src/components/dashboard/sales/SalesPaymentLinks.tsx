@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -129,13 +128,13 @@ const SalesPaymentLinks: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid':
-        return 'sales-badge-success';
+        return 'bg-green-100 text-green-800 border-green-200';
       case 'clicked':
-        return 'sales-badge-info';
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'expired':
-        return 'sales-badge-danger';
+        return 'bg-red-100 text-red-800 border-red-200';
       default:
-        return 'sales-badge-warning';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     }
   };
 
@@ -186,7 +185,7 @@ const SalesPaymentLinks: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="sales-body mt-2">Loading payment links...</p>
+          <p className="text-muted-foreground mt-2">Loading payment links...</p>
         </div>
       </div>
     );
@@ -197,16 +196,16 @@ const SalesPaymentLinks: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h3 className="sales-heading-3">Payment Links</h3>
-          <p className="sales-body">
+          <h3 className="text-lg font-semibold">Payment Links</h3>
+          <p className="text-sm text-muted-foreground">
             Manage all created payment links and track their status
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className="sales-badge" variant="outline">
+          <Badge variant="outline">
             {filteredLinks.length} payment links
           </Badge>
-          <Button onClick={loadPaymentLinks} className="sales-btn-ghost" size="sm">
+          <Button onClick={loadPaymentLinks} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -215,56 +214,56 @@ const SalesPaymentLinks: React.FC = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="sales-stat-card">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="sales-stat-number text-yellow-600">
+              <div className="text-2xl font-bold text-yellow-600">
                 {filteredLinks.filter(l => l.status === 'pending').length}
               </div>
-              <div className="sales-stat-label">Pending</div>
+              <div className="text-sm text-muted-foreground">Pending</div>
             </div>
           </CardContent>
         </Card>
-        <Card className="sales-stat-card">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="sales-stat-number text-blue-600">
+              <div className="text-2xl font-bold text-blue-600">
                 {filteredLinks.filter(l => l.status === 'clicked').length}
               </div>
-              <div className="sales-stat-label">Clicked</div>
+              <div className="text-sm text-muted-foreground">Clicked</div>
             </div>
           </CardContent>
         </Card>
-        <Card className="sales-stat-card">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="sales-stat-number text-green-600">
+              <div className="text-2xl font-bold text-green-600">
                 {filteredLinks.filter(l => l.status === 'paid').length}
               </div>
-              <div className="sales-stat-label">Paid</div>
+              <div className="text-sm text-muted-foreground">Paid</div>
             </div>
           </CardContent>
         </Card>
-        <Card className="sales-stat-card">
+        <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="sales-stat-number text-primary">
+              <div className="text-2xl font-bold text-primary">
                 {filteredLinks.length}
               </div>
-              <div className="sales-stat-label">Total Links</div>
+              <div className="text-sm text-muted-foreground">Total Links</div>
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Filters */}
-      <Card className="sales-card">
+      <Card>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <label className="sales-label">Date Filter</label>
+              <label className="text-sm font-medium">Date Filter</label>
               <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger className="sales-input">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -279,9 +278,9 @@ const SalesPaymentLinks: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="sales-label">Status Filter</label>
+              <label className="text-sm font-medium">Status Filter</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="sales-input">
+                <SelectTrigger>
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>
@@ -296,14 +295,14 @@ const SalesPaymentLinks: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="sales-label">Search</label>
+              <label className="text-sm font-medium">Search</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Student name or ID..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="sales-search"
+                  className="pl-10"
                 />
               </div>
             </div>
@@ -311,16 +310,16 @@ const SalesPaymentLinks: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Payment Links List */}
+      {/* Payment Links List - NEW 2-Column Layout */}
       {filteredLinks.length === 0 ? (
-        <Card className="sales-card">
+        <Card>
           <CardContent className="pt-6">
-            <div className="sales-empty-state">
+            <div className="text-center py-8">
               <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="sales-heading-4 text-muted-foreground mb-2">
+              <h3 className="text-lg font-medium text-muted-foreground mb-2">
                 No payment links found
               </h3>
-              <p className="sales-body">
+              <p className="text-sm text-muted-foreground">
                 {searchTerm || statusFilter !== 'all' 
                   ? 'Try adjusting your search or filter criteria'
                   : 'You haven\'t created any payment links yet'
@@ -332,48 +331,48 @@ const SalesPaymentLinks: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredLinks.map((link) => (
-            <Card key={link.id} className="sales-card">
+            <Card key={link.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {getStatusIcon(link.status)}
-                    <Badge className={getStatusColor(link.status)}>
+                    <Badge className={getStatusColor(link.status)} variant="secondary">
                       {link.status.toUpperCase()}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge className="sales-badge" variant="outline">
+                    <Badge variant="outline" className="text-xs">
                       {link.payment_type === 'family' ? 'Family' : 'Individual'}
                     </Badge>
                     {link.stripe_checkout_url && (
-                      <Badge className="sales-badge-success">
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
                         URL Available
                       </Badge>
                     )}
                   </div>
                 </div>
-                <CardTitle className="sales-heading-4 line-clamp-1">
+                <CardTitle className="text-lg line-clamp-1">
                   {link.student_names?.join(', ') || 'Unknown Student'}
                 </CardTitle>
-                <CardDescription className="sales-body">
+                <CardDescription className="text-sm">
                   {link.package_session_count} sessions • Created {format(new Date(link.created_at), 'MMM dd')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <span className="sales-label">Expires:</span>
+                    <span className="text-muted-foreground">Expires:</span>
                     <div className="font-medium">{format(new Date(link.expires_at), 'MMM dd, HH:mm')}</div>
                   </div>
                   {link.clicked_at && (
                     <div>
-                      <span className="sales-label">Clicked:</span>
+                      <span className="text-muted-foreground">Clicked:</span>
                       <div className="font-medium">{format(new Date(link.clicked_at), 'MMM dd, HH:mm')}</div>
                     </div>
                   )}
                   {link.paid_at && (
                     <div className="col-span-2">
-                      <span className="sales-label">Paid:</span>
+                      <span className="text-muted-foreground">Paid:</span>
                       <div className="font-medium text-green-600">{format(new Date(link.paid_at), 'MMM dd, HH:mm')}</div>
                     </div>
                   )}
@@ -384,16 +383,18 @@ const SalesPaymentLinks: React.FC = () => {
                     <>
                       <Button
                         size="sm"
-                        className="sales-btn-ghost"
+                        variant="outline"
                         onClick={() => copyPaymentLink(link)}
+                        className="text-xs"
                       >
                         <Copy className="h-3 w-3 mr-1" />
                         Copy
                       </Button>
                       <Button
                         size="sm"
-                        className="sales-btn-ghost"
+                        variant="outline"
                         onClick={() => openPaymentLink(link)}
+                        className="text-xs"
                       >
                         <ExternalLink className="h-3 w-3 mr-1" />
                         Open

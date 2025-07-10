@@ -15,7 +15,7 @@ interface PaidStudentsSectionProps {
 }
 
 const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = 'today' }) => {
-  const { students, loading, refreshStudents } = useTeacherPaidStudents();
+  const { paidStudents, loading, refreshPaidStudents } = useTeacherPaidStudents();
   const { openWhatsApp, logContact } = useWhatsAppContact();
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
@@ -30,12 +30,12 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
 
   // Filter students based on date range
   const filteredStudents = React.useMemo(() => {
-    if (!dateRange || dateRange === 'all-time') return students;
+    if (!dateRange || dateRange === 'all-time') return paidStudents;
     
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    return students.filter(item => {
+    return paidStudents.filter(item => {
       // For family cards, we don't filter by date as they represent ongoing family groupings
       if (isFamilyCard(item)) return true;
       
@@ -71,7 +71,7 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
           return true;
       }
     });
-  }, [students, dateRange]);
+  }, [paidStudents, dateRange]);
 
   const handleContactStudent = async (phone: string, name: string, studentId?: string) => {
     try {
@@ -79,7 +79,7 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
       if (studentId) {
         await logContact(studentId, 'follow_up', true, 'WhatsApp contact for registration setup');
       }
-      await refreshStudents();
+      await refreshPaidStudents();
     } catch (error) {
       console.error('Error handling contact:', error);
     }
@@ -97,7 +97,7 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
   const handleRegistrationSuccess = () => {
     console.log('✅ Registration completed successfully');
     setSelectedStudent(null);
-    refreshStudents();
+    refreshPaidStudents();
   };
 
   const getDateRangeDisplayText = (range: DateRange) => {
@@ -150,9 +150,9 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
           </CardTitle>
           <CardDescription>
             Students and families who have completed payment and need their session schedules configured
-            {filteredStudents.length !== students.length && (
+            {filteredStudents.length !== paidStudents.length && (
               <span className="block mt-1 text-primary font-medium">
-                Showing {filteredStudents.length} of {students.length} items
+                Showing {filteredStudents.length} of {paidStudents.length} items
               </span>
             )}
           </CardDescription>
@@ -164,13 +164,13 @@ const PaidStudentsSection: React.FC<PaidStudentsSectionProps> = ({ dateRange = '
                 <GraduationCap className="h-8 w-8 text-slate-400 mx-auto" />
               </div>
               <p className="text-slate-600 dark:text-slate-400 text-lg font-medium mb-2">
-                {students.length === 0 
+                {paidStudents.length === 0 
                   ? "No students awaiting schedule setup" 
                   : `No students found for ${getDateRangeDisplayText(dateRange).toLowerCase()}`
                 }
               </p>
               <p className="text-sm text-slate-500">
-                {students.length === 0 
+                {paidStudents.length === 0 
                   ? "New paid students will appear here for session scheduling"
                   : "Try adjusting the date filter to see more students"
                 }
