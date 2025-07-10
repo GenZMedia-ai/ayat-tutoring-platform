@@ -770,13 +770,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_students_family_group"
-            columns: ["family_group_id"]
-            isOneToOne: false
-            referencedRelation: "family_groups"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "students_family_group_id_fkey"
             columns: ["family_group_id"]
             isOneToOne: false
