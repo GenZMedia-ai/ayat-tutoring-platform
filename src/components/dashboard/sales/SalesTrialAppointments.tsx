@@ -1,12 +1,13 @@
+
 import React, { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, Calendar } from 'lucide-react';
 import { useMixedStudentData, MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { useStudentFollowUp } from '@/hooks/useStudentFollowUp';
-import { ModernTrialCard } from './ModernTrialCard';
+import { StatusSpecificTrialCard } from './StatusSpecificTrialCard';
 import { RealTimeMetrics } from './RealTimeMetrics';
 import { StudentEditModal } from '@/components/sales/StudentEditModal';
 import { StatusChangeModal } from '@/components/sales/StatusChangeModal';
@@ -33,6 +34,7 @@ const SalesTrialAppointments: React.FC = () => {
     followUpData: any;
   } | null>(null);
 
+  // Filter items directly from useMixedStudentData (which already includes both individual and family items)
   const filteredItems = items.filter(item => {
     const data = item.data;
     const name = item.type === 'family' 
@@ -127,18 +129,18 @@ const SalesTrialAppointments: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 space-y-6">
+    <div className="min-h-screen bg-background p-6 space-y-6">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Trial Appointments</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="sales-heading-1">Trial Appointments</h1>
+          <p className="sales-body mt-2">
             Manage all trial sessions, payments, and follow-ups with real-time updates
           </p>
         </div>
         <Button 
           onClick={() => refetchData()} 
-          className="bg-stone-700 hover:bg-stone-800 text-white"
+          className="sales-btn-ghost"
         >
           <Search className="h-4 w-4 mr-2" />
           Refresh Data
@@ -146,51 +148,49 @@ const SalesTrialAppointments: React.FC = () => {
       </div>
 
       {/* Search and Filter Controls */}
-      <Card className="bg-white border border-gray-200">
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search by name, ID, or phone number..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 border-gray-300 focus:border-stone-500 focus:ring-stone-500"
-                />
-              </div>
-            </div>
-            <div className="sm:w-64">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="border-gray-300 focus:border-stone-500 focus:ring-stone-500">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg">
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div className="flex items-center justify-between w-full">
-                        <span>{option.label}</span>
-                        <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                          {option.value === 'all' ? filteredItems.length : getStatsCount(option.value)}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      <div className="sales-card">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, ID, or phone number..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="sales-search"
+              />
             </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="sm:w-64">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="sales-input">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-card border border-border rounded-lg shadow-md">
+                {statusOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <div className="flex items-center justify-between w-full">
+                      <span>{option.label}</span>
+                      <span className="sales-badge ml-2">
+                        {option.value === 'all' ? filteredItems.length : getStatsCount(option.value)}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
 
       {/* Real-Time Metrics Dashboard */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">Live Performance Metrics</h2>
+          <h2 className="sales-heading-2">Live Performance Metrics</h2>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-sm text-gray-600">Live Updates Active</span>
+            <span className="sales-label">Live Updates Active</span>
           </div>
         </div>
         <RealTimeMetrics />
@@ -198,26 +198,22 @@ const SalesTrialAppointments: React.FC = () => {
 
       {/* Trial Appointments Grid */}
       {filteredItems.length === 0 ? (
-        <Card className="bg-white border border-gray-200">
-          <CardContent className="p-12">
-            <div className="text-center">
-              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No Trial Appointments Found
-              </h3>
-              <p className="text-gray-600">
-                {searchTerm || statusFilter !== 'all' 
-                  ? 'Try adjusting your search criteria or filters to find more appointments'
-                  : 'New trial appointments will appear here once they are scheduled'
-                }
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="sales-empty-state">
+          <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="sales-heading-3 text-center mb-2">
+            No Trial Appointments Found
+          </h3>
+          <p className="sales-body text-center">
+            {searchTerm || statusFilter !== 'all' 
+              ? 'Try adjusting your search criteria or filters to find more appointments'
+              : 'New trial appointments will appear here once they are scheduled'
+            }
+          </p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredItems.map((item) => (
-            <ModernTrialCard
+            <StatusSpecificTrialCard
               key={`${item.type}-${item.id}`}
               item={item}
               onEditInfo={setEditingItem}
