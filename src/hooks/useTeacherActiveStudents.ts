@@ -12,6 +12,7 @@ export interface StudentProgress {
   packageSessionCount: number;
   totalSessions: number;
   completedSessions: number;
+  sessionsRemaining: number;
   nextSessionDate?: string;
   nextSessionTime?: string;
   status: string;
@@ -129,6 +130,9 @@ export const useTeacherActiveStudents = () => {
             isTrialSession: s.session_number === 1
           })) || [];
 
+          // Calculate sessions remaining
+          const sessionsRemaining = Math.max(0, (student.package_session_count || 8) - completedSessions);
+
           const studentProgress: StudentProgress = {
             studentId: student.id,
             studentName: student.name,
@@ -138,6 +142,7 @@ export const useTeacherActiveStudents = () => {
             packageSessionCount: student.package_session_count || 8,
             totalSessions,
             completedSessions,
+            sessionsRemaining,
             nextSessionDate: nextSession?.scheduled_date,
             nextSessionTime: nextSession?.scheduled_time,
             status: student.status,
@@ -208,6 +213,7 @@ export const useTeacherActiveStudents = () => {
             packageSessionCount: student.package_session_count || 8,
             totalSessions: 0,
             completedSessions: 0,
+            sessionsRemaining: student.package_session_count || 8,
             status: student.status,
             paymentAmount: student.payment_amount,
             paymentCurrency: student.payment_currency,
