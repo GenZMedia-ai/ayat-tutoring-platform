@@ -207,7 +207,7 @@ const SalesStudents: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="text-center">
@@ -235,16 +235,6 @@ const SalesStudents: React.FC = () => {
                 {paidStudents.filter(s => s.status === 'expired').length}
               </div>
               <div className="text-sm text-muted-foreground">Expired (Renewal)</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
-                ${paidStudents.reduce((sum, s) => sum + (s.payment_amount || 0), 0)}
-              </div>
-              <div className="text-sm text-muted-foreground">Total Revenue</div>
             </div>
           </CardContent>
         </Card>
