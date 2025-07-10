@@ -14,37 +14,42 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 const navigationItems = [
   {
     title: 'Home Page',
+    description: 'Dashboard overview',
     url: '/sales/homepage',
     icon: Grid3X3,
   },
   {
     title: 'Trial Appointments',
+    description: 'Manage trial sessions',
     url: '/sales/trials',
     icon: Calendar,
   },
   {
     title: 'Payment Links',
+    description: 'Create & manage payments',
     url: '/sales/payment-links',
     icon: CreditCard,
   },
   {
     title: 'Follow-up',
+    description: 'Track pending follow-ups',
     url: '/sales/followup',
     icon: Phone,
   },
   {
     title: 'Students',
+    description: 'View all student profiles',
     url: '/sales/students',
     icon: Users,
   }
@@ -59,10 +64,10 @@ export function SalesSidebar() {
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     cn(
-      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-      "hover:bg-muted/50",
+      "flex flex-col items-start gap-1 px-4 py-3 rounded-lg text-left transition-colors w-full",
+      "hover:bg-amber-50/50",
       isActive 
-        ? "bg-amber-50 text-amber-800 border border-amber-200" 
+        ? "bg-amber-50 text-amber-800 border-l-4 border-amber-600" 
         : "text-gray-700 hover:text-gray-900"
     );
 
@@ -76,7 +81,7 @@ export function SalesSidebar() {
       variant="sidebar"
     >
       <SidebarContent className="gap-0 bg-white">
-        {/* Header */}
+        {/* Header with Logo */}
         <div className={cn(
           "flex items-center gap-3 px-6 py-6 border-b border-gray-100",
           !open && "justify-center px-4"
@@ -87,21 +92,32 @@ export function SalesSidebar() {
           {open && (
             <div className="flex flex-col">
               <span className="text-lg font-semibold text-gray-900">Ayat & Bayan</span>
-              <span className="text-sm text-gray-500">Sales Portal</span>
             </div>
           )}
         </div>
 
-        <SidebarGroup className="px-4 py-6">
-          <SidebarGroupLabel className={cn(
-            "text-xs font-medium text-gray-500 uppercase tracking-wider mb-3 px-0",
-            !open && "sr-only"
-          )}>
-            Navigation
-          </SidebarGroupLabel>
+        {/* Profile Section */}
+        {open && (
+          <div className="px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src="" alt="User" />
+                <AvatarFallback className="bg-amber-100 text-amber-800 font-medium">
+                  SA
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-gray-900">Sales Dashboard</span>
+                <span className="text-xs text-gray-500">Agent Portal</span>
+              </div>
+            </div>
+          </div>
+        )}
 
+        {/* Navigation Items */}
+        <SidebarGroup className="px-4 py-6">
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
+            <SidebarMenu className="space-y-2">
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
@@ -111,10 +127,15 @@ export function SalesSidebar() {
                       className={({ isActive }) => getNavCls({ isActive })}
                       title={!open ? item.title : undefined}
                     >
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {open && (
-                        <span className="font-medium">{item.title}</span>
-                      )}
+                      <div className="flex items-center gap-3 w-full">
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        {open && (
+                          <div className="flex flex-col items-start">
+                            <span className="text-sm font-medium">{item.title}</span>
+                            <span className="text-xs text-gray-500">{item.description}</span>
+                          </div>
+                        )}
+                      </div>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
