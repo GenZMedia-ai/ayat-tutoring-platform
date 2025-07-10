@@ -2,12 +2,12 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
-  Home, 
+  Grid3X3, 
   Calendar, 
   CreditCard, 
-  UserPlus, 
+  Phone, 
   Users,
-  BarChart3
+  BookOpen
 } from 'lucide-react';
 import {
   Sidebar,
@@ -26,32 +26,27 @@ const navigationItems = [
   {
     title: 'Home Page',
     url: '/sales/homepage',
-    icon: Home,
-    description: 'Dashboard overview & quick actions'
+    icon: Grid3X3,
   },
   {
     title: 'Trial Appointments',
     url: '/sales/trials',
     icon: Calendar,
-    description: 'Manage trial sessions & follow-ups'
   },
   {
     title: 'Payment Links',
     url: '/sales/payment-links',
     icon: CreditCard,
-    description: 'Create and track payment links'
   },
   {
     title: 'Follow-up',
     url: '/sales/followup',
-    icon: UserPlus,
-    description: 'Schedule and complete follow-ups'
+    icon: Phone,
   },
   {
     title: 'Students',
     url: '/sales/students',
     icon: Users,
-    description: 'View and manage all students'
   }
 ];
 
@@ -64,39 +59,42 @@ export function SalesSidebar() {
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     cn(
-      "sales-nav-item group",
-      isActive && "sales-nav-item-active"
+      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+      "hover:bg-muted/50",
+      isActive 
+        ? "bg-amber-50 text-amber-800 border border-amber-200" 
+        : "text-gray-700 hover:text-gray-900"
     );
 
   return (
     <Sidebar
       className={cn(
-        "bg-sidebar border-r border-sidebar-border",
-        !open ? "w-16" : "w-70"
+        "bg-white border-r border-gray-200",
+        !open ? "w-16" : "w-64"
       )}
-      style={{ width: open ? '280px' : '64px' }}
-      variant="inset"
+      style={{ width: open ? '256px' : '64px' }}
+      variant="sidebar"
     >
-      <SidebarContent className="gap-0 bg-sidebar">
+      <SidebarContent className="gap-0 bg-white">
         {/* Header */}
         <div className={cn(
-          "flex items-center gap-3 px-5 py-6 border-b border-sidebar-border",
-          !open && "justify-center px-2"
+          "flex items-center gap-3 px-6 py-6 border-b border-gray-100",
+          !open && "justify-center px-4"
         )}>
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <BarChart3 className="h-5 w-5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
+            <BookOpen className="h-5 w-5" />
           </div>
           {open && (
             <div className="flex flex-col">
-              <span className="text-base font-semibold text-sidebar-foreground">Sales Dashboard</span>
-              <span className="text-xs text-muted-foreground">Agent Portal</span>
+              <span className="text-lg font-semibold text-gray-900">Ayat & Bayan</span>
+              <span className="text-sm text-gray-500">Sales Portal</span>
             </div>
           )}
         </div>
 
-        <SidebarGroup className="px-0 py-4">
+        <SidebarGroup className="px-4 py-6">
           <SidebarGroupLabel className={cn(
-            "sales-label px-5 mb-2",
+            "text-xs font-medium text-gray-500 uppercase tracking-wider mb-3 px-0",
             !open && "sr-only"
           )}>
             Navigation
@@ -115,12 +113,7 @@ export function SalesSidebar() {
                     >
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {open && (
-                        <div className="flex flex-col min-w-0 flex-1 ml-3">
-                          <span className="font-medium text-sm">{item.title}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {item.description}
-                          </span>
-                        </div>
+                        <span className="font-medium">{item.title}</span>
                       )}
                     </NavLink>
                   </SidebarMenuButton>
@@ -129,16 +122,6 @@ export function SalesSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {/* Footer */}
-        {open && (
-          <div className="mt-auto p-5 border-t border-sidebar-border">
-            <div className="text-xs text-muted-foreground space-y-1">
-              <div className="font-medium text-sidebar-foreground">Sales Agent Portal</div>
-              <div>Manage trials, payments & follow-ups</div>
-            </div>
-          </div>
-        )}
       </SidebarContent>
     </Sidebar>
   );
