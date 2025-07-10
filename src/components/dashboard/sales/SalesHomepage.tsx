@@ -5,7 +5,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 import { toast } from 'sonner';
 import { useSimpleSalesAvailability, SimpleBookingData } from '@/hooks/useSimpleSalesAvailability';
@@ -13,7 +12,7 @@ import { TEACHER_TYPES } from '@/constants/teacherTypes';
 import { HOURLY_TIME_SLOTS, TIMEZONES } from '@/constants/timeSlots';
 import { BookingModal } from '@/components/booking/BookingModal';
 import { supabase } from '@/integrations/supabase/client';
-import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 
 const SalesHomepage: React.FC = () => {
@@ -199,211 +198,205 @@ const SalesHomepage: React.FC = () => {
   const groupedSlotsList = Object.values(groupedSlots);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6 bg-background min-h-screen">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-primary">Sales Command Center</h2>
-        <Badge variant="outline" className="text-xs">
+        <div>
+          <h1 className="sales-heading-1">Sales Command Center</h1>
+          <p className="sales-body">Manage trials, follow-ups, and conversions</p>
+        </div>
+        <Badge variant="outline" className="sales-badge sales-badge-info">
           Sales Agent Dashboard
         </Badge>
       </div>
 
       {/* Date Filter */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Filter by Date</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: 'today', label: 'Today' },
-                { value: 'yesterday', label: 'Yesterday' },
-                { value: 'last7days', label: 'Last 7 Days' },
-                { value: 'thismonth', label: 'This Month' },
-                { value: 'lastmonth', label: 'Last Month' },
-                { value: 'alltime', label: 'All Time' },
-                { value: 'custom', label: 'Custom Range' }
-              ].map((option) => (
-                <Button
-                  key={option.value}
-                  variant={dateFilter === option.value ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setDateFilter(option.value)}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-            
-            {dateFilter === 'custom' && (
-              <div className="mt-4">
-                <DatePickerWithRange
-                  dateRange={customDateRange}
-                  setDateRange={setCustomDateRange}
-                />
-              </div>
-            )}
+      <div className="sales-card">
+        <div className="mb-4">
+          <h3 className="sales-heading-4 mb-3">Filter by Date</h3>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { value: 'today', label: 'Today' },
+              { value: 'yesterday', label: 'Yesterday' },
+              { value: 'last7days', label: 'Last 7 Days' },
+              { value: 'thismonth', label: 'This Month' },
+              { value: 'lastmonth', label: 'Last Month' },
+              { value: 'alltime', label: 'All Time' },
+              { value: 'custom', label: 'Custom Range' }
+            ].map((option) => (
+              <Button
+                key={option.value}
+                variant={dateFilter === option.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setDateFilter(option.value)}
+                className={dateFilter === option.value ? "sales-btn-primary" : "sales-btn-ghost"}
+              >
+                {option.label}
+              </Button>
+            ))}
           </div>
-        </CardContent>
-      </Card>
+          
+          {dateFilter === 'custom' && (
+            <div className="mt-4">
+              <DatePickerWithRange
+                dateRange={customDateRange}
+                setDateRange={setCustomDateRange}
+              />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="dashboard-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Booked Trials</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">{salesStats.bookedTrials.total}</div>
-            <div className="text-xs text-muted-foreground space-y-1">
-              <div>Individual: {salesStats.bookedTrials.individual}</div>
-              <div>Family: {salesStats.bookedTrials.family}</div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="sales-stat-card">
+          <div className="absolute top-4 right-4 w-2 h-2 bg-primary rounded-full"></div>
+          <div className="sales-stat-number">{salesStats.bookedTrials.total}</div>
+          <div className="sales-stat-label">Booked Trials</div>
+          <div className="text-xs text-muted-foreground space-y-1 mt-2">
+            <div>Individual: {salesStats.bookedTrials.individual}</div>
+            <div>Family: {salesStats.bookedTrials.family}</div>
+          </div>
+        </div>
 
-        <Card className="dashboard-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Completed Trials</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{salesStats.completedTrials}</div>
-            <p className="text-xs text-muted-foreground">Ready for conversion</p>
-          </CardContent>
-        </Card>
+        <div className="sales-stat-card">
+          <div className="absolute top-4 right-4 w-2 h-2 rounded-full" style={{backgroundColor: 'hsl(var(--status-success-text))'}}></div>
+          <div className="sales-stat-number" style={{color: 'hsl(var(--status-success-text))'}}>{salesStats.completedTrials}</div>
+          <div className="sales-stat-label">Completed Trials</div>
+          <p className="text-xs text-muted-foreground mt-2">Ready for conversion</p>
+        </div>
 
-        <Card className="dashboard-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Pending Follow-up</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{salesStats.pendingFollowup}</div>
-            <p className="text-xs text-muted-foreground">Need attention</p>
-          </CardContent>
-        </Card>
+        <div className="sales-stat-card">
+          <div className="absolute top-4 right-4 w-2 h-2 rounded-full" style={{backgroundColor: 'hsl(var(--status-warning-text))'}}></div>
+          <div className="sales-stat-number" style={{color: 'hsl(var(--status-warning-text))'}}>{salesStats.pendingFollowup}</div>
+          <div className="sales-stat-label">Pending Follow-up</div>
+          <p className="text-xs text-muted-foreground mt-2">Need attention</p>
+        </div>
 
-        <Card className="dashboard-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Conversions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{salesStats.conversions.count}</div>
-            <p className="text-xs text-muted-foreground">{salesStats.conversions.percentage}% conversion rate</p>
-          </CardContent>
-        </Card>
+        <div className="sales-stat-card">
+          <div className="absolute top-4 right-4 w-2 h-2 rounded-full" style={{backgroundColor: 'hsl(var(--status-pending-text))'}}></div>
+          <div className="sales-stat-number" style={{color: 'hsl(var(--status-pending-text))'}}>{salesStats.conversions.count}</div>
+          <div className="sales-stat-label">Conversions</div>
+          <p className="text-xs text-muted-foreground mt-2">{salesStats.conversions.percentage}% conversion rate</p>
+        </div>
       </div>
 
       {/* Quick Availability Checker */}
-      <Card className="dashboard-card">
-        <CardHeader>
-          <CardTitle>Quick Availability Checker</CardTitle>
-          <CardDescription>
+      <div className="sales-card">
+        <div className="mb-6">
+          <h3 className="sales-heading-3">Quick Availability Checker</h3>
+          <p className="sales-body">
             Search and book available trial session slots for both individual and family bookings
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Teacher Type</Label>
-                  <Select value={teacherType} onValueChange={setTeacherType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TEACHER_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Client Timezone</Label>
-                  <Select value={timezone} onValueChange={setTimezone}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIMEZONES.map((tz) => (
-                        <SelectItem key={tz.value} value={tz.value}>
-                          {tz.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
+          </p>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Preferred Time (Hour)</Label>
-                <Select value={selectedHour.toString()} onValueChange={(value) => setSelectedHour(parseFloat(value))}>
-                  <SelectTrigger>
+                <Label className="sales-label">Teacher Type</Label>
+                <Select value={teacherType} onValueChange={setTeacherType}>
+                  <SelectTrigger className="sales-input">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    {HOURLY_TIME_SLOTS.map((timeSlot) => (
-                      <SelectItem key={timeSlot.value} value={timeSlot.value.toString()}>
-                        {timeSlot.label}
+                  <SelectContent className="bg-card border border-border rounded-lg shadow-lg">
+                    {TEACHER_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value} className="hover:bg-muted">
+                        {type.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label className="sales-label">Client Timezone</Label>
+                <Select value={timezone} onValueChange={setTimezone}>
+                  <SelectTrigger className="sales-input">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border border-border rounded-lg shadow-lg">
+                    {TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value} className="hover:bg-muted">
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="sales-label">Preferred Time (Hour)</Label>
+              <Select value={selectedHour.toString()} onValueChange={(value) => setSelectedHour(parseFloat(value))}>
+                <SelectTrigger className="sales-input">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card border border-border rounded-lg shadow-lg">
+                  {HOURLY_TIME_SLOTS.map((timeSlot) => (
+                    <SelectItem key={timeSlot.value} value={timeSlot.value.toString()} className="hover:bg-muted">
+                      {timeSlot.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
+            <div className="sales-calendar">
               <Calendar
                 mode="single"
                 selected={selectedDate}
                 onSelect={setSelectedDate}
-                className="rounded-md border"
+                className="pointer-events-auto"
                 disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
               />
-
-              <Button 
-                onClick={handleSearchAvailability}
-                className="w-full ayat-button-primary"
-                disabled={loading}
-              >
-                {loading ? 'Searching...' : 'Search Available Slots'}
-              </Button>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">
-                  Available 30-Minute Slots for {selectedDate?.toDateString()}
-                </h4>
-                <div className="text-xs text-muted-foreground">
-                  Date: {selectedDate?.toISOString().split('T')[0]}
-                </div>
+            <Button 
+              onClick={handleSearchAvailability}
+              className="w-full sales-btn-primary"
+              disabled={loading}
+            >
+              {loading ? 'Searching...' : 'Search Available Slots'}
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="sales-heading-4">
+                Available 30-Minute Slots for {selectedDate?.toDateString()}
+              </h4>
+              <div className="text-xs text-muted-foreground">
+                Date: {selectedDate?.toISOString().split('T')[0]}
               </div>
-              
-              {loading && (
-                <div className="text-center py-8 text-muted-foreground">
-                  Searching for slots on {selectedDate?.toISOString().split('T')[0]}...
-                </div>
-              )}
-              
-              {!loading && groupedSlotsList.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground space-y-2">
-                  <p>No available slots found for {selectedDate?.toDateString()}.</p>
-                  <p className="text-sm">Try selecting a different date or time.</p>
-                </div>
-              )}
-              
-              <div className="space-y-2">
-                {groupedSlotsList.map((group, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
+            </div>
+            
+            {loading && (
+              <div className="text-center py-8 text-muted-foreground">
+                Searching for slots on {selectedDate?.toISOString().split('T')[0]}...
+              </div>
+            )}
+            
+            {!loading && groupedSlotsList.length === 0 && (
+              <div className="sales-empty-state">
+                <p className="sales-heading-4 text-muted-foreground mb-2">No available slots found for {selectedDate?.toDateString()}.</p>
+                <p className="sales-body">Try selecting a different date or time.</p>
+              </div>
+            )}
+            
+            <div className="space-y-3">
+              {groupedSlotsList.map((group, index) => (
+                <div key={index} className="sales-card p-4">
+                  <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                      <div className="font-medium text-primary">
+                      <div className="sales-heading-4 text-primary">
                         {group.clientTimeDisplay}
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="sales-body">
                         {group.egyptTimeDisplay}
                       </div>
-                      <div className="text-xs text-green-600">
+                      <div className="text-xs" style={{color: 'hsl(var(--status-success-text))'}}>
                         {group.count} teacher{group.count > 1 ? 's' : ''} available
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -412,18 +405,18 @@ const SalesHomepage: React.FC = () => {
                     </div>
                     <Button 
                       size="sm"
-                      className="ayat-button-primary"
+                      className="sales-btn-primary"
                       onClick={() => handleBookNow(group.teachers[0])}
                     >
                       Book Now
                     </Button>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <BookingModal
         isOpen={isBookingModalOpen}
