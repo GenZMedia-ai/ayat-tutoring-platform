@@ -1,4 +1,5 @@
 
+
 import { Student } from '@/types';
 
 export interface TrialOutcome {
@@ -63,3 +64,4 @@ export interface TrialSessionFlowStudent extends Student {
   trialOutcome?: TrialOutcome;
   paymentLink?: PaymentLink;
 }
+

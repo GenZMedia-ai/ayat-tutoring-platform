@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,13 @@ import {
   ExternalLink,
   Video,
   Eye,
-  Copy
+  Copy,
+  GraduationCap,
+  FileText,
+  Star,
+  Target,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import { TrialSessionFlowStudent } from '@/types/trial';
 import { useSalesPermissions } from '@/hooks/useSalesPermissions';
@@ -68,6 +73,84 @@ export const StudentTrialCard: React.FC<StudentTrialCardProps> = ({
     } catch {
       return 'Invalid date';
     }
+  };
+
+  const renderTrialOutcomeSection = () => {
+    if (!student.trialOutcome) return null;
+
+    const outcomeConfig = {
+      'completed': { 
+        bg: 'bg-green-50 border-green-200', 
+        icon: CheckCircle2, 
+        iconColor: 'text-green-600',
+        title: 'Trial Completed Successfully'
+      },
+      'ghosted': { 
+        bg: 'bg-red-50 border-red-200', 
+        icon: AlertTriangle, 
+        iconColor: 'text-red-600',
+        title: 'Trial Session Missed'
+      },
+      'rescheduled': { 
+        bg: 'bg-amber-50 border-amber-200', 
+        icon: Clock, 
+        iconColor: 'text-amber-600',
+        title: 'Trial Rescheduled'
+      }
+    };
+
+    const config = outcomeConfig[student.trialOutcome.outcome as keyof typeof outcomeConfig] || outcomeConfig.completed;
+    const IconComponent = config.icon;
+
+    return (
+      <div className={`p-3 rounded-lg border ${config.bg} space-y-2`}>
+        <div className="flex items-center gap-2 mb-2">
+          <IconComponent className={`h-4 w-4 ${config.iconColor}`} />
+          <span className="text-sm font-semibold text-gray-800">{config.title}</span>
+          {student.trialOutcome.submittedAt && (
+            <span className="text-xs text-gray-500">
+              {format(new Date(student.trialOutcome.submittedAt), 'MMM dd, HH:mm')}
+            </span>
+          )}
+        </div>
+        
+        {student.trialOutcome.teacherNotes && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1">
+              <GraduationCap className="h-3 w-3 text-gray-600" />
+              <span className="text-xs font-medium text-gray-700">Teacher Notes</span>
+            </div>
+            <p className="text-sm text-gray-800 bg-white/50 p-2 rounded border">
+              {student.trialOutcome.teacherNotes}
+            </p>
+          </div>
+        )}
+        
+        {student.trialOutcome.studentBehavior && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1">
+              <Star className="h-3 w-3 text-gray-600" />
+              <span className="text-xs font-medium text-gray-700">Student Behavior</span>
+            </div>
+            <p className="text-sm text-gray-800 bg-white/50 p-2 rounded border">
+              {student.trialOutcome.studentBehavior}
+            </p>
+          </div>
+        )}
+        
+        {student.trialOutcome.recommendedPackage && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1">
+              <Target className="h-3 w-3 text-gray-600" />
+              <span className="text-xs font-medium text-gray-700">Recommended Package</span>
+            </div>
+            <p className="text-sm text-gray-800 bg-white/50 p-2 rounded border">
+              {student.trialOutcome.recommendedPackage}
+            </p>
+          </div>
+        )}
+      </div>
+    );
   };
 
   // CRITICAL FIX: Smart payment link button logic with stored URL support
@@ -189,14 +272,19 @@ export const StudentTrialCard: React.FC<StudentTrialCardProps> = ({
           </div>
         </div>
 
-        {/* Notes */}
+        {/* Booking Notes */}
         {student.notes && (
           <div className="p-3 bg-muted rounded-lg">
-            <p className="text-sm">
-              <strong>Notes:</strong> {student.notes}
-            </p>
+            <div className="flex items-center gap-2 mb-1">
+              <FileText className="h-4 w-4 text-primary/70" />
+              <span className="text-sm font-medium">Booking Notes</span>
+            </div>
+            <p className="text-sm text-gray-700">{student.notes}</p>
           </div>
         )}
+
+        {/* Trial Outcome Section */}
+        {renderTrialOutcomeSection()}
 
         {/* Last Contact Info */}
         {student.lastWhatsAppContact && (

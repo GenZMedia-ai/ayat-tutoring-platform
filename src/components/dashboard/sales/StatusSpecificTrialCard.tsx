@@ -14,7 +14,12 @@ import {
   Repeat,
   FileX,
   AlertTriangle,
-  UserX
+  UserX,
+  GraduationCap,
+  FileText,
+  Star,
+  Target,
+  CheckCircle2
 } from 'lucide-react';
 import { MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { FamilyGroup } from '@/types/family';
@@ -65,6 +70,7 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
   const getStudentCount = () => isFamily ? (data as FamilyGroup).student_count : 1;
   const getAge = () => !isFamily ? (data as TrialSessionFlowStudent).age : null;
   const getParentName = () => !isFamily ? (data as TrialSessionFlowStudent).parentName : null;
+  const getTrialOutcome = () => !isFamily ? (data as TrialSessionFlowStudent).trialOutcome : null;
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; label: string }> = {
@@ -97,6 +103,85 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
     } catch {
       return 'Invalid date';
     }
+  };
+
+  const renderTrialOutcomeSection = () => {
+    const trialOutcome = getTrialOutcome();
+    if (!trialOutcome) return null;
+
+    const outcomeConfig = {
+      'completed': { 
+        bg: 'bg-green-50 border-green-200', 
+        icon: CheckCircle2, 
+        iconColor: 'text-green-600',
+        title: 'Trial Completed Successfully'
+      },
+      'ghosted': { 
+        bg: 'bg-red-50 border-red-200', 
+        icon: AlertTriangle, 
+        iconColor: 'text-red-600',
+        title: 'Trial Session Missed'
+      },
+      'rescheduled': { 
+        bg: 'bg-amber-50 border-amber-200', 
+        icon: Clock, 
+        iconColor: 'text-amber-600',
+        title: 'Trial Rescheduled'
+      }
+    };
+
+    const config = outcomeConfig[trialOutcome.outcome as keyof typeof outcomeConfig] || outcomeConfig.completed;
+    const IconComponent = config.icon;
+
+    return (
+      <div className={`p-3 rounded-lg border ${config.bg} space-y-2`}>
+        <div className="flex items-center gap-2 mb-2">
+          <IconComponent className={`h-4 w-4 ${config.iconColor}`} />
+          <span className="text-sm font-semibold text-gray-800">{config.title}</span>
+          {trialOutcome.submittedAt && (
+            <span className="text-xs text-gray-500">
+              {format(new Date(trialOutcome.submittedAt), 'MMM dd, HH:mm')}
+            </span>
+          )}
+        </div>
+        
+        {trialOutcome.teacherNotes && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1">
+              <GraduationCap className="h-3 w-3 text-gray-600" />
+              <span className="text-xs font-medium text-gray-700">Teacher Notes</span>
+            </div>
+            <p className="text-sm text-gray-800 bg-white/50 p-2 rounded border">
+              {trialOutcome.teacherNotes}
+            </p>
+          </div>
+        )}
+        
+        {trialOutcome.studentBehavior && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1">
+              <Star className="h-3 w-3 text-gray-600" />
+              <span className="text-xs font-medium text-gray-700">Student Behavior</span>
+            </div>
+            <p className="text-sm text-gray-800 bg-white/50 p-2 rounded border">
+              {trialOutcome.studentBehavior}
+            </p>
+          </div>
+        )}
+        
+        {trialOutcome.recommendedPackage && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1">
+              <Target className="h-3 w-3 text-gray-600" />
+              <span className="text-xs font-medium text-gray-700">Recommended Package</span>
+            </div>
+            <p className="text-sm text-gray-800 bg-white/50 p-2 rounded border">
+              {trialOutcome.recommendedPackage}
+            </p>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const renderStatusSpecificActions = () => {
@@ -432,11 +517,15 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
 
         {getNotes() && (
           <div className="p-3 bg-muted/50 rounded-lg border border-primary/10">
-            <p className="text-sm">
-              <strong>Notes:</strong> {getNotes()}
-            </p>
+            <div className="flex items-center gap-2 mb-1">
+              <FileText className="h-4 w-4 text-primary/70" />
+              <span className="text-sm font-medium">Booking Notes</span>
+            </div>
+            <p className="text-sm text-gray-700">{getNotes()}</p>
           </div>
         )}
+
+        {renderTrialOutcomeSection()}
 
         {/* Status-Specific Action Buttons */}
         <div className="pt-2 border-t border-primary/10">
