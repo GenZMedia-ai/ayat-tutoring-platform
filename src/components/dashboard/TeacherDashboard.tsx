@@ -16,16 +16,16 @@ const TeacherDashboardContent: React.FC = () => {
       <div className={`min-h-screen flex w-full ${isRTL ? 'rtl' : ''}`}>
         <TeacherSidebar />
         <SidebarInset>
-          <div className="min-h-screen bg-gray-50">
+          <div className="min-h-screen bg-stone-50">
             <DashboardHeader />
             <main className="p-6">
               <div className="space-y-6">
                 <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
                   <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <SidebarTrigger />
-                    <h2 className="text-3xl font-bold text-primary">Teacher Dashboard</h2>
+                    <h2 className="text-3xl font-bold text-stone-800">Teacher Dashboard</h2>
                   </div>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs border-stone-300 text-stone-700 bg-stone-100">
                     Teacher Access
                   </Badge>
                 </div>
