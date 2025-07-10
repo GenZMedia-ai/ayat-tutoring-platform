@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -80,111 +81,95 @@ export const RealTimeMetrics: React.FC = () => {
   const metricsConfig = [
     { 
       key: 'pending', 
-      label: 'Pending', 
-      colorType: 'tan',
-      priority: 'high'
+      label: 'Pending Trials', 
+      priority: 'high',
+      description: 'Awaiting confirmation'
     },
     { 
       key: 'confirmed', 
-      label: 'Confirmed', 
-      colorType: 'brown',
-      priority: 'medium'
+      label: 'Confirmed Trials', 
+      priority: 'medium',
+      description: 'Ready to conduct'
     },
     { 
       key: 'completed', 
-      label: 'Completed', 
-      colorType: 'tan',
-      priority: 'high'
+      label: 'Completed Trials', 
+      priority: 'high',
+      description: 'Sessions finished'
     },
     { 
       key: 'awaiting_payment', 
       label: 'Awaiting Payment', 
-      colorType: 'brown',
-      priority: 'high'
+      priority: 'high',
+      description: 'Payment pending'
     },
     { 
       key: 'follow_up', 
-      label: 'Follow-up', 
-      colorType: 'tan',
-      priority: 'medium'
+      label: 'Follow-up Required', 
+      priority: 'medium',
+      description: 'Needs attention'
     },
     { 
       key: 'paid', 
-      label: 'Paid', 
-      colorType: 'brown',
-      priority: 'low'
+      label: 'Paid Students', 
+      priority: 'low',
+      description: 'Payment complete'
     },
     { 
       key: 'ghosted', 
-      label: 'Ghosted', 
-      colorType: 'tan',
-      priority: 'medium'
+      label: 'Ghosted Trials', 
+      priority: 'medium',
+      description: 'No-show students'
     },
     { 
       key: 'dropped', 
-      label: 'Dropped', 
-      colorType: 'brown',
-      priority: 'low'
+      label: 'Dropped Students', 
+      priority: 'low',
+      description: 'Cancelled enrollment'
     }
   ];
 
-  const getGradient = (colorType: string) => {
-    return colorType === 'tan' 
-      ? 'linear-gradient(90deg, #a57865, #b88974)'
-      : 'linear-gradient(90deg, #57463f, #6b574c)';
-  };
-
-  const getCountColor = (colorType: string) => {
-    return colorType === 'tan' ? '#a57865' : '#57463f';
-  };
-
   return (
-    <div className="flex gap-6 p-2 overflow-x-auto scrollbar-hide scroll-smooth md:gap-5 sm:gap-4">
-      {metricsConfig.map((metric, index) => {
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+      {metricsConfig.map((metric) => {
         const count = metrics[metric.key as keyof MetricsData];
         const isHighPriority = metric.priority === 'high' && count > 0;
         
         return (
-          <div 
-            key={metric.key}
-            className="bg-white rounded-2xl px-6 py-8 min-w-[160px] flex-shrink-0 border border-gray-100 transition-all duration-300 relative text-center cursor-pointer overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(165,120,101,0.1)] hover:border-gray-200 md:min-w-[140px] md:px-5 md:py-7 sm:min-w-[110px] sm:px-4 sm:py-5"
-            style={{ 
-              animationDelay: `${index * 0.1}s`,
-            }}
-          >
-            {/* Top gradient bar */}
-            <div 
-              className="absolute top-0 left-0 right-0 h-0.5 transition-all duration-300 hover:h-1"
-              style={{
-                background: getGradient(metric.colorType)
-              }}
-            />
-            
-            {/* Count */}
-            <div 
-              className="text-4xl font-extralight leading-none mb-3 tracking-tight md:text-3xl sm:text-2xl"
-              style={{ color: getCountColor(metric.colorType) }}
-            >
-              {count}
-            </div>
-            
-            {/* Label */}
-            <div className="text-sm font-medium uppercase tracking-wider text-gray-700 md:text-xs sm:text-xs">
-              {metric.label}
-            </div>
-            
-            {/* Sublabel */}
-            <div className="text-xs text-gray-500 mt-1 font-normal">
-              {count === 1 ? 'item' : 'items'}
-            </div>
-
-            {/* High priority indicator */}
-            {isHighPriority && (
-              <div className="absolute top-3 right-3">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          <Card key={metric.key} className="sales-stat-card relative group hover:shadow-md transition-all duration-200">
+            <CardContent className="p-4">
+              <div className="text-center">
+                {/* Priority Indicator */}
+                {isHighPriority && (
+                  <div className="absolute top-3 right-3">
+                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  </div>
+                )}
+                
+                {/* Count */}
+                <div className="sales-stat-number text-primary mb-2">
+                  {count}
+                </div>
+                
+                {/* Label */}
+                <div className="sales-stat-label mb-1">
+                  {metric.label}
+                </div>
+                
+                {/* Description */}
+                <div className="text-xs text-muted-foreground opacity-75">
+                  {metric.description}
+                </div>
+                
+                {/* Status Badge */}
+                <div className="mt-2">
+                  <Badge variant={count > 0 ? 'default' : 'secondary'} className="text-xs">
+                    {count} {count === 1 ? 'item' : 'items'}
+                  </Badge>
+                </div>
               </div>
-            )}
-          </div>
+            </CardContent>
+          </Card>
         );
       })}
     </div>
