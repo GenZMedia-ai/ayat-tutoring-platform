@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { DateRange } from '@/components/teacher/DateFilter';
 
-export interface PaidStudent {
+interface PaidStudent {
   id: string;
   uniqueId: string;
   name: string;
@@ -19,12 +19,12 @@ export interface PaidStudent {
   paymentCurrency: string;
   paymentDate: string;
   notes?: string;
-  hasCompletedRegistration?: boolean;
-  isFamilyMember?: boolean;
-  isScheduled?: boolean;
+  hasCompletedRegistration: boolean;
+  isFamilyMember: boolean;
+  isScheduled: boolean;
 }
 
-export interface FamilyCardData {
+interface PaidFamily {
   id: string;
   type: 'family';
   familyName: string;
@@ -37,11 +37,11 @@ export interface FamilyCardData {
   completedSessions: number;
 }
 
-export type PaidStudentItem = PaidStudent | FamilyCardData;
+type PaidStudentItem = PaidStudent | PaidFamily;
 
-export const useTeacherPaidStudents = () => {
+export const useTeacherPaidStudents = (dateRange: DateRange = 'today') => {
   const { user } = useAuth();
-  const [paidStudents, setPaidStudents] = useState<PaidStudentItem[]>([]);
+  const [students, setStudents] = useState<PaidStudentItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchPaidStudents = async () => {
@@ -49,31 +49,69 @@ export const useTeacherPaidStudents = () => {
 
     setLoading(true);
     try {
-      console.log('🔍 Fetching paid students for teacher:', user.id);
-      
-      // Use the enhanced edge function for better family payment handling
+      console.log('💰 FIXED: Fetching paid students with enhanced Edge Function call');
+
+      // FIXED: Call the enhanced Edge Function for better data processing
       const { data, error } = await supabase.functions.invoke('get-teacher-paid-students-enhanced', {
         headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         },
+        body: {
+          dateRange,
+          teacherId: user.id
+        }
       });
 
       if (error) {
-        console.error('❌ Error fetching paid students:', error);
+        console.error('❌ FIXED: Error calling paid students function:', error);
         
-        // Fallback to the original RPC function
-        console.log('🔄 Falling back to original RPC function');
-        const { data: fallbackData, error: fallbackError } = await supabase.rpc('get_teacher_paid_students', {
-          p_teacher_id: user.id
-        });
+        // FIXED: Fallback to direct database query with enhanced filtering
+        console.log('🔄 FIXED: Falling back to direct database query');
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('students')
+          .select('*')
+          .eq('assigned_teacher_id', user.id)
+          .in('status', ['paid', 'active']) // FIXED: Include both paid and active
+          .order('created_at', { ascending: false });
 
         if (fallbackError) {
-          console.error('❌ Fallback also failed:', fallbackError);
-          toast.error('Failed to fetch paid students');
+          console.error('❌ FIXED: Fallback query failed:', fallbackError);
+          setStudents([]);
           return;
         }
 
-        const mappedStudents: PaidStudent[] = fallbackData?.map(student => ({
+        // FIXED: Process fallback data
+        const processedFallback = await processFallbackData(fallbackData || []);
+        setStudents(processedFallback);
+        return;
+      }
+
+      console.log('✅ FIXED: Enhanced paid students data received:', data?.length || 0);
+      setStudents(data || []);
+    } catch (error) {
+      console.error('❌ FIXED: Error in fetchPaidStudents:', error);
+      setStudents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processFallbackData = async (studentsData: any[]): Promise<PaidStudentItem[]> => {
+    const familyGroups = new Map<string, any>();
+    const individualStudents: PaidStudent[] = [];
+
+    for (const student of studentsData) {
+      try {
+        // Check if student has completed registration (has sessions beyond trial)
+        const { data: sessionData } = await supabase
+          .from('session_students')
+          .select('sessions!inner(session_number)')
+          .eq('student_id', student.id)
+          .gt('sessions.session_number', 1);
+
+        const hasCompletedRegistration = (sessionData?.length || 0) > 0;
+
+        const processedStudent: PaidStudent = {
           id: student.id,
           uniqueId: student.unique_id,
           name: student.name,
@@ -83,90 +121,59 @@ export const useTeacherPaidStudents = () => {
           platform: student.platform,
           parentName: student.parent_name,
           packageSessionCount: student.package_session_count || 8,
-          packageName: 'Standard Package',
+          packageName: student.package_name || 'Standard Package',
           paymentAmount: student.payment_amount || 0,
-          paymentCurrency: student.payment_currency || 'USD',
-          paymentDate: student.payment_date || new Date().toISOString(),
+          paymentCurrency: (student.payment_currency || 'USD').toUpperCase(),
+          paymentDate: student.created_at,
           notes: student.notes,
-          hasCompletedRegistration: false,
-          isFamilyMember: false
-        })) || [];
+          hasCompletedRegistration,
+          isFamilyMember: !!student.family_group_id,
+          isScheduled: hasCompletedRegistration
+        };
 
-        setPaidStudents(mappedStudents);
-        return;
+        if (student.family_group_id) {
+          if (!familyGroups.has(student.family_group_id)) {
+            familyGroups.set(student.family_group_id, {
+              id: student.family_group_id,
+              type: 'family',
+              familyName: student.parent_name || 'Unknown Family',
+              parentName: student.parent_name,
+              parentPhone: student.phone,
+              students: [],
+              totalStudents: 0,
+              scheduledStudents: 0,
+              totalSessions: 0,
+              completedSessions: 0
+            });
+          }
+          
+          const family = familyGroups.get(student.family_group_id);
+          family.students.push(processedStudent);
+          family.totalStudents++;
+          family.totalSessions += processedStudent.packageSessionCount;
+          if (processedStudent.isScheduled) {
+            family.scheduledStudents++;
+          }
+        } else {
+          individualStudents.push(processedStudent);
+        }
+      } catch (error) {
+        console.error('❌ FIXED: Error processing student in fallback:', error);
       }
-
-      console.log('📋 Fetched paid students via enhanced function:', data);
-      setPaidStudents(data || []);
-      
-    } catch (error) {
-      console.error('❌ Error in fetchPaidStudents:', error);
-      toast.error('Failed to load paid students');
-    } finally {
-      setLoading(false);
     }
+
+    const result = [...individualStudents, ...Array.from(familyGroups.values())];
+    console.log('✅ FIXED: Processed fallback data:', result.length);
+    return result;
   };
 
   useEffect(() => {
     fetchPaidStudents();
-  }, [user]);
-
-  // Set up real-time updates
-  useEffect(() => {
-    if (!user) return;
-
-    console.log('🔄 Setting up real-time updates for paid students');
-    
-    const channel = supabase
-      .channel('teacher-paid-students')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'students',
-          filter: `assigned_teacher_id=eq.${user.id}`
-        },
-        (payload) => {
-          console.log('🔄 Real-time update received:', payload);
-          fetchPaidStudents();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'payment_links'
-        },
-        (payload) => {
-          console.log('🔄 Payment link update received:', payload);
-          fetchPaidStudents();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'family_package_selections'
-        },
-        (payload) => {
-          console.log('🔄 Family package selection update received:', payload);
-          fetchPaidStudents();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('🔄 Cleaning up real-time subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
+  }, [user, dateRange]);
 
   return {
-    paidStudents,
+    students,
     loading,
-    refreshPaidStudents: fetchPaidStudents,
+    refreshStudents: fetchPaidStudents
   };
 };

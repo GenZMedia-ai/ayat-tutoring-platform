@@ -6,49 +6,29 @@ import { useAuth } from '@/contexts/AuthContext';
 export interface StudentProgress {
   studentId: string;
   studentName: string;
-  uniqueId: string;
-  age: number;
-  phone: string;
-  country: string;
+  studentAge: number;
+  studentPhone: string;
   platform: string;
-  parentName?: string;
-  notes?: string;
-  totalPaidSessions: number;
-  completedPaidSessions: number;
-  sessionsRemaining: number;
+  packageSessionCount: number;
+  totalSessions: number;
+  completedSessions: number;
   nextSessionDate?: string;
   nextSessionTime?: string;
-  sessionHistory: SessionHistory[];
-  totalMinutes: number;
-  familyGroupId?: string;
-}
-
-export interface SessionHistory {
-  sessionNumber: number;
-  date: string;
   status: string;
-  actualMinutes?: number;
+  paymentAmount?: number;
+  paymentCurrency?: string;
   notes?: string;
-  completedAt?: string;
-  isTrialSession: boolean;
 }
 
 export interface ActiveFamilyGroup {
   id: string;
   type: 'family';
-  familyName: string;
   parentName: string;
   parentPhone: string;
   students: StudentProgress[];
-  totalStudents: number;
   totalSessions: number;
   completedSessions: number;
-  totalMinutes: number;
-  nextFamilySession?: {
-    date: string;
-    time: string;
-    studentName: string;
-  };
+  familyName: string;
 }
 
 export type ActiveStudentItem = StudentProgress | ActiveFamilyGroup;
@@ -63,184 +43,151 @@ export const useTeacherActiveStudents = () => {
 
     setLoading(true);
     try {
-      console.log('🔍 Fetching active students for teacher:', user.id);
+      console.log('👨‍🏫 FIXED: Fetching active students with enhanced filtering:', user.id);
 
-      // Get active students assigned to this teacher
+      // FIXED: Enhanced query with broader status filtering
       const { data: activeStudents, error: studentsError } = await supabase
         .from('students')
-        .select(`
-          *,
-          family_groups!students_family_group_id_fkey(id, parent_name, phone)
-        `)
+        .select('*')
         .eq('assigned_teacher_id', user.id)
-        .eq('status', 'active')
+        .in('status', ['active', 'paid']) // FIXED: Include both active and paid students
         .order('created_at', { ascending: false });
 
       if (studentsError) {
-        console.error('❌ Error fetching active students:', studentsError);
-        return;
+        console.error('❌ FIXED: Error fetching active students:', studentsError);
+        throw studentsError;
       }
 
+      console.log('✅ FIXED: Active students found:', activeStudents?.length || 0);
+
       if (!activeStudents || activeStudents.length === 0) {
-        console.log('📝 No active students found');
+        console.log('📝 FIXED: No active students found');
         setStudents([]);
         return;
       }
 
-      // Get session data for each student
-      const studentsWithProgress = await Promise.all(
-        activeStudents.map(async (student) => {
-          // Get all sessions for this student
+      // FIXED: Process individual students and family groups with better error handling
+      const familyGroups = new Map<string, any>();
+      const individualStudents: StudentProgress[] = [];
+
+      for (const student of activeStudents) {
+        try {
+          // Get session progress for this student
           const { data: sessionData } = await supabase
             .from('sessions')
             .select(`
               id,
               session_number,
+              status,
               scheduled_date,
               scheduled_time,
-              status,
-              actual_minutes,
-              notes,
-              completed_at,
-              trial_outcome,
               session_students!inner(student_id)
             `)
             .eq('session_students.student_id', student.id)
             .order('session_number');
 
-          const sessions = sessionData || [];
+          const totalSessions = sessionData?.length || 0;
+          const completedSessions = sessionData?.filter(s => s.status === 'completed').length || 0;
           
-          // CRITICAL FIX: Separate trial and paid sessions
-          const paidSessions = sessions.filter(s => s.trial_outcome === null);
-          const trialSessions = sessions.filter(s => s.trial_outcome !== null);
-          
-          // Use package_session_count for total paid sessions (not counting trials)
-          const totalPaidSessions = student.package_session_count || 8;
-          const completedPaidSessions = paidSessions.filter(s => s.status === 'completed').length;
-          const sessionsRemaining = totalPaidSessions - completedPaidSessions;
-          
-          // Calculate total minutes from completed paid sessions only
-          const totalMinutes = paidSessions
-            .filter(s => s.status === 'completed' && s.actual_minutes)
-            .reduce((sum, s) => sum + (s.actual_minutes || 0), 0);
+          // Find next upcoming session
+          const nextSession = sessionData?.find(s => 
+            s.status === 'scheduled' && 
+            new Date(s.scheduled_date) >= new Date()
+          );
 
-          // Find next scheduled paid session (not trial)
-          const nextPaidSession = paidSessions.find(s => s.status === 'scheduled');
-
-          // Build comprehensive session history including both trial and paid sessions
-          const sessionHistory: SessionHistory[] = sessions.map(s => ({
-            sessionNumber: s.session_number,
-            date: s.scheduled_date,
-            status: s.status,
-            actualMinutes: s.actual_minutes,
-            notes: s.notes,
-            completedAt: s.completed_at,
-            isTrialSession: s.trial_outcome !== null
-          }));
-
-          console.log(`📊 Student ${student.name} progress:`, {
-            totalSessions: sessions.length,
-            paidSessions: paidSessions.length,
-            trialSessions: trialSessions.length,
-            totalPaidSessions,
-            completedPaidSessions,
-            sessionsRemaining
-          });
-
-          return {
+          const studentProgress: StudentProgress = {
             studentId: student.id,
             studentName: student.name,
-            uniqueId: student.unique_id,
-            age: student.age,
-            phone: student.phone,
-            country: student.country,
+            studentAge: student.age,
+            studentPhone: student.phone,
             platform: student.platform,
-            parentName: student.parent_name,
-            notes: student.notes,
-            totalPaidSessions,
-            completedPaidSessions,
-            sessionsRemaining,
-            nextSessionDate: nextPaidSession?.scheduled_date,
-            nextSessionTime: nextPaidSession?.scheduled_time,
-            sessionHistory,
-            totalMinutes,
-            familyGroupId: student.family_group_id
+            packageSessionCount: student.package_session_count || 8,
+            totalSessions,
+            completedSessions,
+            nextSessionDate: nextSession?.scheduled_date,
+            nextSessionTime: nextSession?.scheduled_time,
+            status: student.status,
+            paymentAmount: student.payment_amount,
+            paymentCurrency: student.payment_currency,
+            notes: student.notes
           };
-        })
-      );
 
-      // Group students by family
-      const familyMap = new Map<string, StudentProgress[]>();
-      const individualStudents: StudentProgress[] = [];
+          if (student.family_group_id) {
+            // Handle family group
+            if (!familyGroups.has(student.family_group_id)) {
+              // Get family group info
+              const { data: familyData } = await supabase
+                .from('family_groups')
+                .select('*')
+                .eq('id', student.family_group_id)
+                .single();
 
-      studentsWithProgress.forEach(student => {
-        if (student.familyGroupId) {
-          const familyId = student.familyGroupId;
-          if (!familyMap.has(familyId)) {
-            familyMap.set(familyId, []);
+              familyGroups.set(student.family_group_id, {
+                id: student.family_group_id,
+                type: 'family',
+                parentName: familyData?.parent_name || student.parent_name || 'Unknown Family',
+                parentPhone: familyData?.phone || student.phone,
+                familyName: familyData?.parent_name || student.parent_name || 'Unknown Family',
+                students: [],
+                totalSessions: 0,
+                completedSessions: 0
+              });
+            }
+
+            const family = familyGroups.get(student.family_group_id);
+            family.students.push(studentProgress);
+            family.totalSessions += totalSessions;
+            family.completedSessions += completedSessions;
+          } else {
+            individualStudents.push(studentProgress);
           }
-          familyMap.get(familyId)!.push(student);
-        } else {
-          individualStudents.push(student);
+        } catch (error) {
+          console.error('❌ FIXED: Error processing student:', student.id, error);
+          // FIXED: Still include student with minimal data if processing fails
+          const basicStudent: StudentProgress = {
+            studentId: student.id,
+            studentName: student.name,
+            studentAge: student.age,
+            studentPhone: student.phone,
+            platform: student.platform,
+            packageSessionCount: student.package_session_count || 8,
+            totalSessions: 0,
+            completedSessions: 0,
+            status: student.status,
+            paymentAmount: student.payment_amount,
+            paymentCurrency: student.payment_currency,
+            notes: student.notes
+          };
+
+          if (!student.family_group_id) {
+            individualStudents.push(basicStudent);
+          }
         }
-      });
-
-      // Create family group objects
-      const familyGroups: ActiveFamilyGroup[] = [];
-      for (const [familyId, familyStudents] of familyMap) {
-        const firstStudent = familyStudents[0];
-        const familyInfo = activeStudents.find(s => s.id === firstStudent.studentId)?.family_groups;
-        
-        // Calculate family totals
-        const totalSessions = familyStudents.reduce((sum, s) => sum + s.totalPaidSessions, 0);
-        const completedSessions = familyStudents.reduce((sum, s) => sum + s.completedPaidSessions, 0);
-        const totalMinutes = familyStudents.reduce((sum, s) => sum + s.totalMinutes, 0);
-        
-        // Find next family session (earliest next session among all family members)
-        const nextSessions = familyStudents
-          .filter(s => s.nextSessionDate && s.nextSessionTime)
-          .map(s => ({
-            date: s.nextSessionDate!,
-            time: s.nextSessionTime!,
-            studentName: s.studentName,
-            dateTime: new Date(`${s.nextSessionDate}T${s.nextSessionTime}`)
-          }))
-          .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
-
-        familyGroups.push({
-          id: familyId,
-          type: 'family',
-          familyName: familyInfo?.parent_name || firstStudent.parentName || 'Unknown Family',
-          parentName: familyInfo?.parent_name || firstStudent.parentName || 'Unknown',
-          parentPhone: familyInfo?.phone || firstStudent.phone,
-          students: familyStudents,
-          totalStudents: familyStudents.length,
-          totalSessions,
-          completedSessions,
-          totalMinutes,
-          nextFamilySession: nextSessions.length > 0 ? {
-            date: nextSessions[0].date,
-            time: nextSessions[0].time,
-            studentName: nextSessions[0].studentName
-          } : undefined
-        });
       }
 
-      // Combine individual students and family groups
-      const result: ActiveStudentItem[] = [...individualStudents, ...familyGroups];
-      
-      console.log('📊 Active students with family grouping:', {
-        total: result.length,
-        individuals: individualStudents.length,
-        families: familyGroups.length
+      // FIXED: Combine results with proper typing
+      const allStudents: ActiveStudentItem[] = [
+        ...individualStudents,
+        ...Array.from(familyGroups.values()) as ActiveFamilyGroup[]
+      ];
+
+      console.log('✅ FIXED: Processed active students:', {
+        individual: individualStudents.length,
+        families: familyGroups.size,
+        total: allStudents.length
       });
-      
-      setStudents(result);
+
+      setStudents(allStudents);
     } catch (error) {
-      console.error('❌ Error in fetchActiveStudents:', error);
+      console.error('❌ FIXED: Error in fetchActiveStudents:', error);
+      setStudents([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const refreshStudents = () => {
+    fetchActiveStudents();
   };
 
   useEffect(() => {
@@ -250,6 +197,6 @@ export const useTeacherActiveStudents = () => {
   return {
     students,
     loading,
-    refreshStudents: fetchActiveStudents
+    refreshStudents
   };
 };

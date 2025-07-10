@@ -18,7 +18,8 @@ import {
   RotateCcw, 
   Calendar,
   ArrowRight,
-  User
+  User,
+  AlertCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format, toZonedTime } from 'date-fns-tz';
@@ -36,11 +37,11 @@ const EnhancedTeacherHomepage: React.FC = () => {
   const { completeSession, loading: completingSession } = useSessionCompletion();
 
   useEffect(() => {
-    console.log('🏠 HOMEPAGE: Stats updated:', { dateRange, stats, loading: statsLoading });
+    console.log('🏠 FIXED: Homepage stats updated:', { dateRange, stats, loading: statsLoading });
   }, [stats, statsLoading, dateRange]);
 
   useEffect(() => {
-    console.log('🏠 HOMEPAGE: Sessions updated:', { sessions, loading: sessionsLoading });
+    console.log('🏠 FIXED: Homepage sessions updated:', { sessions, loading: sessionsLoading });
   }, [sessions, sessionsLoading]);
 
   const formatTime = (timeStr: string) => {
@@ -69,8 +70,8 @@ const EnhancedTeacherHomepage: React.FC = () => {
       title: t('homepage.currentCapacity'),
       value: stats.currentCapacity,
       icon: Users,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50'
+      color: 'text-stone-600',
+      bg: 'bg-stone-50'
     },
     {
       title: t('homepage.pendingTrials'),
@@ -107,34 +108,33 @@ const EnhancedTeacherHomepage: React.FC = () => {
       color: 'text-red-600',
       bg: 'bg-red-50'
     },
-    // Phase 1: Add 4 critical paid student cards with brand colors
     {
       title: 'Paid Students',
       value: stats.paidStudents,
       icon: Users,
-      color: 'text-primary',
-      bg: 'bg-primary/10'
+      color: 'text-stone-700',
+      bg: 'bg-stone-100'
     },
     {
       title: 'Active Registrations',
       value: stats.completedRegistrations,
       icon: CheckCircle,
-      color: 'text-secondary-foreground',
-      bg: 'bg-secondary/10'
+      color: 'text-stone-600',
+      bg: 'bg-stone-50'
     },
     {
       title: 'Total Students',
       value: stats.totalStudents,
       icon: Users,
-      color: 'text-accent-foreground',
-      bg: 'bg-accent'
+      color: 'text-stone-700',
+      bg: 'bg-stone-100'
     },
     {
       title: 'Completed Subscriptions',
       value: stats.expiredStudents,
       icon: CheckCircle,
-      color: 'text-muted-foreground',
-      bg: 'bg-muted'
+      color: 'text-stone-500',
+      bg: 'bg-stone-50'
     }
   ];
 
@@ -159,37 +159,77 @@ const EnhancedTeacherHomepage: React.FC = () => {
     }
   ];
 
+  // FIXED: Add debugging info when no data is available
+  const hasAnyData = stats.totalStudents > 0;
+  const debugInfo = {
+    statsLoading,
+    sessionsLoading,
+    totalStudents: stats.totalStudents,
+    sessionsCount: sessions.length,
+    dateRange,
+    hasAnyData
+  };
+
+  console.log('🏠 FIXED: Homepage render debug info:', debugInfo);
+
   return (
     <div className="space-y-6">
       {/* Header with Date Filter */}
       <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
         <div className={isRTL ? 'text-right' : 'text-left'}>
-          <h1 className="text-2xl font-bold text-primary">{t('homepage.title')}</h1>
-          <p className="text-muted-foreground">{t('homepage.subtitle')}</p>
+          <h1 className="text-2xl font-bold text-stone-800">{t('homepage.title')}</h1>
+          <p className="text-stone-600">{t('homepage.subtitle')}</p>
         </div>
         <DateFilter value={dateRange} onChange={setDateRange} />
       </div>
 
+      {/* FIXED: Show debug info and data status */}
       {dateRange !== 'today' && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <p className={`text-sm text-blue-800 ${isRTL ? 'text-right' : 'text-left'}`}>
+        <div className="bg-stone-50 border border-stone-200 rounded-lg p-3">
+          <p className={`text-sm text-stone-700 ${isRTL ? 'text-right' : 'text-left'}`}>
             📅 Showing data for: <strong>{dateRange.replace('-', ' ').toUpperCase()}</strong>
             {statsLoading && ' (Loading...)'}
+            {!hasAnyData && !statsLoading && (
+              <span className="text-orange-600 ml-2">
+                <AlertCircle className="inline h-4 w-4 mr-1" />
+                No data found for this period
+              </span>
+            )}
           </p>
         </div>
+      )}
+
+      {/* FIXED: Show helpful message when no data is available */}
+      {!hasAnyData && !statsLoading && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-orange-600" />
+              <div>
+                <h3 className="font-medium text-orange-900">No Data Available</h3>
+                <p className="text-sm text-orange-700 mt-1">
+                  {dateRange === 'today' 
+                    ? "You don't have any students or sessions for today. Try selecting a different date range or check if you have any assigned students."
+                    : `No data found for ${dateRange.replace('-', ' ')}. Try selecting a different date range or "All Time" to see your data.`
+                  }
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {statCards.map((stat) => (
-          <Card key={stat.title} className="dashboard-card">
+          <Card key={stat.title} className="border-stone-200 hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <div className={isRTL ? 'text-right' : 'text-left'}>
-                  <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-sm font-medium text-stone-600">{stat.title}</p>
+                  <p className="text-2xl font-bold text-stone-800">
                     {statsLoading ? (
-                      <span className="text-muted-foreground">...</span>
+                      <span className="text-stone-400">...</span>
                     ) : (
                       stat.value
                     )}
@@ -207,13 +247,13 @@ const EnhancedTeacherHomepage: React.FC = () => {
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's Paid Sessions */}
-        <Card className="dashboard-card">
+        <Card className="border-stone-200">
           <CardHeader className={isRTL ? 'text-right' : 'text-left'}>
-            <CardTitle className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <CardTitle className={`flex items-center gap-2 text-stone-800 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <Calendar className="h-5 w-5" />
               {t('homepage.todaysSessions')}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-stone-600">
               {t('homepage.sessionsScheduled')}
             </CardDescription>
           </CardHeader>
@@ -221,41 +261,41 @@ const EnhancedTeacherHomepage: React.FC = () => {
             {sessionsLoading ? (
               <div className="flex items-center justify-center py-8">
                 <LoadingSpinner />
-                <span className={`ml-2 text-muted-foreground ${isRTL ? 'mr-2 ml-0' : ''}`}>
+                <span className={`ml-2 text-stone-600 ${isRTL ? 'mr-2 ml-0' : ''}`}>
                   {t('common.loading')}...
                 </span>
               </div>
             ) : sessions.length === 0 ? (
               <div className={`text-center py-8 ${isRTL ? 'text-right' : 'text-left'}`}>
-                <p className="text-muted-foreground">{t('homepage.noSessions')}</p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-stone-600">{t('homepage.noSessions')}</p>
+                <p className="text-sm text-stone-500 mt-1">
                   {t('homepage.checkRegistration')}
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
                 {sessions.map((session) => (
-                  <div key={session.id} className="p-3 border border-border rounded-lg">
+                  <div key={session.id} className="p-3 border border-stone-200 rounded-lg bg-stone-50">
                     <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                        <div className="p-2 bg-primary/10 rounded-full">
-                          <User className="h-4 w-4 text-primary" />
+                        <div className="p-2 bg-stone-100 rounded-full">
+                          <User className="h-4 w-4 text-stone-600" />
                         </div>
                         <div className={isRTL ? 'text-right' : 'text-left'}>
-                          <h4 className="font-medium">{session.studentName}</h4>
-                          <div className={`flex items-center gap-2 text-sm text-muted-foreground ${isRTL ? 'flex-row-reverse' : ''}`}>
+                          <h4 className="font-medium text-stone-800">{session.studentName}</h4>
+                          <div className={`flex items-center gap-2 text-sm text-stone-600 ${isRTL ? 'flex-row-reverse' : ''}`}>
                             <span>Session {session.sessionNumber}</span>
                             <span>•</span>
                             <span>{formatTime(session.scheduledTime)}</span>
                           </div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-stone-500">
                             Progress: {session.completedSessions}/{session.totalSessions} sessions
                           </div>
                         </div>
                       </div>
                       <Button
                         size="sm"
-                        className="ayat-button-primary"
+                        className="bg-stone-600 hover:bg-stone-700 text-white"
                         onClick={() => handleCompleteSession(session.id, session.studentName)}
                         disabled={completingSession}
                       >
@@ -271,10 +311,10 @@ const EnhancedTeacherHomepage: React.FC = () => {
         </Card>
 
         {/* Quick Actions */}
-        <Card className="dashboard-card">
+        <Card className="border-stone-200">
           <CardHeader className={isRTL ? 'text-right' : 'text-left'}>
-            <CardTitle>{t('homepage.quickActions')}</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-stone-800">{t('homepage.quickActions')}</CardTitle>
+            <CardDescription className="text-stone-600">
               {t('homepage.navigateQuickly')}
             </CardDescription>
           </CardHeader>
@@ -282,19 +322,19 @@ const EnhancedTeacherHomepage: React.FC = () => {
             <div className="space-y-3">
               {quickActions.map((action) => (
                 <Link key={action.path} to={action.path}>
-                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer border-stone-200 hover:border-stone-300">
                     <CardContent className="p-4">
                       <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
                         <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                          <div className="p-2 bg-primary/10 rounded-full">
-                            <action.icon className="h-4 w-4 text-primary" />
+                          <div className="p-2 bg-stone-100 rounded-full">
+                            <action.icon className="h-4 w-4 text-stone-600" />
                           </div>
                           <div className={isRTL ? 'text-right' : 'text-left'}>
-                            <h4 className="font-medium">{action.title}</h4>
-                            <p className="text-sm text-muted-foreground">{action.description}</p>
+                            <h4 className="font-medium text-stone-800">{action.title}</h4>
+                            <p className="text-sm text-stone-600">{action.description}</p>
                           </div>
                         </div>
-                        <ArrowRight className={`h-4 w-4 text-muted-foreground ${isRTL ? 'rotate-180' : ''}`} />
+                        <ArrowRight className={`h-4 w-4 text-stone-500 ${isRTL ? 'rotate-180' : ''}`} />
                       </div>
                     </CardContent>
                   </Card>
