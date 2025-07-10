@@ -926,7 +926,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      performance_monitoring: {
+        Row: {
+          idx_scan: number | null
+          idx_tup_fetch: number | null
+          index_usage_percentage: number | null
+          n_tup_del: number | null
+          n_tup_ins: number | null
+          n_tup_upd: number | null
+          schemaname: unknown | null
+          seq_scan: number | null
+          seq_tup_read: number | null
+          tablename: unknown | null
+          total_size: string | null
+        }
+        Relationships: []
+      }
+      security_audit_summary: {
+        Row: {
+          check_type: string | null
+          description: string | null
+          schema_name: unknown | null
+          status: string | null
+          table_name: unknown | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       approve_user_with_audit: {
@@ -1011,6 +1036,10 @@ export type Database = {
       }
       get_complete_user_profile: {
         Args: { p_user_id: string }
+        Returns: Json
+      }
+      get_database_health_metrics: {
+        Args: Record<PropertyKey, never>
         Returns: Json
       }
       get_egypt_current_date: {
@@ -1176,6 +1205,10 @@ export type Database = {
       }
       validate_family_package_selections: {
         Args: { p_family_group_id: string }
+        Returns: Json
+      }
+      validate_security_configuration: {
+        Args: Record<PropertyKey, never>
         Returns: Json
       }
     }
