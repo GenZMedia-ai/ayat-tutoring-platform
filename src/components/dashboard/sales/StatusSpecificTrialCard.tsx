@@ -96,6 +96,25 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
     }
   };
 
+  // Helper functions to get properties based on item type
+  const getTrialDate = () => {
+    return item.type === 'family' 
+      ? (data as FamilyGroup).trial_date 
+      : (data as TrialSessionFlowStudent).trialDate;
+  };
+
+  const getTrialTime = () => {
+    return item.type === 'family' 
+      ? (data as FamilyGroup).trial_time 
+      : (data as TrialSessionFlowStudent).trialTime;
+  };
+
+  const getTeacherType = () => {
+    return item.type === 'family' 
+      ? (data as FamilyGroup).teacher_type 
+      : (data as TrialSessionFlowStudent).teacherType;
+  };
+
   const renderActionButtons = () => {
     switch (data.status) {
       case 'pending':
@@ -263,11 +282,11 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>{formatDateTime(data.trial_date, data.trial_time)}</span>
+              <span>{formatDateTime(getTrialDate(), getTrialTime())}</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <User className="h-4 w-4 text-muted-foreground" />
-              <span className="capitalize">{data.teacher_type} Teacher</span>
+              <span className="capitalize">{getTeacherType()} Teacher</span>
             </div>
           </div>
         </div>
