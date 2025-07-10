@@ -68,22 +68,22 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; label: string }> = {
-      'pending': { color: 'bg-purple-50 text-purple-800', label: 'Pending' },
-      'confirmed': { color: 'bg-gray-100 text-gray-800', label: 'Confirmed' },
-      'trial-completed': { color: 'bg-green-50 text-green-800', label: 'Trial Completed' },
-      'trial-ghosted': { color: 'bg-red-50 text-red-800', label: 'Trial Ghosted' },
-      'follow-up': { color: 'bg-amber-50 text-amber-800', label: 'Follow-up' },
-      'awaiting-payment': { color: 'bg-orange-50 text-orange-800', label: 'Awaiting Payment' },
-      'paid': { color: 'bg-green-50 text-green-800', label: 'Paid' },
-      'active': { color: 'bg-blue-50 text-blue-800', label: 'Active' },
-      'expired': { color: 'bg-gray-100 text-gray-800', label: 'Expired' },
-      'cancelled': { color: 'bg-red-50 text-red-800', label: 'Cancelled' },
-      'dropped': { color: 'bg-gray-100 text-gray-800', label: 'Dropped' }
+      'pending': { color: 'bg-orange-100 text-orange-800 border-orange-200', label: 'Pending' },
+      'confirmed': { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Confirmed' },
+      'trial-completed': { color: 'bg-green-100 text-green-800 border-green-200', label: 'Trial Completed' },
+      'trial-ghosted': { color: 'bg-red-100 text-red-800 border-red-200', label: 'Trial Ghosted' },
+      'follow-up': { color: 'bg-amber-100 text-amber-800 border-amber-200', label: 'Follow-up' },
+      'awaiting-payment': { color: 'bg-purple-100 text-purple-800 border-purple-200', label: 'Awaiting Payment' },
+      'paid': { color: 'bg-emerald-100 text-emerald-800 border-emerald-200', label: 'Paid' },
+      'active': { color: 'bg-cyan-100 text-cyan-800 border-cyan-200', label: 'Active' },
+      'expired': { color: 'bg-gray-100 text-gray-800 border-gray-200', label: 'Expired' },
+      'cancelled': { color: 'bg-slate-100 text-slate-800 border-slate-200', label: 'Cancelled' },
+      'dropped': { color: 'bg-slate-100 text-slate-800 border-slate-200', label: 'Dropped' }
     };
 
-    const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', label: status };
+    const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800 border-gray-200', label: status };
     return (
-      <Badge className={`${config.color} border-0 text-xs font-medium px-3 py-1`}>
+      <Badge className={`${config.color} border`}>
         {config.label}
       </Badge>
     );
@@ -106,7 +106,7 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
         variant="outline" 
         size="sm"
         onClick={() => onContact(item)}
-        className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50 h-8 px-3 text-sm font-medium"
+        className="border-primary/30 text-primary hover:bg-primary/5"
       >
         <MessageCircle className="h-4 w-4 mr-2" />
         Contact {isFamily ? 'Family' : 'Student'}
@@ -118,7 +118,7 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
         variant="outline" 
         size="sm"
         onClick={() => onEditInfo(item)}
-        className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50 h-8 px-3 text-sm font-medium"
+        className="border-primary/30 text-primary hover:bg-primary/5"
       >
         <FileX className="h-4 w-4 mr-2" />
         Edit Info
@@ -170,9 +170,10 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
             )}
             {onCreatePaymentLink && (
               <Button 
+                variant="default" 
                 size="sm"
                 onClick={() => onCreatePaymentLink(item)}
-                className="bg-slate-800 hover:bg-slate-700 text-white h-8 px-3 text-sm font-medium"
+                className="bg-green-600 hover:bg-green-700"
               >
                 <CreditCard className="h-4 w-4 mr-2" />
                 Create Payment Link
@@ -365,28 +366,28 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
   };
 
   return (
-    <Card className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
-      <CardHeader className="pb-4 p-6">
+    <Card className="hover:shadow-md transition-shadow border-l-4 border-l-primary/20">
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-3 mb-3">
+            <div className="flex items-center gap-3 mb-2">
               <div className="flex items-center gap-2">
                 {isFamily ? (
-                  <Users className="h-4 w-4 text-gray-500" />
+                  <Users className="h-4 w-4 text-primary" />
                 ) : (
-                  <User className="h-4 w-4 text-gray-500" />
+                  <User className="h-4 w-4 text-primary" />
                 )}
-                <h3 className="font-semibold text-lg text-gray-900">{getName()}</h3>
+                <h3 className="font-semibold text-lg">{getName()}</h3>
               </div>
               {getStatusBadge(getStatus())}
-              <Badge className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded border-0">
+              <Badge variant="outline" className="text-xs border-primary/30">
                 {isFamily ? 'Family' : 'Individual'}
               </Badge>
             </div>
-            <div className="flex items-center gap-4 text-sm text-gray-600">
-              <span className="font-mono text-gray-500">{getUniqueId()}</span>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span className="font-mono text-primary/70">{getUniqueId()}</span>
               {isFamily ? (
-                <span className="text-gray-600">{getStudentCount()} students</span>
+                <span className="text-primary/60">{getStudentCount()} students</span>
               ) : (
                 <>
                   <span>Age: {getAge()}</span>
@@ -400,45 +401,45 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4 p-6 pt-0">
+      <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <Phone className="h-4 w-4 text-gray-500" />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="h-4 w-4 text-muted-foreground" />
               <span>{getPhone()}</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <MapPin className="h-4 w-4 text-gray-500" />
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
               <span>{getCountry()}</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <Calendar className="h-4 w-4 text-gray-500" />
+            <div className="flex items-center gap-2 text-sm">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
               <span>{formatDateTime(getTrialDate(), getTrialTime())}</span>
             </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <User className="h-4 w-4 text-gray-500" />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+              <User className="h-4 w-4 text-muted-foreground" />
               <span className="capitalize">{getTeacherType()} Teacher</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <Clock className="h-4 w-4 text-gray-500" />
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="h-4 w-4 text-muted-foreground" />
               <span className="capitalize">{getPlatform()}</span>
             </div>
           </div>
         </div>
 
         {getNotes() && (
-          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-sm text-gray-700">
-              <strong className="text-gray-900">Notes:</strong> {getNotes()}
+          <div className="p-3 bg-muted/50 rounded-lg border border-primary/10">
+            <p className="text-sm">
+              <strong>Notes:</strong> {getNotes()}
             </p>
           </div>
         )}
 
         {/* Status-Specific Action Buttons */}
-        <div className="pt-4 border-t border-gray-200">
+        <div className="pt-2 border-t border-primary/10">
           {renderStatusSpecificActions()}
         </div>
       </CardContent>

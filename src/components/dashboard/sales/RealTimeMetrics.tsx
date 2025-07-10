@@ -1,5 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useMixedStudentData } from '@/hooks/useMixedStudentData';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -54,6 +55,7 @@ export const RealTimeMetrics: React.FC = () => {
           table: 'students'
         },
         () => {
+          // Small delay to ensure data is updated
           setTimeout(updateMetrics, 100);
         }
       )
@@ -79,109 +81,107 @@ export const RealTimeMetrics: React.FC = () => {
     { 
       key: 'pending', 
       label: 'Pending', 
-      borderColor: '#8B6F47',
-      needsAction: true,
+      colorType: 'tan',
       priority: 'high'
     },
     { 
       key: 'confirmed', 
       label: 'Confirmed', 
-      borderColor: '#D4A574',
-      needsAction: false,
+      colorType: 'brown',
       priority: 'medium'
     },
     { 
       key: 'completed', 
-      label: 'Trial Completed', 
-      borderColor: '#28A745',
-      needsAction: true,
+      label: 'Completed', 
+      colorType: 'tan',
       priority: 'high'
     },
     { 
       key: 'awaiting_payment', 
       label: 'Awaiting Payment', 
-      borderColor: '#E65100',
-      needsAction: true,
+      colorType: 'brown',
       priority: 'high'
     },
     { 
       key: 'follow_up', 
       label: 'Follow-up', 
-      borderColor: '#A0826D',
-      needsAction: true,
+      colorType: 'tan',
       priority: 'medium'
     },
     { 
       key: 'paid', 
       label: 'Paid', 
-      borderColor: '#28A745',
-      needsAction: false,
+      colorType: 'brown',
       priority: 'low'
     },
     { 
       key: 'ghosted', 
       label: 'Ghosted', 
-      borderColor: '#DC3545',
-      needsAction: false,
+      colorType: 'tan',
       priority: 'medium'
     },
     { 
       key: 'dropped', 
       label: 'Dropped', 
-      borderColor: '#6C757D',
-      needsAction: false,
+      colorType: 'brown',
       priority: 'low'
     }
   ];
 
+  const getGradient = (colorType: string) => {
+    return colorType === 'tan' 
+      ? 'linear-gradient(90deg, #a57865, #b88974)'
+      : 'linear-gradient(90deg, #57463f, #6b574c)';
+  };
+
+  const getCountColor = (colorType: string) => {
+    return colorType === 'tan' ? '#a57865' : '#57463f';
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {metricsConfig.map((metric) => {
+    <div className="flex gap-6 p-2 overflow-x-auto scrollbar-hide scroll-smooth md:gap-5 sm:gap-4">
+      {metricsConfig.map((metric, index) => {
         const count = metrics[metric.key as keyof MetricsData];
+        const isHighPriority = metric.priority === 'high' && count > 0;
         
         return (
           <div 
             key={metric.key}
-            className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 relative overflow-hidden"
+            className="bg-white rounded-2xl px-6 py-8 min-w-[160px] flex-shrink-0 border border-gray-100 transition-all duration-300 relative text-center cursor-pointer overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(165,120,101,0.1)] hover:border-gray-200 md:min-w-[140px] md:px-5 md:py-7 sm:min-w-[110px] sm:px-4 sm:py-5"
+            style={{ 
+              animationDelay: `${index * 0.1}s`,
+            }}
           >
-            {/* Thick colored left border */}
+            {/* Top gradient bar */}
             <div 
-              className="absolute left-0 top-0 bottom-0 w-1"
-              style={{ backgroundColor: metric.borderColor }}
+              className="absolute top-0 left-0 right-0 h-0.5 transition-all duration-300 hover:h-1"
+              style={{
+                background: getGradient(metric.colorType)
+              }}
             />
             
-            {/* Card content */}
-            <div className="p-6 pl-8">
-              {/* Count - Large and prominent */}
-              <div 
-                className="text-5xl font-bold leading-none mb-3"
-                style={{ color: '#212529' }}
-              >
-                {count}
-              </div>
-              
-              {/* Status label */}
-              <div className="text-sm font-medium text-gray-700 mb-2">
-                {metric.label}
-              </div>
-              
-              {/* Action needed indicator */}
-              {metric.needsAction && count > 0 && (
-                <div className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200">
-                  Action Needed
-                </div>
-              )}
-              
-              {/* Item count sublabel */}
-              <div className="text-xs text-gray-500 mt-2">
-                {count === 1 ? '1 item' : `${count} items`}
-              </div>
+            {/* Count */}
+            <div 
+              className="text-4xl font-extralight leading-none mb-3 tracking-tight md:text-3xl sm:text-2xl"
+              style={{ color: getCountColor(metric.colorType) }}
+            >
+              {count}
+            </div>
+            
+            {/* Label */}
+            <div className="text-sm font-medium uppercase tracking-wider text-gray-700 md:text-xs sm:text-xs">
+              {metric.label}
+            </div>
+            
+            {/* Sublabel */}
+            <div className="text-xs text-gray-500 mt-1 font-normal">
+              {count === 1 ? 'item' : 'items'}
             </div>
 
-            {/* Priority indicator for high priority items */}
-            {metric.priority === 'high' && count > 0 && (
+            {/* High priority indicator */}
+            {isHighPriority && (
               <div className="absolute top-3 right-3">
-                <div className="w-2 h-2 rounded-full bg-red-500" />
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
               </div>
             )}
           </div>

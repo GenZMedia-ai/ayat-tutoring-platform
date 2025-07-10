@@ -65,40 +65,40 @@ export function SalesSidebar() {
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     cn(
-      "flex items-center gap-3 rounded-lg px-4 py-3 text-sm transition-all duration-200 mx-3",
+      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
       isActive 
-        ? "bg-amber-700 text-white shadow-sm" 
-        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+        ? "bg-primary text-primary-foreground shadow-sm" 
+        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
     );
 
   return (
     <Sidebar
       className={cn(
-        "border-r border-gray-200 bg-white",
-        !open ? "w-16" : "w-72"
+        "border-r border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+        !open ? "w-16" : "w-64"
       )}
       variant="inset"
     >
       <SidebarContent className="gap-0">
         {/* Header */}
         <div className={cn(
-          "flex items-center gap-3 px-6 py-5 border-b border-gray-200",
-          !open && "justify-center px-4"
+          "flex items-center gap-2 px-4 py-4 border-b border-border/40",
+          !open && "justify-center px-2"
         )}>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-700 text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <BarChart3 className="h-4 w-4" />
           </div>
           {open && (
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-gray-900">Sales Dashboard</span>
-              <span className="text-xs text-gray-600">Agent Portal</span>
+              <span className="text-sm font-semibold">Sales Dashboard</span>
+              <span className="text-xs text-muted-foreground">Agent Portal</span>
             </div>
           )}
         </div>
 
-        <SidebarGroup className="px-0 py-4">
+        <SidebarGroup className="px-4 py-4">
           <SidebarGroupLabel className={cn(
-            "text-xs font-medium text-gray-600 mb-2 px-6 uppercase tracking-wider",
+            "text-xs font-medium text-muted-foreground mb-2",
             !open && "sr-only"
           )}>
             Navigation
@@ -137,9 +137,9 @@ export function SalesSidebar() {
 
         {/* Footer */}
         {open && (
-          <div className="mt-auto p-6 border-t border-gray-200">
-            <div className="text-xs text-gray-600">
-              <div className="font-medium text-gray-900">Sales Agent Portal</div>
+          <div className="mt-auto p-4 border-t border-border/40">
+            <div className="text-xs text-muted-foreground">
+              <div className="font-medium">Sales Agent Portal</div>
               <div>Manage trials, payments & follow-ups</div>
             </div>
           </div>
