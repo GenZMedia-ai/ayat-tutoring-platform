@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,7 +29,6 @@ const SalesFollowup: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('alltime');
 
-  // Get date range based on filter
   const getDateRange = () => {
     const now = new Date();
     switch (dateFilter) {
@@ -53,13 +51,11 @@ const SalesFollowup: React.FC = () => {
     }
   };
 
-  // Create sample follow-up data for testing
   const createSampleData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get some students to create follow-up tasks for
       const { data: students } = await supabase
         .from('students')
         .select('id, name, phone')
@@ -72,7 +68,6 @@ const SalesFollowup: React.FC = () => {
         return;
       }
 
-      // Create sample follow-up tasks
       const sampleTasks = students.map((student, index) => ({
         student_id: student.id,
         sales_agent_id: user.id,
@@ -96,7 +91,6 @@ const SalesFollowup: React.FC = () => {
     }
   };
 
-  // Load follow-up tasks
   const loadFollowUpTasks = async () => {
     try {
       setLoading(true);
@@ -171,7 +165,6 @@ const SalesFollowup: React.FC = () => {
     loadFollowUpTasks();
   }, [dateFilter]);
 
-  // Filter tasks
   const filteredTasks = followUpTasks.filter(task => {
     const matchesSearch = task.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.student_phone.includes(searchTerm);
@@ -251,7 +244,6 @@ const SalesFollowup: React.FC = () => {
       <Card>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Date Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Date Filter</label>
               <Select value={dateFilter} onValueChange={setDateFilter}>
@@ -269,7 +261,6 @@ const SalesFollowup: React.FC = () => {
               </Select>
             </div>
 
-            {/* Search */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
               <div className="relative">
@@ -286,7 +277,7 @@ const SalesFollowup: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Follow-up Tasks List */}
+      {/* Follow-up Tasks List - NEW 2-Column Layout */}
       {filteredTasks.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
@@ -311,10 +302,10 @@ const SalesFollowup: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredTasks.map((task) => (
-            <Card key={task.id} className={`${task.completed ? 'bg-green-50 border-green-200' : ''}`}>
-              <CardHeader className="pb-4">
+            <Card key={task.id} className={`hover:shadow-md transition-shadow ${task.completed ? 'bg-green-50 border-green-200' : ''}`}>
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge className={task.completed ? 'bg-green-100 text-green-800 border-green-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}>
@@ -325,7 +316,7 @@ const SalesFollowup: React.FC = () => {
                     </Badge>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {format(new Date(task.scheduled_date), 'MMM dd, yyyy')}
+                    {format(new Date(task.scheduled_date), 'MMM dd')}
                   </div>
                 </div>
                 <CardTitle className="text-lg">{task.student_name}</CardTitle>
@@ -333,16 +324,17 @@ const SalesFollowup: React.FC = () => {
                   Phone: {task.student_phone}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
                 {task.notes && (
                   <div className="text-sm">
-                    <span className="font-medium">Notes:</span> {task.notes}
+                    <span className="font-medium">Notes:</span> 
+                    <p className="text-muted-foreground mt-1 line-clamp-2">{task.notes}</p>
                   </div>
                 )}
 
                 {task.completed && task.completed_at && (
                   <div className="text-sm text-green-600">
-                    <span className="font-medium">Completed:</span> {format(new Date(task.completed_at), 'MMM dd, yyyy HH:mm')}
+                    <span className="font-medium">Completed:</span> {format(new Date(task.completed_at), 'MMM dd, HH:mm')}
                   </div>
                 )}
 
@@ -352,22 +344,35 @@ const SalesFollowup: React.FC = () => {
                       <Button
                         size="sm"
                         onClick={() => handleWhatsAppContact(task)}
-                        className="bg-green-600 hover:bg-green-700 text-white"
+                        className="bg-green-600 hover:bg-green-700 text-white text-xs"
                       >
-                        <MessageCircle className="h-4 w-4 mr-1" />
+                        <MessageCircle className="h-3 w-3 mr-1" />
                         WhatsApp
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleMarkCompleted(task.id)}
+                        className="text-xs"
                       >
-                        <CheckCircle className="h-4 w-4 mr-1" />
+                        <CheckCircle className="h-3 w-3 mr-1" />
                         Mark Completed
                       </Button>
                     </>
                   )}
                 </div>
+
+                {/* Status Messages */}
+                {!task.completed && (
+                  <div className="text-xs text-yellow-600 bg-yellow-50 p-2 rounded">
+                    📞 Scheduled follow-up - Contact student to check on their progress
+                  </div>
+                )}
+                {task.completed && (
+                  <div className="text-xs text-green-600 bg-green-50 p-2 rounded">
+                    ✅ Follow-up completed successfully
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

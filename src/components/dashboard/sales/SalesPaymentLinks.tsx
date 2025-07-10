@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +18,7 @@ interface PaymentLink {
   paid_at?: string;
   clicked_at?: string;
   stripe_session_id?: string;
-  stripe_checkout_url?: string; // CRITICAL FIX: Added stored URL field
+  stripe_checkout_url?: string;
   created_by: string;
   student_names?: string[];
   family_group_id?: string;
@@ -34,7 +33,6 @@ const SalesPaymentLinks: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState('thismonth');
 
-  // Get date range based on filter
   const getDateRange = () => {
     const now = new Date();
     switch (dateFilter) {
@@ -57,7 +55,6 @@ const SalesPaymentLinks: React.FC = () => {
     }
   };
 
-  // Load payment links
   const loadPaymentLinks = async () => {
     try {
       setLoading(true);
@@ -78,11 +75,9 @@ const SalesPaymentLinks: React.FC = () => {
 
       if (error) throw error;
 
-      // Fetch student names for each payment link
       const linksWithNames = await Promise.all(
         (links || []).map(async (link) => {
           if (link.family_group_id) {
-            // For family payments, get family info
             const { data: family } = await supabase
               .from('family_groups')
               .select('parent_name, student_count')
@@ -94,7 +89,6 @@ const SalesPaymentLinks: React.FC = () => {
               student_names: family ? [`${family.parent_name} (${family.student_count} students)`] : ['Family Group']
             };
           } else {
-            // For individual payments, get student names
             const { data: students } = await supabase
               .from('students')
               .select('name')
@@ -121,7 +115,6 @@ const SalesPaymentLinks: React.FC = () => {
     loadPaymentLinks();
   }, [dateFilter]);
 
-  // Filter payment links
   const filteredLinks = paymentLinks.filter(link => {
     const matchesSearch = link.student_names?.some(name => 
       name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -158,14 +151,11 @@ const SalesPaymentLinks: React.FC = () => {
     }
   };
 
-  // CRITICAL FIX: Use stored URL or show error for missing URLs
   const copyPaymentLink = (link: PaymentLink) => {
     if (link.stripe_checkout_url) {
-      // Use the stored complete URL
       navigator.clipboard.writeText(link.stripe_checkout_url);
       toast.success('Payment link copied to clipboard');
     } else if (link.stripe_session_id) {
-      // Legacy fallback - inform user that URL might not work
       const url = `https://checkout.stripe.com/c/pay/${link.stripe_session_id}`;
       navigator.clipboard.writeText(url);
       toast.warning('Payment link copied (legacy format - might not work)');
@@ -176,10 +166,8 @@ const SalesPaymentLinks: React.FC = () => {
 
   const openPaymentLink = (link: PaymentLink) => {
     if (link.stripe_checkout_url) {
-      // Use the stored complete URL
       window.open(link.stripe_checkout_url, '_blank');
     } else if (link.stripe_session_id) {
-      // Legacy fallback - warn user
       const url = `https://checkout.stripe.com/c/pay/${link.stripe_session_id}`;
       window.open(url, '_blank');
       toast.warning('Opening legacy payment link - this might not work');
@@ -188,7 +176,6 @@ const SalesPaymentLinks: React.FC = () => {
     }
   };
 
-  // Check if payment link is available and valid
   const hasValidPaymentLink = (link: PaymentLink) => {
     return !!(link.stripe_checkout_url || link.stripe_session_id);
   };
@@ -225,8 +212,8 @@ const SalesPaymentLinks: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Cards - No amounts shown */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="text-center">
@@ -273,7 +260,6 @@ const SalesPaymentLinks: React.FC = () => {
       <Card>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Date Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Date Filter</label>
               <Select value={dateFilter} onValueChange={setDateFilter}>
@@ -291,7 +277,6 @@ const SalesPaymentLinks: React.FC = () => {
               </Select>
             </div>
 
-            {/* Status Filter */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Status Filter</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -309,7 +294,6 @@ const SalesPaymentLinks: React.FC = () => {
               </Select>
             </div>
 
-            {/* Search */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
               <div className="relative">
@@ -326,7 +310,7 @@ const SalesPaymentLinks: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Payment Links List - Fixed URLs */}
+      {/* Payment Links List - NEW 2-Column Layout */}
       {filteredLinks.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
@@ -345,57 +329,51 @@ const SalesPaymentLinks: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredLinks.map((link) => (
             <Card key={link.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-4">
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {getStatusIcon(link.status)}
-                    <Badge className={getStatusColor(link.status)}>
+                    <Badge className={getStatusColor(link.status)} variant="secondary">
                       {link.status.toUpperCase()}
                     </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">
                       {link.payment_type === 'family' ? 'Family' : 'Individual'}
                     </Badge>
-                    {/* Show URL availability status */}
-                    {link.stripe_checkout_url ? (
+                    {link.stripe_checkout_url && (
                       <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
                         URL Available
                       </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
-                        Legacy Link
-                      </Badge>
                     )}
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    {link.package_session_count} sessions
-                  </div>
                 </div>
-                <CardTitle className="text-lg">
+                <CardTitle className="text-lg line-clamp-1">
                   {link.student_names?.join(', ') || 'Unknown Student'}
                 </CardTitle>
-                <CardDescription>
-                  Payment Link ID: {link.id.slice(0, 8)}...
+                <CardDescription className="text-sm">
+                  {link.package_session_count} sessions • Created {format(new Date(link.created_at), 'MMM dd')}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <span className="font-medium">Created:</span> {format(new Date(link.created_at), 'MMM dd, yyyy HH:mm')}
-                  </div>
-                  <div>
-                    <span className="font-medium">Expires:</span> {format(new Date(link.expires_at), 'MMM dd, yyyy HH:mm')}
+                    <span className="text-muted-foreground">Expires:</span>
+                    <div className="font-medium">{format(new Date(link.expires_at), 'MMM dd, HH:mm')}</div>
                   </div>
                   {link.clicked_at && (
                     <div>
-                      <span className="font-medium">Clicked:</span> {format(new Date(link.clicked_at), 'MMM dd, yyyy HH:mm')}
+                      <span className="text-muted-foreground">Clicked:</span>
+                      <div className="font-medium">{format(new Date(link.clicked_at), 'MMM dd, HH:mm')}</div>
                     </div>
                   )}
                   {link.paid_at && (
-                    <div>
-                      <span className="font-medium">Paid:</span> {format(new Date(link.paid_at), 'MMM dd, yyyy HH:mm')}
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground">Paid:</span>
+                      <div className="font-medium text-green-600">{format(new Date(link.paid_at), 'MMM dd, HH:mm')}</div>
                     </div>
                   )}
                 </div>
@@ -407,40 +385,42 @@ const SalesPaymentLinks: React.FC = () => {
                         size="sm"
                         variant="outline"
                         onClick={() => copyPaymentLink(link)}
+                        className="text-xs"
                       >
-                        <Copy className="h-4 w-4 mr-1" />
-                        Copy Link
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => openPaymentLink(link)}
+                        className="text-xs"
                       >
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        Open Link
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        Open
                       </Button>
                     </>
                   ) : (
-                    <div className="text-sm text-muted-foreground bg-gray-50 p-2 rounded">
-                      ⚠️ Payment link not available (expired or invalid session)
+                    <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded text-center w-full">
+                      ⚠️ Payment link not available
                     </div>
                   )}
                 </div>
 
                 {/* Status Messages */}
                 {link.status === 'pending' && (
-                  <div className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
-                    ⏳ Payment link created and ready to be shared with the client
+                  <div className="text-xs text-yellow-600 bg-yellow-50 p-2 rounded">
+                    ⏳ Ready to be shared with client
                   </div>
                 )}
                 {link.status === 'clicked' && (
-                  <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                    👁️ Client has viewed the payment link but hasn't completed payment yet
+                  <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                    👁️ Client viewed but hasn't completed payment
                   </div>
                 )}
                 {link.status === 'paid' && (
-                  <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
-                    ✅ Payment completed successfully! Student is ready for activation
+                  <div className="text-xs text-green-600 bg-green-50 p-2 rounded">
+                    ✅ Payment completed successfully!
                   </div>
                 )}
               </CardContent>

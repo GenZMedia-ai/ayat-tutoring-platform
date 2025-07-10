@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +32,6 @@ const SalesStudents: React.FC = () => {
   const [paidStudents, setPaidStudents] = useState<PaidStudent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load paid students with optimized session counting
   const loadPaidStudents = async () => {
     try {
       setLoading(true);
@@ -45,7 +43,6 @@ const SalesStudents: React.FC = () => {
 
       console.log('Loading paid students for user:', user.id);
 
-      // Get students with their teacher information using proper foreign key relationship
       const { data: students, error } = await supabase
         .from('students')
         .select(`
@@ -86,7 +83,6 @@ const SalesStudents: React.FC = () => {
         return;
       }
 
-      // Get session completion counts for all students in a single query
       const studentIds = students.map(s => s.id);
       
       const { data: sessionCounts, error: sessionError } = await supabase
@@ -103,12 +99,10 @@ const SalesStudents: React.FC = () => {
 
       if (sessionError) {
         console.error('Error loading session counts:', sessionError);
-        // Don't throw error, just log it and continue with 0 counts
       }
 
       console.log('Loaded session counts:', sessionCounts?.length || 0);
 
-      // Create a map of student ID to completed session count
       const sessionCountMap = new Map<string, number>();
       if (sessionCounts) {
         sessionCounts.forEach(session => {
@@ -119,7 +113,6 @@ const SalesStudents: React.FC = () => {
         });
       }
 
-      // Process students with session counts
       const studentsWithProgress: PaidStudent[] = students.map(student => ({
         id: student.id,
         unique_id: student.unique_id,
@@ -214,7 +207,7 @@ const SalesStudents: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-4">
             <div className="text-center">
@@ -257,7 +250,7 @@ const SalesStudents: React.FC = () => {
         </Card>
       </div>
 
-      {/* Students List */}
+      {/* Students List - Optimized 2-Column Layout */}
       {paidStudents.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
@@ -273,17 +266,17 @@ const SalesStudents: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {paidStudents.map((student) => (
             <Card key={student.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-4">
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge className={getStatusColor(student.status)}>
                       {student.status.toUpperCase()}
                     </Badge>
                     {student.is_family_member && (
-                      <Badge variant="outline">Family Member</Badge>
+                      <Badge variant="outline" className="text-xs">Family Member</Badge>
                     )}
                   </div>
                   <div className="text-sm font-medium text-green-600">
@@ -295,29 +288,34 @@ const SalesStudents: React.FC = () => {
                   ID: {student.unique_id} • Age: {student.age}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <span className="font-medium">Phone:</span> {student.phone}
+                    <span className="font-medium">Phone:</span>
+                    <div className="text-muted-foreground">{student.phone}</div>
                   </div>
                   <div>
-                    <span className="font-medium">Country:</span> {student.country}
+                    <span className="font-medium">Country:</span>
+                    <div className="text-muted-foreground">{student.country}</div>
                   </div>
                   <div>
-                    <span className="font-medium">Platform:</span> {student.platform}
+                    <span className="font-medium">Platform:</span>
+                    <div className="text-muted-foreground">{student.platform}</div>
                   </div>
                   <div>
-                    <span className="font-medium">Teacher:</span> {student.teacher_name}
+                    <span className="font-medium">Teacher:</span>
+                    <div className="text-muted-foreground">{student.teacher_name}</div>
                   </div>
                   {student.parent_name && (
-                    <div>
-                      <span className="font-medium">Parent:</span> {student.parent_name}
+                    <div className="col-span-2">
+                      <span className="font-medium">Parent:</span>
+                      <div className="text-muted-foreground">{student.parent_name}</div>
                     </div>
                   )}
                 </div>
 
                 {/* Package Info */}
-                <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">
@@ -327,7 +325,7 @@ const SalesStudents: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <BookOpen className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">
-                      {student.sessions_completed}/{student.package_session_count} sessions
+                      {student.sessions_completed}/{student.package_session_count}
                     </span>
                   </div>
                 </div>
@@ -351,24 +349,22 @@ const SalesStudents: React.FC = () => {
                 )}
 
                 {/* Contact Button */}
-                <div className="pt-2">
-                  <button
-                    onClick={() => handleWhatsAppContact(student)}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors"
-                  >
-                    <Phone className="h-4 w-4" />
-                    Contact via WhatsApp
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleWhatsAppContact(student)}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors"
+                >
+                  <Phone className="h-4 w-4" />
+                  Contact via WhatsApp
+                </button>
 
                 {/* Status-specific messages */}
                 {student.status === 'paid' && (
-                  <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                  <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
                     💡 Student has paid and is awaiting session activation by teacher
                   </div>
                 )}
                 {student.status === 'expired' && (
-                  <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                  <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
                     🔄 Package expired - potential renewal opportunity
                   </div>
                 )}
