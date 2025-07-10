@@ -58,11 +58,7 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
   const getPhone = () => data.phone;
   const getCountry = () => data.country;
   const getPlatform = () => data.platform;
-  const getNotes = () => {
-    const notes = data.notes;
-    console.log('StatusSpecificTrialCard - Notes for', getName(), ':', notes, 'Type:', typeof notes);
-    return notes;
-  };
+  const getNotes = () => data.notes;
   const getTrialDate = () => isFamily ? (data as FamilyGroup).trial_date : (data as TrialSessionFlowStudent).trialDate;
   const getTrialTime = () => isFamily ? (data as FamilyGroup).trial_time : (data as TrialSessionFlowStudent).trialTime;
   const getTeacherType = () => isFamily ? (data as FamilyGroup).teacher_type : (data as TrialSessionFlowStudent).teacherType;
@@ -434,15 +430,11 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
           </div>
         </div>
 
-        {getNotes() && getNotes().trim() && (
+        {getNotes() && (
           <div className="p-3 bg-muted/50 rounded-lg border border-primary/10">
-            <div className="flex items-start gap-2">
-              <MessageCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-primary mb-1">Teacher Notes:</p>
-                <p className="text-sm text-foreground">{getNotes()}</p>
-              </div>
-            </div>
+            <p className="text-sm">
+              <strong>Notes:</strong> {getNotes()}
+            </p>
           </div>
         )}
 
