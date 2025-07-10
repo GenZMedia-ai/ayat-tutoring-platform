@@ -133,43 +133,46 @@ const SalesTrialAppointments: React.FC = () => {
       {/* Header and Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Trial Appointments</h3>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">Trial Appointments</h1>
+          <p className="text-sm text-gray-600">
             Manage all trial sessions, payments, and follow-ups
           </p>
         </div>
-        <Button onClick={() => {
-          refetchData();
-        }} variant="outline" size="sm">
+        <Button 
+          onClick={() => {
+            refetchData();
+          }} 
+          className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 h-9 px-4"
+        >
           <Search className="h-4 w-4 mr-2" />
           Refresh
         </Button>
       </div>
 
       {/* Search and Filter Controls */}
-      <Card>
+      <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <Input
                   placeholder="Search by name, ID, or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 bg-white border-gray-300 focus:border-amber-600 focus:ring-1 focus:ring-amber-600 text-gray-700 h-10"
                 />
               </div>
             </div>
             <div className="sm:w-48">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <Filter className="h-4 w-4 mr-2" />
+                <SelectTrigger className="bg-white border-gray-300 text-gray-700 h-10">
+                  <Filter className="h-4 w-4 mr-2 text-gray-500" />
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white border border-gray-200">
                   {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
+                    <SelectItem key={option.value} value={option.value} className="text-gray-700">
                       {option.label} ({option.value === 'all' ? filteredItems.length : getStatsCount(option.value)})
                     </SelectItem>
                   ))}
@@ -181,10 +184,10 @@ const SalesTrialAppointments: React.FC = () => {
       </Card>
 
       {/* Real-Time Metrics Dashboard */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h4 className="text-lg font-semibold">Real-Time Metrics</h4>
-          <div className="text-xs text-muted-foreground">
+          <h2 className="text-xl font-semibold text-gray-900">Real-Time Metrics</h2>
+          <div className="text-xs text-gray-500">
             Live updates • Auto-refresh enabled
           </div>
         </div>
@@ -193,14 +196,14 @@ const SalesTrialAppointments: React.FC = () => {
 
       {/* All Trials List */}
       {filteredItems.length === 0 ? (
-        <Card>
+        <Card className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <CardContent className="pt-6">
-            <div className="text-center py-8">
-              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-muted-foreground mb-2">
+            <div className="text-center py-12">
+              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-700 mb-2">
                 No trial appointments found
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-500">
                 {searchTerm || statusFilter !== 'all' 
                   ? 'Try adjusting your search or filter criteria'
                   : 'You haven\'t created any trial appointments yet'
@@ -210,7 +213,7 @@ const SalesTrialAppointments: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {filteredItems.map((item) => (
             <StatusSpecificTrialCard
               key={`${item.type}-${item.id}`}
