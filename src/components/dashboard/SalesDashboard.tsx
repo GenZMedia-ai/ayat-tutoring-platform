@@ -1,37 +1,32 @@
 
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { SalesSidebar } from './sales/SalesSidebar';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import DashboardNavigation from '@/components/shared/DashboardNavigation';
 
 const SalesDashboard: React.FC = () => {
-  const tabs = [
-    { value: 'homepage', label: 'Home Page', path: '/sales/homepage' },
-    { value: 'trials', label: 'Trial Appointments', path: '/sales/trials' },
-    { value: 'payment-links', label: 'Payment Links', path: '/sales/payment-links' },
-    { value: 'followup', label: 'Follow-up', path: '/sales/followup' },
-    { value: 'students', label: 'Students', path: '/sales/students' },
-  ];
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardHeader />
-      <main className="p-6">
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-bold text-primary">Sales Dashboard</h2>
-            <Badge variant="outline" className="text-xs">
-              Sales Agent Portal
-            </Badge>
-          </div>
-
-          <DashboardNavigation tabs={tabs} gridCols="grid-cols-5" />
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <SalesSidebar />
+        
+        <div className="flex-1 flex flex-col min-w-0">
+          <DashboardHeader />
           
-          <Outlet />
+          <main className="flex-1 p-6">
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger className="lg:hidden" />
+                <div className="flex-1">
+                  <Outlet />
+                </div>
+              </div>
+            </div>
+          </main>
         </div>
-      </main>
-    </div>
+      </div>
+    </SidebarProvider>
   );
 };
 

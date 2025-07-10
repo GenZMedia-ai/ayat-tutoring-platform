@@ -1,5 +1,6 @@
 // Extended time slots from 8 AM to 10 PM for availability checking
 export const HOURLY_TIME_SLOTS = [
+  { value: -1, label: 'All Time', utcHour: -1 }, // New "All Time" option
   { value: 8, label: '8:00 AM', utcHour: 8 },
   { value: 9, label: '9:00 AM', utcHour: 9 },
   { value: 10, label: '10:00 AM', utcHour: 10 },

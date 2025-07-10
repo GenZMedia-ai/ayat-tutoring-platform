@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Filter, Calendar } from 'lucide-react';
 import { useMixedStudentData, MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { useStudentFollowUp } from '@/hooks/useStudentFollowUp';
-import { UnifiedTrialCard } from '@/components/shared/UnifiedTrialCard';
+import { StatusSpecificTrialCard } from './StatusSpecificTrialCard';
+import { RealTimeMetrics } from './RealTimeMetrics';
 import { StudentEditModal } from '@/components/sales/StudentEditModal';
 import { StatusChangeModal } from '@/components/sales/StatusChangeModal';
 import { PaymentLinkModal } from '@/components/sales/PaymentLinkModal';
@@ -179,48 +180,15 @@ const SalesTrialAppointments: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
-                {getStatsCount('pending')}
-              </div>
-              <div className="text-sm text-muted-foreground">Pending</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {getStatsCount('confirmed')}
-              </div>
-              <div className="text-sm text-muted-foreground">Confirmed</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {getStatsCount('trial-completed')}
-              </div>
-              <div className="text-sm text-muted-foreground">Completed</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
-                {getStatsCount('awaiting-payment')}
-              </div>
-              <div className="text-sm text-muted-foreground">Awaiting Payment</div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Real-Time Metrics Dashboard */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-lg font-semibold">Real-Time Metrics</h4>
+          <div className="text-xs text-muted-foreground">
+            Live updates • Auto-refresh enabled
+          </div>
+        </div>
+        <RealTimeMetrics />
       </div>
 
       {/* All Trials List */}
@@ -244,17 +212,26 @@ const SalesTrialAppointments: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredItems.map((item) => (
-            <UnifiedTrialCard
+            <StatusSpecificTrialCard
               key={`${item.type}-${item.id}`}
               item={item}
-              onEdit={setEditingItem}
-              onStatusChange={setChangingStatusItem}
+              onEditInfo={setEditingItem}
               onContact={handleContact}
               onCreatePaymentLink={setPaymentLinkItem}
               onScheduleFollowUp={handleScheduleFollowUp}
               onCompleteFollowUp={handleCompleteFollowUp}
-              onRefresh={() => {
-                refetchData();
+              onRescheduleFollowUp={(item) => {
+                toast.info('Reschedule follow-up functionality coming soon');
+              }}
+              onMarkAsDropped={(item) => {
+                toast.info('Mark as dropped functionality coming soon');
+              }}
+              onRescheduleAppointment={(item) => {
+                toast.info('Reschedule appointment functionality coming soon');
+              }}
+              onRecreatePaymentLink={setPaymentLinkItem}
+              onMarkAsCanceled={(item) => {
+                toast.info('Mark as canceled functionality coming soon');
               }}
             />
           ))}

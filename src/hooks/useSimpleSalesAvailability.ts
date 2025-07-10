@@ -39,7 +39,7 @@ export const useSimpleSalesAvailability = () => {
   ) => {
     setLoading(true);
     try {
-      console.log('=== PHASE 4: SIMPLIFIED AVAILABILITY CHECK START ===');
+      console.log('=== SIMPLIFIED AVAILABILITY CHECK START ===');
       console.log('Request Parameters:', { 
         date: date.toDateString(), 
         timezone, 
@@ -47,16 +47,28 @@ export const useSimpleSalesAvailability = () => {
         selectedHour 
       });
       
-      const slots = await SimpleAvailabilityService.searchAvailableSlots(
-        date,
-        timezone,
-        teacherType,
-        selectedHour
-      );
+      // Handle "All Time" option (-1) by getting all available slots
+      if (selectedHour === -1) {
+        console.log('ALL TIME MODE: Fetching all available slots for the day');
+        const slots = await SimpleAvailabilityService.searchAllAvailableSlots(
+          date,
+          timezone,
+          teacherType
+        );
+        console.log('All time slots received:', slots.length);
+        setAvailableSlots(slots);
+      } else {
+        const slots = await SimpleAvailabilityService.searchAvailableSlots(
+          date,
+          timezone,
+          teacherType,
+          selectedHour
+        );
+        console.log('Specific hour slots received:', slots.length);
+        setAvailableSlots(slots);
+      }
       
-      console.log('Simplified slots received:', slots.length);
       console.log('Date preservation check: All slots should be for date:', date.toDateString());
-      setAvailableSlots(slots);
     } catch (error) {
       console.error('Simplified availability check error:', error);
       toast.error('Failed to check availability');

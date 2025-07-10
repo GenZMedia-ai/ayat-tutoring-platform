@@ -25,7 +25,7 @@ const SalesHomepage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [timezone, setTimezone] = useState('saudi');
   const [teacherType, setTeacherType] = useState('mixed');
-  const [selectedHour, setSelectedHour] = useState(14);
+  const [selectedHour, setSelectedHour] = useState(-1); // Default to "All Time"
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
 
