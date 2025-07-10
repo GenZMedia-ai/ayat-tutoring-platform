@@ -89,21 +89,30 @@ export const useSalesPermissions = (status: StudentStatus): SalesPermissions => 
         return {
           canEdit: true,
           canChangeStatus: true,
-          canCreatePaymentLink: true,
+          canCreatePaymentLink: true, // ✅ Enable renewal opportunities
           canCreateFollowUp: true,
           canViewAll: true,
-          statusMessage: 'Can create renewal opportunities'
+          statusMessage: 'Can create renewal payment links and follow-ups'
         };
 
       case 'cancelled':
+        return {
+          canEdit: true, // ✅ Allow editing for comeback opportunities
+          canChangeStatus: true, // ✅ Allow status changes for re-engagement
+          canCreatePaymentLink: true, // ✅ Enable comeback payment links
+          canCreateFollowUp: true, // ✅ Enable follow-up for re-engagement
+          canViewAll: true,
+          statusMessage: 'Can create comeback opportunities and re-engagement'
+        };
+
       case 'dropped':
         return {
-          canEdit: false,
-          canChangeStatus: false,
-          canCreatePaymentLink: false,
-          canCreateFollowUp: false,
+          canEdit: true, // ✅ Allow editing for re-engagement
+          canChangeStatus: true, // ✅ Allow status changes
+          canCreatePaymentLink: true, // ✅ Enable re-engagement payment links
+          canCreateFollowUp: true, // ✅ Enable follow-up for re-engagement
           canViewAll: true,
-          statusMessage: 'View only - all actions locked'
+          statusMessage: 'Can create re-engagement opportunities'
         };
 
       default:

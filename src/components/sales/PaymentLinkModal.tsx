@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -137,11 +138,23 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
       return false;
     }
     
-    const validStatuses = ['trial-completed', 'trial-ghosted'];
+    // Updated validation logic to support renewal opportunities
+    const firstTimePaymentStatuses = ['trial-completed', 'trial-ghosted'];
+    const renewalOpportunityStatuses = ['expired', 'cancelled', 'dropped'];
+    const validStatuses = [...firstTimePaymentStatuses, ...renewalOpportunityStatuses];
+    
     if (!validStatuses.includes(studentStatus)) {
-      toast.error(`Cannot create payment link for student with status: ${studentStatus}. Student must have completed or ghosted trial.`);
+      toast.error(`Cannot create payment link for student with status: ${studentStatus}. Valid statuses are: ${validStatuses.join(', ')}`);
       return false;
     }
+
+    // Show different messaging for renewal vs first-time payment
+    if (renewalOpportunityStatuses.includes(studentStatus)) {
+      console.log('✅ Creating renewal payment link for status:', studentStatus);
+    } else {
+      console.log('✅ Creating first-time payment link for status:', studentStatus);
+    }
+    
     return true;
   };
 
@@ -303,17 +316,53 @@ export const PaymentLinkModal: React.FC<PaymentLinkModalProps> = ({
     return selectedPackage && selectedCurrency && !isCreating;
   };
 
+  // Helper function to get payment link context
+  const getPaymentContext = () => {
+    const status = getStudentStatus();
+    const renewalStatuses = ['expired', 'cancelled', 'dropped'];
+    
+    if (renewalStatuses.includes(status)) {
+      return {
+        isRenewal: true,
+        contextMessage: status === 'expired' ? 'Creating renewal payment link' : 
+                      status === 'cancelled' ? 'Creating comeback payment link' :
+                      'Creating re-engagement payment link'
+      };
+    }
+    
+    return {
+      isRenewal: false,
+      contextMessage: 'Creating first-time payment link'
+    };
+  };
+
+  const paymentContext = getPaymentContext();
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Payment Link</DialogTitle>
           <DialogDescription>
-            Create a payment link for {getStudentName()} ({getStudentUniqueId()})
+            {paymentContext.contextMessage} for {getStudentName()} ({getStudentUniqueId()})
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Payment Context Indicator */}
+          {paymentContext.isRenewal && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="bg-amber-100 text-amber-800">
+                  Renewal Opportunity
+                </Badge>
+                <span className="text-sm text-amber-700">
+                  This student is returning after {getStudentStatus()} status
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Student/Family Information */}
           <div className="p-4 bg-muted rounded-lg">
             <h4 className="font-medium mb-2">
