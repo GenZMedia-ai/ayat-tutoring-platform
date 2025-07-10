@@ -50,14 +50,6 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
   const isFamily = item.type === 'family';
   const data = item.data;
 
-  // Log session ID for debugging
-  console.log('🎯 Unified card rendered with item:', {
-    type: item.type,
-    name: isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name,
-    id: item.id,
-    sessionId: data.sessionId
-  });
-
   useEffect(() => {
     const fetchRescheduleInfo = async () => {
       try {
@@ -338,9 +330,6 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
               )}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {getActionButtons()}
-          </div>
         </div>
       </CardHeader>
 
@@ -398,25 +387,10 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
           </div>
         )}
 
-        {/* Quick Actions for Pending Status */}
-        {data.status === 'pending' && (
-          <div className="flex gap-2 pt-2 border-t">
-            <Button 
-              size="sm" 
-              variant="outline"
-              onClick={() => onContact(data.phone, getName())}
-            >
-              Contact
-            </Button>
-            <Button 
-              size="sm"
-              className="ayat-button-primary"
-              onClick={() => onConfirm(item)}
-            >
-              Confirm
-            </Button>
-          </div>
-        )}
+        {/* Action Buttons - Consolidated to Bottom */}
+        <div className="flex gap-2 pt-3 border-t flex-wrap">
+          {getActionButtons()}
+        </div>
       </CardContent>
     </Card>
   );
