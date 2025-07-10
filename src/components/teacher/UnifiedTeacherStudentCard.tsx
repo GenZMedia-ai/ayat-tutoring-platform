@@ -8,21 +8,13 @@ import {
   Phone, 
   MapPin, 
   User, 
-  MoreHorizontal,
   MessageCircle,
-  Video,
   CheckCircle,
   XCircle,
   RotateCcw,
   AlertTriangle,
   Users
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { TeacherMixedTrialItem, TeacherTrialStudent, TeacherTrialFamily } from '@/hooks/useTeacherMixedTrialData';
 import { formatDateTimeInEgypt } from '@/utils/egyptTimezone';
 import { supabase } from '@/integrations/supabase/client';
@@ -151,60 +143,139 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
     return formatDateTimeInEgypt(date, time, "dd/MM 'at' h:mm a");
   };
 
-  const getMenuOptions = () => {
-    const options = [];
+  const getActionButtons = () => {
+    const buttons = [];
 
     if (data.status === 'pending') {
-      options.push(
-        { label: `Contact ${isFamily ? 'Family' : 'Student'}`, action: () => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name), icon: MessageCircle },
-        { label: 'Confirm Trial', action: () => onConfirm(item), icon: CheckCircle },
-        { 
-          label: 'Reschedule', 
-          action: () => {
+      buttons.push(
+        <Button 
+          key="contact"
+          variant="outline" 
+          size="sm"
+          onClick={() => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name)}
+          className="flex items-center gap-1"
+        >
+          <MessageCircle className="h-3 w-3" />
+          Contact
+        </Button>,
+        <Button 
+          key="confirm"
+          size="sm"
+          onClick={() => onConfirm(item)}
+          className="ayat-button-primary flex items-center gap-1"
+        >
+          <CheckCircle className="h-3 w-3" />
+          Confirm
+        </Button>,
+        <Button 
+          key="reschedule"
+          variant="outline" 
+          size="sm"
+          onClick={() => {
             console.log(`🔄 CRITICAL FIX: ${isFamily ? 'Family' : 'Individual'} reschedule enabled`);
             onReschedule(item);
-          }, 
-          icon: RotateCcw 
-        }
+          }}
+          className="flex items-center gap-1"
+        >
+          <RotateCcw className="h-3 w-3" />
+          Reschedule
+        </Button>
       );
     } else if (data.status === 'confirmed') {
       const canMarkOutcome = !!data.sessionId || isFamily;
       
       if (canMarkOutcome) {
-        options.push(
-          { label: 'Mark as Completed', action: () => onMarkCompleted(item), icon: CheckCircle },
-          { label: 'Mark as Ghosted', action: () => onMarkGhosted(item), icon: XCircle }
+        buttons.push(
+          <Button 
+            key="completed"
+            variant="default" 
+            size="sm"
+            onClick={() => onMarkCompleted(item)}
+            className="bg-green-600 hover:bg-green-700 border-0 flex items-center gap-1"
+          >
+            <CheckCircle className="h-3 w-3" />
+            Completed
+          </Button>,
+          <Button 
+            key="ghosted"
+            variant="outline" 
+            size="sm"
+            onClick={() => onMarkGhosted(item)}
+            className="border-red-200 text-red-700 hover:bg-red-50 flex items-center gap-1"
+          >
+            <XCircle className="h-3 w-3" />
+            Ghosted
+          </Button>
         );
       } else {
         console.warn('⚠️ Cannot mark outcome - no session ID for individual student:', (data as TeacherTrialStudent).name);
       }
       
-      options.push(
-        { 
-          label: 'Reschedule', 
-          action: () => {
+      buttons.push(
+        <Button 
+          key="reschedule"
+          variant="outline" 
+          size="sm"
+          onClick={() => {
             console.log(`🔄 CRITICAL FIX: ${isFamily ? 'Family' : 'Individual'} reschedule enabled`);
             onReschedule(item);
-          }, 
-          icon: RotateCcw 
-        },
-        { label: `Contact ${isFamily ? 'Family' : 'Student'}`, action: () => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name), icon: MessageCircle }
+          }}
+          className="flex items-center gap-1"
+        >
+          <RotateCcw className="h-3 w-3" />
+          Reschedule
+        </Button>,
+        <Button 
+          key="contact"
+          variant="outline" 
+          size="sm"
+          onClick={() => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name)}
+          className="flex items-center gap-1"
+        >
+          <MessageCircle className="h-3 w-3" />
+          Contact
+        </Button>
       );
     } else if (data.status === 'paid' && onCompleteRegistration) {
       // Phase 3: Only paid students get "Complete Registration" button
-      options.push(
-        { label: 'Complete Registration', action: () => onCompleteRegistration(item), icon: Users }
-      );
-      options.push(
-        { label: `Contact ${isFamily ? 'Family' : 'Student'}`, action: () => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name), icon: MessageCircle }
+      buttons.push(
+        <Button 
+          key="complete-registration"
+          variant="default" 
+          size="sm"
+          onClick={() => onCompleteRegistration(item)}
+          className="bg-purple-600 hover:bg-purple-700 border-0 flex items-center gap-1"
+        >
+          <Users className="h-3 w-3" />
+          Complete Registration
+        </Button>,
+        <Button 
+          key="contact"
+          variant="outline" 
+          size="sm"
+          onClick={() => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name)}
+          className="flex items-center gap-1"
+        >
+          <MessageCircle className="h-3 w-3" />
+          Contact
+        </Button>
       );
     } else {
-      options.push(
-        { label: `Contact ${isFamily ? 'Family' : 'Student'}`, action: () => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name), icon: MessageCircle }
+      buttons.push(
+        <Button 
+          key="contact"
+          variant="outline" 
+          size="sm"
+          onClick={() => onContact(data.phone, isFamily ? (data as TeacherTrialFamily).parentName : (data as TeacherTrialStudent).name)}
+          className="flex items-center gap-1"
+        >
+          <MessageCircle className="h-3 w-3" />
+          Contact
+        </Button>
       );
     }
 
-    return options;
+    return buttons;
   };
 
   const getName = () => {
@@ -267,21 +338,9 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
               )}
             </div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {getMenuOptions().map((option, index) => (
-                <DropdownMenuItem key={index} onClick={option.action}>
-                  <option.icon className="mr-2 h-4 w-4" />
-                  {option.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex flex-wrap gap-2">
+            {getActionButtons()}
+          </div>
         </div>
       </CardHeader>
 
@@ -339,7 +398,7 @@ export const UnifiedTeacherStudentCard: React.FC<UnifiedTeacherStudentCardProps>
           </div>
         )}
 
-        {/* Quick Actions */}
+        {/* Quick Actions for Pending Status */}
         {data.status === 'pending' && (
           <div className="flex gap-2 pt-2 border-t">
             <Button 
