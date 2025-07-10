@@ -2,9 +2,9 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
-  Grid3X3, 
+  Home, 
   Calendar, 
-  CreditCard, 
+  Link, 
   Phone, 
   Users,
   BookOpen
@@ -27,7 +27,7 @@ const navigationItems = [
     title: 'Home Page',
     description: 'Dashboard overview',
     url: '/sales/homepage',
-    icon: Grid3X3,
+    icon: Home,
   },
   {
     title: 'Trial Appointments',
@@ -39,7 +39,7 @@ const navigationItems = [
     title: 'Payment Links',
     description: 'Create & manage payments',
     url: '/sales/payment-links',
-    icon: CreditCard,
+    icon: Link,
   },
   {
     title: 'Follow-up',
@@ -65,9 +65,9 @@ export function SalesSidebar() {
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     cn(
       "flex flex-col items-start gap-1 px-4 py-3 rounded-lg text-left transition-colors w-full",
-      "hover:bg-amber-50/50",
+      "hover:bg-stone-50/50",
       isActive 
-        ? "bg-amber-50 text-amber-800 border-l-4 border-amber-600" 
+        ? "bg-stone-100 text-stone-800 border-l-4 border-stone-600" 
         : "text-gray-700 hover:text-gray-900"
     );
 
@@ -86,7 +86,7 @@ export function SalesSidebar() {
           "flex items-center gap-3 px-6 py-6 border-b border-gray-100",
           !open && "justify-center px-4"
         )}>
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-stone-100 text-stone-800">
             <BookOpen className="h-5 w-5" />
           </div>
           {open && (
@@ -102,7 +102,7 @@ export function SalesSidebar() {
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
                 <AvatarImage src="" alt="User" />
-                <AvatarFallback className="bg-amber-100 text-amber-800 font-medium">
+                <AvatarFallback className="bg-stone-100 text-stone-800 font-medium">
                   SA
                 </AvatarFallback>
               </Avatar>
@@ -117,7 +117,7 @@ export function SalesSidebar() {
         {/* Navigation Items */}
         <SidebarGroup className="px-4 py-6">
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-2">
+            <SidebarMenu className="space-y-3">
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
