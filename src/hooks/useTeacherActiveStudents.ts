@@ -18,6 +18,21 @@ export interface StudentProgress {
   paymentAmount?: number;
   paymentCurrency?: string;
   notes?: string;
+  uniqueId: string;
+  age: number;
+  phone: string;
+  country: string;
+  totalMinutes: number;
+  sessionHistory: Array<{
+    sessionNumber: number;
+    date: string;
+    status: string;
+    actualMinutes?: number;
+    notes?: string;
+    isTrialSession: boolean;
+  }>;
+  completedPaidSessions: number;
+  totalPaidSessions: number;
 }
 
 export interface ActiveFamilyGroup {
@@ -29,6 +44,12 @@ export interface ActiveFamilyGroup {
   totalSessions: number;
   completedSessions: number;
   familyName: string;
+  totalStudents: number;
+  totalMinutes: number;
+  nextFamilySession?: {
+    studentName: string;
+    date: string;
+  };
 }
 
 export type ActiveStudentItem = StudentProgress | ActiveFamilyGroup;
@@ -81,6 +102,8 @@ export const useTeacherActiveStudents = () => {
               status,
               scheduled_date,
               scheduled_time,
+              actual_minutes,
+              notes,
               session_students!inner(student_id)
             `)
             .eq('session_students.student_id', student.id)
@@ -88,12 +111,23 @@ export const useTeacherActiveStudents = () => {
 
           const totalSessions = sessionData?.length || 0;
           const completedSessions = sessionData?.filter(s => s.status === 'completed').length || 0;
+          const totalMinutes = sessionData?.reduce((sum, s) => sum + (s.actual_minutes || 0), 0) || 0;
           
           // Find next upcoming session
           const nextSession = sessionData?.find(s => 
             s.status === 'scheduled' && 
             new Date(s.scheduled_date) >= new Date()
           );
+
+          // Build session history
+          const sessionHistory = sessionData?.map(s => ({
+            sessionNumber: s.session_number,
+            date: s.scheduled_date,
+            status: s.status,
+            actualMinutes: s.actual_minutes,
+            notes: s.notes,
+            isTrialSession: s.session_number === 1
+          })) || [];
 
           const studentProgress: StudentProgress = {
             studentId: student.id,
@@ -109,7 +143,15 @@ export const useTeacherActiveStudents = () => {
             status: student.status,
             paymentAmount: student.payment_amount,
             paymentCurrency: student.payment_currency,
-            notes: student.notes
+            notes: student.notes,
+            uniqueId: student.unique_id,
+            age: student.age,
+            phone: student.phone,
+            country: student.country,
+            totalMinutes,
+            sessionHistory,
+            completedPaidSessions: sessionHistory.filter(s => s.status === 'completed' && !s.isTrialSession).length,
+            totalPaidSessions: sessionHistory.filter(s => !s.isTrialSession).length
           };
 
           if (student.family_group_id) {
@@ -130,7 +172,10 @@ export const useTeacherActiveStudents = () => {
                 familyName: familyData?.parent_name || student.parent_name || 'Unknown Family',
                 students: [],
                 totalSessions: 0,
-                completedSessions: 0
+                completedSessions: 0,
+                totalStudents: 0,
+                totalMinutes: 0,
+                nextFamilySession: null
               });
             }
 
@@ -138,6 +183,16 @@ export const useTeacherActiveStudents = () => {
             family.students.push(studentProgress);
             family.totalSessions += totalSessions;
             family.completedSessions += completedSessions;
+            family.totalStudents++;
+            family.totalMinutes += totalMinutes;
+            
+            // Set next family session if this student has the earliest upcoming session
+            if (nextSession && (!family.nextFamilySession || new Date(nextSession.scheduled_date) < new Date(family.nextFamilySession.date))) {
+              family.nextFamilySession = {
+                studentName: student.name,
+                date: nextSession.scheduled_date
+              };
+            }
           } else {
             individualStudents.push(studentProgress);
           }
@@ -156,7 +211,15 @@ export const useTeacherActiveStudents = () => {
             status: student.status,
             paymentAmount: student.payment_amount,
             paymentCurrency: student.payment_currency,
-            notes: student.notes
+            notes: student.notes,
+            uniqueId: student.unique_id,
+            age: student.age,
+            phone: student.phone,
+            country: student.country,
+            totalMinutes: 0,
+            sessionHistory: [],
+            completedPaidSessions: 0,
+            totalPaidSessions: 0
           };
 
           if (!student.family_group_id) {

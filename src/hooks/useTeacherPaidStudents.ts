@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { DateRange } from '@/components/teacher/DateFilter';
 
-interface PaidStudent {
+export interface PaidStudent {
   id: string;
   uniqueId: string;
   name: string;
@@ -24,7 +24,7 @@ interface PaidStudent {
   isScheduled: boolean;
 }
 
-interface PaidFamily {
+export interface FamilyCardData {
   id: string;
   type: 'family';
   familyName: string;
@@ -37,7 +37,7 @@ interface PaidFamily {
   completedSessions: number;
 }
 
-type PaidStudentItem = PaidStudent | PaidFamily;
+export type PaidStudentItem = PaidStudent | FamilyCardData;
 
 export const useTeacherPaidStudents = (dateRange: DateRange = 'today') => {
   const { user } = useAuth();
