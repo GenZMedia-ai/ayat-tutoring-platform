@@ -65,17 +65,17 @@ export function SalesSidebar() {
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     cn(
-      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
+      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200 mx-3",
       isActive 
-        ? "bg-primary text-primary-foreground shadow-sm" 
-        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        ? "bg-primary text-white font-medium shadow-sm" 
+        : "text-neutral-gray600 hover:bg-backgrounds-tertiary hover:text-text-primary"
     );
 
   return (
     <Sidebar
       className={cn(
-        "border-r border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-        !open ? "w-16" : "w-64"
+        "border-r border-border bg-white",
+        !open ? "w-16" : "w-280"
       )}
       variant="inset"
     >

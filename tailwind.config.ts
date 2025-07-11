@@ -61,7 +61,71 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Design System Colors
+				'primary-main': 'hsl(var(--primary-main))',
+				'primary-light': 'hsl(var(--primary-light))',
+				'primary-dark': 'hsl(var(--primary-dark))',
+				'secondary-main': 'hsl(var(--secondary-main))',
+				'secondary-light': 'hsl(var(--secondary-light))',
+				'secondary-dark': 'hsl(var(--secondary-dark))',
+				backgrounds: {
+					primary: 'hsl(var(--backgrounds-primary))',
+					secondary: 'hsl(var(--backgrounds-secondary))',
+					tertiary: 'hsl(var(--backgrounds-tertiary))',
+					sidebar: 'hsl(var(--backgrounds-sidebar))'
+				},
+				neutral: {
+					white: 'hsl(var(--neutral-white))',
+					gray50: 'hsl(var(--neutral-gray50))',
+					gray100: 'hsl(var(--neutral-gray100))',
+					gray200: 'hsl(var(--neutral-gray200))',
+					gray300: 'hsl(var(--neutral-gray300))',
+					gray400: 'hsl(var(--neutral-gray400))',
+					gray500: 'hsl(var(--neutral-gray500))',
+					gray600: 'hsl(var(--neutral-gray600))',
+					gray700: 'hsl(var(--neutral-gray700))',
+					gray800: 'hsl(var(--neutral-gray800))',
+					gray900: 'hsl(var(--neutral-gray900))',
+					black: 'hsl(var(--neutral-black))'
+				},
+				status: {
+					success: {
+						background: 'hsl(var(--status-success-background))',
+						text: 'hsl(var(--status-success-text))',
+						border: 'hsl(var(--status-success-border))'
+					},
+					warning: {
+						background: 'hsl(var(--status-warning-background))',
+						text: 'hsl(var(--status-warning-text))',
+						border: 'hsl(var(--status-warning-border))'
+					},
+					danger: {
+						background: 'hsl(var(--status-danger-background))',
+						text: 'hsl(var(--status-danger-text))',
+						border: 'hsl(var(--status-danger-border))'
+					},
+					info: {
+						background: 'hsl(var(--status-info-background))',
+						text: 'hsl(var(--status-info-text))',
+						border: 'hsl(var(--status-info-border))'
+					},
+					pending: {
+						background: 'hsl(var(--status-pending-background))',
+						text: 'hsl(var(--status-pending-text))'
+					}
+				},
+				text: {
+					primary: 'hsl(var(--text-primary))',
+					secondary: 'hsl(var(--text-secondary))',
+					tertiary: 'hsl(var(--text-tertiary))',
+					muted: 'hsl(var(--text-muted))',
+					inverse: 'hsl(var(--text-inverse))',
+					link: 'hsl(var(--text-link))'
 				}
+			},
+			spacing: {
+				'280': '280px'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
