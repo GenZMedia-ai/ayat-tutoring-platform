@@ -2,7 +2,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { SalesSidebar } from './sales/SalesSidebar';
+import SalesSidebar from './sales/SalesSidebar';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 
 const SalesDashboard: React.FC = () => {

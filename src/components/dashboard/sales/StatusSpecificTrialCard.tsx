@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { FamilyGroup } from '@/types/family';
-import { TrialSessionFlowStudentPartial } from '@/types/trial';
+import { TrialSessionFlowStudent } from '@/types/trial';
 import { format } from 'date-fns';
 
 interface StatusSpecificTrialCardProps {
@@ -61,19 +61,19 @@ export const StatusSpecificTrialCard: React.FC<StatusSpecificTrialCardProps> = (
   const data = item.data;
   
   // Helper functions
-  const getName = () => isFamily ? (data as FamilyGroup).parent_name : (data as TrialSessionFlowStudentPartial).name;
-  const getUniqueId = () => isFamily ? (data as FamilyGroup).unique_id : (data as TrialSessionFlowStudentPartial).uniqueId;
+  const getName = () => isFamily ? (data as FamilyGroup).parent_name : (data as TrialSessionFlowStudent).name;
+  const getUniqueId = () => isFamily ? (data as FamilyGroup).unique_id : (data as TrialSessionFlowStudent).uniqueId;
   const getStatus = () => data.status;
   const getPhone = () => data.phone;
   const getCountry = () => data.country;
   const getPlatform = () => data.platform;
   const getNotes = () => data.notes;
-  const getTrialDate = () => isFamily ? (data as FamilyGroup).trial_date : (data as TrialSessionFlowStudentPartial).trialDate;
-  const getTrialTime = () => isFamily ? (data as FamilyGroup).trial_time : (data as TrialSessionFlowStudentPartial).trialTime;
-  const getTeacherType = () => isFamily ? (data as FamilyGroup).teacher_type : (data as TrialSessionFlowStudentPartial).teacherType;
+  const getTrialDate = () => isFamily ? (data as FamilyGroup).trial_date : (data as TrialSessionFlowStudent).trialDate;
+  const getTrialTime = () => isFamily ? (data as FamilyGroup).trial_time : (data as TrialSessionFlowStudent).trialTime;
+  const getTeacherType = () => isFamily ? (data as FamilyGroup).teacher_type : (data as TrialSessionFlowStudent).teacherType;
   const getStudentCount = () => isFamily ? (data as FamilyGroup).student_count : 1;
-  const getAge = () => !isFamily ? (data as TrialSessionFlowStudentPartial).age : null;
-  const getParentName = () => !isFamily ? (data as TrialSessionFlowStudentPartial).parentName : null;
+  const getAge = () => !isFamily ? (data as TrialSessionFlowStudent).age : null;
+  const getParentName = () => !isFamily ? (data as TrialSessionFlowStudent).parentName : null;
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; label: string }> = {

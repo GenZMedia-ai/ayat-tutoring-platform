@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import { PaymentLinkSuccessModal } from '@/components/sales/PaymentLinkSuccessMo
 import { ScheduleFollowUpModal } from '@/components/sales/ScheduleFollowUpModal';
 import { CompleteFollowUpModal } from '@/components/sales/CompleteFollowUpModal';
 import { FamilyGroup } from '@/types/family';
-import { TrialSessionFlowStudentPartial } from '@/types/trial';
+import { TrialSessionFlowStudent } from '@/types/trial';
 import { toast } from 'sonner';
 
 const SalesTrialAppointments: React.FC = () => {
@@ -38,10 +39,10 @@ const SalesTrialAppointments: React.FC = () => {
     const data = item.data;
     const name = item.type === 'family' 
       ? (data as FamilyGroup).parent_name 
-      : (data as TrialSessionFlowStudentPartial).name;
+      : (data as TrialSessionFlowStudent).name;
     const uniqueId = item.type === 'family'
       ? (data as FamilyGroup).unique_id
-      : (data as TrialSessionFlowStudentPartial).uniqueId;
+      : (data as TrialSessionFlowStudent).uniqueId;
     
     const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          uniqueId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -71,7 +72,7 @@ const SalesTrialAppointments: React.FC = () => {
     const phone = item.data.phone;
     const name = item.type === 'family' 
       ? (item.data as FamilyGroup).parent_name 
-      : (item.data as TrialSessionFlowStudentPartial).name;
+      : (item.data as TrialSessionFlowStudent).name;
     
     const whatsappUrl = `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=Hello ${name}! This is regarding your trial session booking.`;
     window.open(whatsappUrl, '_blank');
@@ -83,7 +84,7 @@ const SalesTrialAppointments: React.FC = () => {
 
   const handleCompleteFollowUp = async (item: MixedStudentItem) => {
     if (item.type === 'individual') {
-      const studentData = item.data as TrialSessionFlowStudentPartial;
+      const studentData = item.data as TrialSessionFlowStudent;
       const followUpData = await getFollowUpData(studentData.id);
       
       if (followUpData) {
@@ -102,7 +103,7 @@ const SalesTrialAppointments: React.FC = () => {
   const handlePaymentLinkSuccess = (paymentData: any, studentData: any) => {
     const name = paymentLinkItem?.type === 'family' 
       ? (paymentLinkItem.data as FamilyGroup).parent_name 
-      : (paymentLinkItem.data as TrialSessionFlowStudentPartial).name;
+      : (paymentLinkItem.data as TrialSessionFlowStudent).name;
     
     setPaymentSuccessData({
       url: paymentData.url,
@@ -244,7 +245,7 @@ const SalesTrialAppointments: React.FC = () => {
         {/* Modals */}
         {editingItem && editingItem.type === 'individual' && (
           <StudentEditModal
-            student={editingItem.data as TrialSessionFlowStudentPartial}
+            student={editingItem.data as TrialSessionFlowStudent}
             open={!!editingItem}
             onClose={() => setEditingItem(null)}
             onSuccess={() => {
@@ -256,7 +257,7 @@ const SalesTrialAppointments: React.FC = () => {
 
         {changingStatusItem && changingStatusItem.type === 'individual' && (
           <StatusChangeModal
-            student={changingStatusItem.data as TrialSessionFlowStudentPartial}
+            student={changingStatusItem.data as TrialSessionFlowStudent}
             open={!!changingStatusItem}
             onClose={() => setChangingStatusItem(null)}
             onSuccess={() => {
