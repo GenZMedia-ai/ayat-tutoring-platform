@@ -59,12 +59,7 @@ export const useEnhancedSessionData = () => {
               package_name,
               package_session_count,
               family_group_id,
-              status,
-              family_groups(
-                id,
-                unique_id,
-                parent_name
-              )
+              status
             )
           )
         `)
@@ -77,17 +72,54 @@ export const useEnhancedSessionData = () => {
 
       if (sessionsError) throw sessionsError;
 
+      // Now get family group information separately for students that have family_group_id
+      const studentIds = (sessionsData || [])
+        .map(session => session.session_students[0]?.students?.id)
+        .filter(Boolean);
+
+      const { data: familyData, error: familyError } = await supabase
+        .from('students')
+        .select(`
+          id,
+          family_group_id,
+          family_groups!inner(
+            unique_id,
+            parent_name
+          )
+        `)
+        .in('id', studentIds)
+        .not('family_group_id', 'is', null);
+
+      if (familyError) {
+        console.warn('Error fetching family data:', familyError);
+      }
+
+      // Create a map of student ID to family info
+      const familyMap = new Map();
+      if (familyData) {
+        familyData.forEach(item => {
+          if (item.family_groups) {
+            familyMap.set(item.id, {
+              unique_id: item.family_groups.unique_id,
+              parent_name: item.family_groups.parent_name
+            });
+          }
+        });
+      }
+
       const enhancedSessions: EnhancedSessionData[] = (sessionsData || []).map((session) => {
         const student = session.session_students[0]?.students;
         if (!student) return null;
 
         const isFamily = !!student.family_group_id;
-        const parentName = isFamily 
-          ? student.family_groups?.parent_name || student.parent_name
+        const familyInfo = familyMap.get(student.id);
+        
+        const parentName = isFamily && familyInfo
+          ? familyInfo.parent_name || student.parent_name
           : student.parent_name;
         
-        const familyId = isFamily 
-          ? student.family_groups?.unique_id
+        const familyId = isFamily && familyInfo
+          ? familyInfo.unique_id
           : undefined;
 
         // Calculate progress excluding trial session (session_number = 1)
