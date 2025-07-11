@@ -1,14 +1,13 @@
-
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Filter, Calendar } from 'lucide-react';
 import { useMixedStudentData, MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { useStudentFollowUp } from '@/hooks/useStudentFollowUp';
-import { StatusSpecificTrialCard } from './StatusSpecificTrialCard';
-import { RealTimeMetrics } from './RealTimeMetrics';
+import { TrialStatusMetrics } from './TrialStatusMetrics';
+import { TrialAppointmentCard } from './TrialAppointmentCard';
 import { StudentEditModal } from '@/components/sales/StudentEditModal';
 import { StatusChangeModal } from '@/components/sales/StatusChangeModal';
 import { PaymentLinkModal } from '@/components/sales/PaymentLinkModal';
@@ -34,7 +33,7 @@ const SalesTrialAppointments: React.FC = () => {
     followUpData: any;
   } | null>(null);
 
-  // Filter items directly from useMixedStudentData (which already includes both individual and family items)
+  // Filter items directly from useMixedStudentData
   const filteredItems = items.filter(item => {
     const data = item.data;
     const name = item.type === 'family' 
@@ -146,6 +145,9 @@ const SalesTrialAppointments: React.FC = () => {
         </Button>
       </div>
 
+      {/* Status Metrics */}
+      <TrialStatusMetrics />
+
       {/* Search and Filter Controls */}
       <Card>
         <CardContent className="pt-6">
@@ -154,7 +156,7 @@ const SalesTrialAppointments: React.FC = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name, ID, or phone..."
+                  placeholder="Search appointments..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -180,18 +182,7 @@ const SalesTrialAppointments: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Real-Time Metrics Dashboard */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h4 className="text-lg font-semibold">Real-Time Metrics</h4>
-          <div className="text-xs text-muted-foreground">
-            Live updates • Auto-refresh enabled
-          </div>
-        </div>
-        <RealTimeMetrics />
-      </div>
-
-      {/* All Trials List */}
+      {/* Trial Appointments List */}
       {filteredItems.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
@@ -212,27 +203,12 @@ const SalesTrialAppointments: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredItems.map((item) => (
-            <StatusSpecificTrialCard
+            <TrialAppointmentCard
               key={`${item.type}-${item.id}`}
               item={item}
-              onEditInfo={setEditingItem}
               onContact={handleContact}
               onCreatePaymentLink={setPaymentLinkItem}
               onScheduleFollowUp={handleScheduleFollowUp}
-              onCompleteFollowUp={handleCompleteFollowUp}
-              onRescheduleFollowUp={(item) => {
-                toast.info('Reschedule follow-up functionality coming soon');
-              }}
-              onMarkAsDropped={(item) => {
-                toast.info('Mark as dropped functionality coming soon');
-              }}
-              onRescheduleAppointment={(item) => {
-                toast.info('Reschedule appointment functionality coming soon');
-              }}
-              onRecreatePaymentLink={setPaymentLinkItem}
-              onMarkAsCanceled={(item) => {
-                toast.info('Mark as canceled functionality coming soon');
-              }}
             />
           ))}
         </div>
