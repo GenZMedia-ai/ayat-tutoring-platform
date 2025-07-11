@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +7,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+
+// Protected Route Components
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { TeacherRoute, SalesRoute, AdminRoute, SupervisorRoute } from "@/components/auth/RoleGuards";
 
 // Dashboard Components
 import TeacherDashboard from "./components/dashboard/TeacherDashboard";
@@ -23,7 +28,7 @@ import TeacherRevenue from "./components/dashboard/teacher/TeacherRevenue";
 import TeacherPaidRegistration from "./components/dashboard/teacher/TeacherPaidRegistration";
 import TeacherSessionManagement from "./components/dashboard/teacher/TeacherSessionManagement";
 
-// Sales Tab Components - ANALYTICS REMOVED
+// Sales Tab Components
 import SalesHomepage from "./components/dashboard/sales/SalesHomepage";
 import SalesTrialAppointments from "./components/dashboard/sales/SalesTrialAppointments";
 import SalesPaymentLinks from "./components/dashboard/sales/SalesPaymentLinks";
@@ -65,9 +70,13 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             
-            {/* Teacher Routes */}
+            {/* Teacher Routes - Protected */}
             <Route path="/teacher" element={<Navigate to="/teacher/homepage" replace />} />
-            <Route path="/teacher/*" element={<TeacherDashboard />}>
+            <Route path="/teacher/*" element={
+              <TeacherRoute>
+                <TeacherDashboard />
+              </TeacherRoute>
+            }>
               <Route path="homepage" element={<TeacherHomepage />} />
               <Route path="availability" element={<TeacherAvailability />} />
               <Route path="trials" element={<TeacherTrials />} />
@@ -78,9 +87,13 @@ const App = () => (
               <Route index element={<Navigate to="homepage" replace />} />
             </Route>
 
-            {/* Sales Routes - ANALYTICS REMOVED */}
+            {/* Sales Routes - Protected */}
             <Route path="/sales" element={<Navigate to="/sales/homepage" replace />} />
-            <Route path="/sales/*" element={<SalesDashboard />}>
+            <Route path="/sales/*" element={
+              <SalesRoute>
+                <SalesDashboard />
+              </SalesRoute>
+            }>
               <Route path="homepage" element={<SalesHomepage />} />
               <Route path="trials" element={<SalesTrialAppointments />} />
               <Route path="payment-links" element={<SalesPaymentLinks />} />
@@ -89,9 +102,13 @@ const App = () => (
               <Route index element={<Navigate to="homepage" replace />} />
             </Route>
 
-            {/* Admin Routes */}
+            {/* Admin Routes - Protected */}
             <Route path="/admin" element={<Navigate to="/admin/homepage" replace />} />
-            <Route path="/admin/*" element={<AdminDashboard />}>
+            <Route path="/admin/*" element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            }>
               <Route path="homepage" element={<AdminHomepage />} />
               <Route path="user-management" element={<AdminUserManagement />} />
               <Route path="analytics" element={<BusinessIntelligenceDashboard />} />
@@ -106,9 +123,13 @@ const App = () => (
               <Route index element={<Navigate to="homepage" replace />} />
             </Route>
 
-            {/* Supervisor Routes */}
+            {/* Supervisor Routes - Protected */}
             <Route path="/supervisor" element={<Navigate to="/supervisor/homepage" replace />} />
-            <Route path="/supervisor/*" element={<SupervisorDashboard />}>
+            <Route path="/supervisor/*" element={
+              <SupervisorRoute>
+                <SupervisorDashboard />
+              </SupervisorRoute>
+            }>
               <Route path="homepage" element={<SupervisorHomepage />} />
               <Route path="alerts" element={<SupervisorAlerts />} />
               <Route path="team" element={<SupervisorTeam />} />
@@ -120,7 +141,7 @@ const App = () => (
               <Route index element={<Navigate to="homepage" replace />} />
             </Route>
 
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* Catch-all route - must be last */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

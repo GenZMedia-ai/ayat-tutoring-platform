@@ -1,9 +1,9 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { User as AppUser, TeacherType, UserRole } from '@/types';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: AppUser | null;
@@ -239,7 +239,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = async (): Promise<void> => {
     try {
       console.log('🚪 Logging out...');
+      
+      // Clear local state immediately
+      setUser(null);
+      setSession(null);
+      
+      // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
+      
       if (error) {
         console.error('❌ Logout error:', error);
         toast.error('Error signing out');
@@ -247,9 +254,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('✅ Logout successful');
         toast.success('Signed out successfully');
       }
+      
+      // Force navigation to login page
+      window.location.href = '/';
+      
     } catch (error) {
       console.error('❌ Logout error:', error);
       toast.error('Error signing out');
+      
+      // Even if there's an error, clear local state and redirect
+      setUser(null);
+      setSession(null);
+      window.location.href = '/';
     }
   };
 
