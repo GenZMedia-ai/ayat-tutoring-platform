@@ -1,8 +1,19 @@
+
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useMixedStudentData } from '@/hooks/useMixedStudentData';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  Clock, 
+  CheckCircle, 
+  UserCheck, 
+  CreditCard, 
+  UserPlus, 
+  DollarSign, 
+  UserX, 
+  XCircle 
+} from 'lucide-react';
 
 interface MetricsData {
   pending: number;
@@ -78,113 +89,127 @@ export const RealTimeMetrics: React.FC = () => {
   }, [getStatsCount]);
 
   const metricsConfig = [
-    { 
-      key: 'pending', 
-      label: 'Pending', 
-      colorType: 'tan',
-      priority: 'high'
+    {
+      key: 'pending',
+      label: 'Pending',
+      subtitle: 'Action Needed',
+      icon: Clock,
+      colorClass: 'text-amber-600',
+      bgClass: 'bg-amber-50',
+      borderClass: 'border-amber-200',
+      isActionNeeded: true
     },
-    { 
-      key: 'confirmed', 
-      label: 'Confirmed', 
-      colorType: 'brown',
-      priority: 'medium'
+    {
+      key: 'confirmed',
+      label: 'Confirmed',
+      subtitle: 'Scheduled',
+      icon: UserCheck,
+      colorClass: 'text-blue-600',
+      bgClass: 'bg-blue-50',
+      borderClass: 'border-blue-200',
+      isActionNeeded: false
     },
-    { 
-      key: 'completed', 
-      label: 'Completed', 
-      colorType: 'tan',
-      priority: 'high'
+    {
+      key: 'completed',
+      label: 'Completed',
+      subtitle: 'Action Needed',
+      icon: CheckCircle,
+      colorClass: 'text-green-600',
+      bgClass: 'bg-green-50',
+      borderClass: 'border-green-200',
+      isActionNeeded: true
     },
-    { 
-      key: 'awaiting_payment', 
-      label: 'Awaiting Payment', 
-      colorType: 'brown',
-      priority: 'high'
+    {
+      key: 'awaiting_payment',
+      label: 'Awaiting Payment',
+      subtitle: 'Action Needed',
+      icon: CreditCard,
+      colorClass: 'text-purple-600',
+      bgClass: 'bg-purple-50',
+      borderClass: 'border-purple-200',
+      isActionNeeded: true
     },
-    { 
-      key: 'follow_up', 
-      label: 'Follow-up', 
-      colorType: 'tan',
-      priority: 'medium'
+    {
+      key: 'follow_up',
+      label: 'Follow-up',
+      subtitle: 'Scheduled',
+      icon: UserPlus,
+      colorClass: 'text-orange-600',
+      bgClass: 'bg-orange-50',
+      borderClass: 'border-orange-200',
+      isActionNeeded: false
     },
-    { 
-      key: 'paid', 
-      label: 'Paid', 
-      colorType: 'brown',
-      priority: 'low'
+    {
+      key: 'paid',
+      label: 'Paid',
+      subtitle: 'Active',
+      icon: DollarSign,
+      colorClass: 'text-emerald-600',
+      bgClass: 'bg-emerald-50',
+      borderClass: 'border-emerald-200',
+      isActionNeeded: false
     },
-    { 
-      key: 'ghosted', 
-      label: 'Ghosted', 
-      colorType: 'tan',
-      priority: 'medium'
+    {
+      key: 'ghosted',
+      label: 'Ghosted',
+      subtitle: 'Action Needed',
+      icon: UserX,
+      colorClass: 'text-red-600',
+      bgClass: 'bg-red-50',
+      borderClass: 'border-red-200',
+      isActionNeeded: true
     },
-    { 
-      key: 'dropped', 
-      label: 'Dropped', 
-      colorType: 'brown',
-      priority: 'low'
+    {
+      key: 'dropped',
+      label: 'Dropped',
+      subtitle: 'Closed',
+      icon: XCircle,
+      colorClass: 'text-gray-600',
+      bgClass: 'bg-gray-50',
+      borderClass: 'border-gray-200',
+      isActionNeeded: false
     }
   ];
 
-  const getGradient = (colorType: string) => {
-    return colorType === 'tan' 
-      ? 'linear-gradient(90deg, #a57865, #b88974)'
-      : 'linear-gradient(90deg, #57463f, #6b574c)';
-  };
-
-  const getCountColor = (colorType: string) => {
-    return colorType === 'tan' ? '#a57865' : '#57463f';
-  };
-
   return (
-    <div className="flex gap-6 p-2 overflow-x-auto scrollbar-hide scroll-smooth md:gap-5 sm:gap-4">
-      {metricsConfig.map((metric, index) => {
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {metricsConfig.map((metric) => {
         const count = metrics[metric.key as keyof MetricsData];
-        const isHighPriority = metric.priority === 'high' && count > 0;
+        const IconComponent = metric.icon;
         
         return (
-          <div 
+          <Card 
             key={metric.key}
-            className="bg-white rounded-2xl px-6 py-8 min-w-[160px] flex-shrink-0 border border-gray-100 transition-all duration-300 relative text-center cursor-pointer overflow-hidden hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(165,120,101,0.1)] hover:border-gray-200 md:min-w-[140px] md:px-5 md:py-7 sm:min-w-[110px] sm:px-4 sm:py-5"
-            style={{ 
-              animationDelay: `${index * 0.1}s`,
-            }}
+            className={`bg-sales-bg-secondary border-sales-border shadow-sales-sm hover:shadow-sales-md transition-all duration-200 relative overflow-hidden`}
           >
-            {/* Top gradient bar */}
-            <div 
-              className="absolute top-0 left-0 right-0 h-0.5 transition-all duration-300 hover:h-1"
-              style={{
-                background: getGradient(metric.colorType)
-              }}
-            />
+            {/* Top accent bar */}
+            <div className={`absolute top-0 left-0 right-0 h-1 ${metric.isActionNeeded ? 'bg-sales-primary' : 'bg-sales-secondary'}`} />
             
-            {/* Count */}
-            <div 
-              className="text-4xl font-extralight leading-none mb-3 tracking-tight md:text-3xl sm:text-2xl"
-              style={{ color: getCountColor(metric.colorType) }}
-            >
-              {count}
-            </div>
-            
-            {/* Label */}
-            <div className="text-sm font-medium uppercase tracking-wider text-gray-700 md:text-xs sm:text-xs">
-              {metric.label}
-            </div>
-            
-            {/* Sublabel */}
-            <div className="text-xs text-gray-500 mt-1 font-normal">
-              {count === 1 ? 'item' : 'items'}
-            </div>
-
-            {/* High priority indicator */}
-            {isHighPriority && (
-              <div className="absolute top-3 right-3">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div className={`p-2 rounded-lg ${metric.bgClass} ${metric.borderClass} border`}>
+                  <IconComponent className={`h-5 w-5 ${metric.colorClass}`} />
+                </div>
+                {metric.isActionNeeded && (
+                  <div className="w-2 h-2 rounded-full bg-sales-primary animate-pulse" />
+                )}
               </div>
-            )}
-          </div>
+              
+              <div className="space-y-2">
+                <div className="text-3xl font-semibold text-sales-text-primary">
+                  {count}
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-sales-text-primary">
+                    {metric.label}
+                  </div>
+                  <div className="text-xs text-sales-text-muted">
+                    {metric.subtitle}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         );
       })}
     </div>
