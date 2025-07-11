@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LogOut, User } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import LanguageToggle from '@/components/common/LanguageToggle';
+import { LanguageToggle } from '@/components/common/LanguageToggle';
 import { useNavigate } from 'react-router-dom';
 
 const DashboardHeader: React.FC = () => {
