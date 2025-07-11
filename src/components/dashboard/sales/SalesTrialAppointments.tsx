@@ -8,7 +8,6 @@ import { Search, Filter, Calendar } from 'lucide-react';
 import { useMixedStudentData, MixedStudentItem } from '@/hooks/useMixedStudentData';
 import { useStudentFollowUp } from '@/hooks/useStudentFollowUp';
 import { StatusSpecificTrialCard } from './StatusSpecificTrialCard';
-import { TrialAppointmentCard } from './TrialAppointmentCard';
 import { RealTimeMetrics } from './RealTimeMetrics';
 import { StudentEditModal } from '@/components/sales/StudentEditModal';
 import { StatusChangeModal } from '@/components/sales/StatusChangeModal';
@@ -155,7 +154,7 @@ const SalesTrialAppointments: React.FC = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search appointments..."
+                  placeholder="Search by name, ID, or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -211,14 +210,29 @@ const SalesTrialAppointments: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredItems.map((item) => (
-            <TrialAppointmentCard
+            <StatusSpecificTrialCard
               key={`${item.type}-${item.id}`}
               item={item}
+              onEditInfo={setEditingItem}
               onContact={handleContact}
               onCreatePaymentLink={setPaymentLinkItem}
               onScheduleFollowUp={handleScheduleFollowUp}
+              onCompleteFollowUp={handleCompleteFollowUp}
+              onRescheduleFollowUp={(item) => {
+                toast.info('Reschedule follow-up functionality coming soon');
+              }}
+              onMarkAsDropped={(item) => {
+                toast.info('Mark as dropped functionality coming soon');
+              }}
+              onRescheduleAppointment={(item) => {
+                toast.info('Reschedule appointment functionality coming soon');
+              }}
+              onRecreatePaymentLink={setPaymentLinkItem}
+              onMarkAsCanceled={(item) => {
+                toast.info('Mark as canceled functionality coming soon');
+              }}
             />
           ))}
         </div>
