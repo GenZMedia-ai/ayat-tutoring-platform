@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -63,89 +64,91 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            
-            {/* Teacher Routes - Protected */}
-            <Route path="/teacher" element={<Navigate to="/teacher/homepage" replace />} />
-            <Route path="/teacher/*" element={
-              <TeacherRoute>
-                <TeacherDashboard />
-              </TeacherRoute>
-            }>
-              <Route path="homepage" element={<TeacherHomepage />} />
-              <Route path="availability" element={<TeacherAvailability />} />
-              <Route path="trials" element={<TeacherTrials />} />
-              <Route path="students" element={<TeacherStudents />} />
-              <Route path="revenue" element={<TeacherRevenue />} />
-              <Route path="paid-registration" element={<TeacherPaidRegistration />} />
-              <Route path="session-management" element={<TeacherSessionManagement />} />
-              <Route index element={<Navigate to="homepage" replace />} />
-            </Route>
+      <LanguageProvider>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              
+              {/* Teacher Routes - Protected */}
+              <Route path="/teacher" element={<Navigate to="/teacher/homepage" replace />} />
+              <Route path="/teacher/*" element={
+                <TeacherRoute>
+                  <TeacherDashboard />
+                </TeacherRoute>
+              }>
+                <Route path="homepage" element={<TeacherHomepage />} />
+                <Route path="availability" element={<TeacherAvailability />} />
+                <Route path="trials" element={<TeacherTrials />} />
+                <Route path="students" element={<TeacherStudents />} />
+                <Route path="revenue" element={<TeacherRevenue />} />
+                <Route path="paid-registration" element={<TeacherPaidRegistration />} />
+                <Route path="session-management" element={<TeacherSessionManagement />} />
+                <Route index element={<Navigate to="homepage" replace />} />
+              </Route>
 
-            {/* Sales Routes - Protected */}
-            <Route path="/sales" element={<Navigate to="/sales/homepage" replace />} />
-            <Route path="/sales/*" element={
-              <SalesRoute>
-                <SalesDashboard />
-              </SalesRoute>
-            }>
-              <Route path="homepage" element={<SalesHomepage />} />
-              <Route path="trials" element={<SalesTrialAppointments />} />
-              <Route path="payment-links" element={<SalesPaymentLinks />} />
-              <Route path="followup" element={<SalesFollowup />} />
-              <Route path="students" element={<SalesStudents />} />
-              <Route index element={<Navigate to="homepage" replace />} />
-            </Route>
+              {/* Sales Routes - Protected */}
+              <Route path="/sales" element={<Navigate to="/sales/homepage" replace />} />
+              <Route path="/sales/*" element={
+                <SalesRoute>
+                  <SalesDashboard />
+                </SalesRoute>
+              }>
+                <Route path="homepage" element={<SalesHomepage />} />
+                <Route path="trials" element={<SalesTrialAppointments />} />
+                <Route path="payment-links" element={<SalesPaymentLinks />} />
+                <Route path="followup" element={<SalesFollowup />} />
+                <Route path="students" element={<SalesStudents />} />
+                <Route index element={<Navigate to="homepage" replace />} />
+              </Route>
 
-            {/* Admin Routes - Protected */}
-            <Route path="/admin" element={<Navigate to="/admin/homepage" replace />} />
-            <Route path="/admin/*" element={
-              <AdminRoute>
-                <AdminDashboard />
-              </AdminRoute>
-            }>
-              <Route path="homepage" element={<AdminHomepage />} />
-              <Route path="user-management" element={<AdminUserManagement />} />
-              <Route path="analytics" element={<BusinessIntelligenceDashboard />} />
-              <Route path="configuration" element={<SystemConfigurationPanel />} />
-              <Route path="trials" element={<AdminTrials />} />
-              <Route path="students" element={<AdminStudents />} />
-              <Route path="sessions" element={<AdminSessions />} />
-              <Route path="settings" element={<AdminSettings />} />
-              <Route path="settings/packages" element={<AdminPackages />} />
-              <Route path="settings/currencies" element={<AdminCurrencies />} />
-              <Route path="notifications" element={<NotificationCenter />} />
-              <Route index element={<Navigate to="homepage" replace />} />
-            </Route>
+              {/* Admin Routes - Protected */}
+              <Route path="/admin" element={<Navigate to="/admin/homepage" replace />} />
+              <Route path="/admin/*" element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              }>
+                <Route path="homepage" element={<AdminHomepage />} />
+                <Route path="user-management" element={<AdminUserManagement />} />
+                <Route path="analytics" element={<BusinessIntelligenceDashboard />} />
+                <Route path="configuration" element={<SystemConfigurationPanel />} />
+                <Route path="trials" element={<AdminTrials />} />
+                <Route path="students" element={<AdminStudents />} />
+                <Route path="sessions" element={<AdminSessions />} />
+                <Route path="settings" element={<AdminSettings />} />
+                <Route path="settings/packages" element={<AdminPackages />} />
+                <Route path="settings/currencies" element={<AdminCurrencies />} />
+                <Route path="notifications" element={<NotificationCenter />} />
+                <Route index element={<Navigate to="homepage" replace />} />
+              </Route>
 
-            {/* Supervisor Routes - Protected */}
-            <Route path="/supervisor" element={<Navigate to="/supervisor/homepage" replace />} />
-            <Route path="/supervisor/*" element={
-              <SupervisorRoute>
-                <SupervisorDashboard />
-              </SupervisorRoute>
-            }>
-              <Route path="homepage" element={<SupervisorHomepage />} />
-              <Route path="alerts" element={<SupervisorAlerts />} />
-              <Route path="team" element={<SupervisorTeam />} />
-              <Route path="quality" element={<SupervisorQuality />} />
-              <Route path="reassignment" element={<SupervisorReassignment />} />
-              <Route path="students" element={<SupervisorStudents />} />
-              <Route path="sessions" element={<SupervisorSessions />} />
-              <Route path="analysis" element={<SupervisorAnalysis />} />
-              <Route index element={<Navigate to="homepage" replace />} />
-            </Route>
+              {/* Supervisor Routes - Protected */}
+              <Route path="/supervisor" element={<Navigate to="/supervisor/homepage" replace />} />
+              <Route path="/supervisor/*" element={
+                <SupervisorRoute>
+                  <SupervisorDashboard />
+                </SupervisorRoute>
+              }>
+                <Route path="homepage" element={<SupervisorHomepage />} />
+                <Route path="alerts" element={<SupervisorAlerts />} />
+                <Route path="team" element={<SupervisorTeam />} />
+                <Route path="quality" element={<SupervisorQuality />} />
+                <Route path="reassignment" element={<SupervisorReassignment />} />
+                <Route path="students" element={<SupervisorStudents />} />
+                <Route path="sessions" element={<SupervisorSessions />} />
+                <Route path="analysis" element={<SupervisorAnalysis />} />
+                <Route index element={<Navigate to="homepage" replace />} />
+              </Route>
 
-            {/* Catch-all route - must be last */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+              {/* Catch-all route - must be last */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </LanguageProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
