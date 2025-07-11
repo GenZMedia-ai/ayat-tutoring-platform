@@ -80,7 +80,7 @@ export const useTeacherSessionsEnhanced = () => {
               payment_currency,
               parent_name,
               phone,
-              family_groups(
+              family_groups!fk_students_family_group(
                 id,
                 parent_name,
                 phone,
@@ -116,8 +116,8 @@ export const useTeacherSessionsEnhanced = () => {
           const student = session.session_students[0]?.students;
           if (!student) return null;
 
-          // Fix: Access family_groups as an array and get the first element
-          const familyGroup = student.family_groups && student.family_groups[0] ? student.family_groups[0] : null;
+          // Fix: Access family_groups correctly from the nested query
+          const familyGroup = student.family_groups;
 
           // Get total completed sessions for this student
           const { data: progressData } = await supabase
