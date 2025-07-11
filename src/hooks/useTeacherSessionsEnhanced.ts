@@ -116,7 +116,8 @@ export const useTeacherSessionsEnhanced = () => {
           const student = session.session_students[0]?.students;
           if (!student) return null;
 
-          const familyGroup = student.family_groups?.[0];
+          // Fix: Access family_groups as an array and get the first element
+          const familyGroup = student.family_groups && student.family_groups[0] ? student.family_groups[0] : null;
 
           // Get total completed sessions for this student
           const { data: progressData } = await supabase
