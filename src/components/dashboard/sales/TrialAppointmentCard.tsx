@@ -55,7 +55,7 @@ export const TrialAppointmentCard: React.FC<TrialAppointmentCardProps> = ({
   const getAge = () => !isFamily ? (data as TrialSessionFlowStudent).age : null;
   const getUniqueId = () => isFamily ? (data as FamilyGroup).unique_id : (data as TrialSessionFlowStudent).uniqueId;
   const getPhone = () => data.phone;
-  const getTeacherType = () => data.teacher_type;
+  const getTeacherType = () => isFamily ? (data as FamilyGroup).teacher_type : (data as TrialSessionFlowStudent).teacherType;
   const getTrialDate = () => isFamily ? (data as FamilyGroup).trial_date : (data as TrialSessionFlowStudent).trialDate;
   const getTrialTime = () => isFamily ? (data as FamilyGroup).trial_time : (data as TrialSessionFlowStudent).trialTime;
   const getNotes = () => data.notes;
