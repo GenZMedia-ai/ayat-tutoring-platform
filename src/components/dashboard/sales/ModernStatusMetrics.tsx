@@ -10,58 +10,79 @@ const ModernStatusMetrics: React.FC = () => {
     {
       title: 'Pending Confirmation',
       count: getStatsCount('pending'),
-      color: 'bg-orange-50 border-orange-200',
-      textColor: 'text-orange-800',
-      numberColor: 'text-orange-600'
+      color: 'bg-stone-50 border-stone-200',
+      textColor: 'text-stone-800',
+      numberColor: 'text-stone-600'
     },
     {
       title: 'Confirmed',
       count: getStatsCount('confirmed'),
-      color: 'bg-blue-50 border-blue-200',
-      textColor: 'text-blue-800',
-      numberColor: 'text-blue-600'
+      color: 'bg-stone-50 border-stone-200',
+      textColor: 'text-stone-800',
+      numberColor: 'text-stone-600'
     },
     {
       title: 'Trial Completed',
       count: getStatsCount('trial-completed'),
-      color: 'bg-green-50 border-green-200',
-      textColor: 'text-green-800',
-      numberColor: 'text-green-600'
+      color: 'bg-stone-50 border-stone-200',
+      textColor: 'text-stone-800',
+      numberColor: 'text-stone-600'
     },
     {
       title: 'Trial Ghosted',
       count: getStatsCount('trial-ghosted'),
-      color: 'bg-red-50 border-red-200',
-      textColor: 'text-red-800',
-      numberColor: 'text-red-600'
+      color: 'bg-stone-50 border-stone-200',
+      textColor: 'text-stone-800',
+      numberColor: 'text-stone-600'
     },
     {
       title: 'Follow-up',
       count: getStatsCount('follow-up'),
-      color: 'bg-amber-50 border-amber-200',
-      textColor: 'text-amber-800',
-      numberColor: 'text-amber-600'
+      color: 'bg-stone-50 border-stone-200',
+      textColor: 'text-stone-800',
+      numberColor: 'text-stone-600'
     },
     {
       title: 'Awaiting Payment',
       count: getStatsCount('awaiting-payment'),
-      color: 'bg-purple-50 border-purple-200',
-      textColor: 'text-purple-800',
-      numberColor: 'text-purple-600'
+      color: 'bg-stone-50 border-stone-200',
+      textColor: 'text-stone-800',
+      numberColor: 'text-stone-600'
     },
     {
       title: 'Paid',
       count: getStatsCount('paid'),
-      color: 'bg-emerald-50 border-emerald-200',
-      textColor: 'text-emerald-800',
-      numberColor: 'text-emerald-600'
+      color: 'bg-stone-50 border-stone-200',
+      textColor: 'text-stone-800',
+      numberColor: 'text-stone-600'
     },
     {
       title: 'Active',
       count: getStatsCount('active'),
-      color: 'bg-cyan-50 border-cyan-200',
-      textColor: 'text-cyan-800',
-      numberColor: 'text-cyan-600'
+      color: 'bg-stone-50 border-stone-200',
+      textColor: 'text-stone-800',
+      numberColor: 'text-stone-600'
+    },
+    {
+      title: 'Expired',
+      count: getStatsCount('expired'),
+      color: 'bg-stone-50 border-stone-200',
+      textColor: 'text-stone-800',
+      numberColor: 'text-stone-600'
+    },
+    {
+      title: 'Cancelled',
+      count: getStatsCount('cancelled'),
+      color: 'bg-stone-50 border-stone-200',
+      textColor: 'text-stone-800',
+      numberColor: 'text-stone-600'
+    },
+    {
+      title: 'Dropped',
+      count: getStatsCount('dropped'),
+      color: 'bg-stone-50 border-stone-200',
+      textColor: 'text-stone-800',
+      numberColor: 'text-stone-600'
     }
   ];
 
