@@ -82,7 +82,7 @@ export const useEnhancedSessionData = () => {
         .select(`
           id,
           family_group_id,
-          family_groups!inner(
+          family_groups!students_family_group_id_fkey(
             unique_id,
             parent_name
           )
