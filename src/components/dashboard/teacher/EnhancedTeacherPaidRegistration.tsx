@@ -1,12 +1,10 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { DateFilter, DateRange } from '@/components/teacher/DateFilter';
 import PaidStudentsSection from '@/components/teacher/PaidStudentsSection';
 
 const EnhancedTeacherPaidRegistration: React.FC = () => {
-  const [dateRange, setDateRange] = useState<DateRange>('today');
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
 
@@ -17,10 +15,9 @@ const EnhancedTeacherPaidRegistration: React.FC = () => {
           <h1 className="text-2xl font-bold text-primary">{t('paidRegistration.title')}</h1>
           <p className="text-muted-foreground">{t('paidRegistration.subtitle')}</p>
         </div>
-        <DateFilter value={dateRange} onChange={setDateRange} />
       </div>
 
-      <PaidStudentsSection dateRange={dateRange} />
+      <PaidStudentsSection />
     </div>
   );
 };

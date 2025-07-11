@@ -40,7 +40,7 @@ serve(async (req) => {
     
     logStep("User authenticated", { userId: user.id });
 
-    // Get paid students for this teacher with enhanced package data
+    // Get paid students for this teacher with enhanced package data and payment info
     const { data: paidStudents, error: studentsError } = await supabaseClient
       .from('students')
       .select(`
@@ -62,7 +62,7 @@ serve(async (req) => {
       `)
       .eq('assigned_teacher_id', user.id)
       .eq('status', 'paid')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true }); // Sort by oldest first
 
     if (studentsError) {
       logStep("Error fetching paid students", { error: studentsError });
@@ -70,6 +70,30 @@ serve(async (req) => {
     }
 
     logStep("Found paid students", { count: paidStudents?.length || 0 });
+
+    // Get payment dates for all students
+    const studentIds = paidStudents?.map(s => s.id) || [];
+    const { data: paymentLinks } = studentIds.length > 0 
+      ? await supabaseClient
+          .from('payment_links')
+          .select('student_ids, paid_at, family_group_id')
+          .or(`student_ids.cs.{${studentIds.join(',')}},family_group_id.in.(${[...new Set(paidStudents?.filter(s => s.family_group_id).map(s => s.family_group_id))].join(',')})`)
+          .not('paid_at', 'is', null)
+      : { data: [] };
+
+    // Create payment date lookup
+    const paymentDateLookup = new Map();
+    paymentLinks?.forEach(link => {
+      if (link.family_group_id) {
+        // Family payment
+        paymentDateLookup.set(`family_${link.family_group_id}`, link.paid_at);
+      } else if (link.student_ids) {
+        // Individual payments
+        link.student_ids.forEach(studentId => {
+          paymentDateLookup.set(studentId, link.paid_at);
+        });
+      }
+    });
 
     // Get family groups for family members
     const familyIds = [...new Set(paidStudents?.filter(s => s.family_group_id).map(s => s.family_group_id))];
@@ -85,7 +109,6 @@ serve(async (req) => {
     }
 
     // Check registration status for students
-    const studentIds = paidStudents?.map(s => s.id) || [];
     const { data: sessions } = studentIds.length > 0
       ? await supabaseClient
           .from('session_students')
@@ -103,6 +126,11 @@ serve(async (req) => {
     for (const student of paidStudents || []) {
       const hasCompletedRegistration = registeredStudentIds.has(student.id);
       
+      // Get payment date
+      const paymentDate = student.family_group_id 
+        ? paymentDateLookup.get(`family_${student.family_group_id}`)
+        : paymentDateLookup.get(student.id);
+      
       const transformedStudent = {
         id: student.id,
         uniqueId: student.unique_id,
@@ -116,7 +144,7 @@ serve(async (req) => {
         packageName: student.package_name || 'Standard Package',
         paymentAmount: student.payment_amount || 0,
         paymentCurrency: (student.payment_currency || 'USD').toUpperCase(),
-        paymentDate: student.created_at,
+        paymentDate: paymentDate || student.created_at,
         notes: student.notes,
         hasCompletedRegistration,
         isFamilyMember: !!student.family_group_id,
@@ -132,6 +160,7 @@ serve(async (req) => {
             familyName: familyGroup?.parent_name || student.parent_name || 'Unknown Family',
             parentName: familyGroup?.parent_name || student.parent_name,
             parentPhone: familyGroup?.phone || student.phone,
+            paymentDate: paymentDate || student.created_at,
             students: [],
             totalStudents: 0,
             scheduledStudents: 0,
