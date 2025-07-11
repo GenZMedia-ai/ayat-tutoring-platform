@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -62,31 +61,6 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				},
-				// Sales Dashboard Colors
-				sales: {
-					primary: {
-						DEFAULT: 'hsl(var(--sales-primary))',
-						light: 'hsl(var(--sales-primary-light))',
-						dark: 'hsl(var(--sales-primary-dark))',
-					},
-					secondary: 'hsl(var(--sales-secondary))',
-					tertiary: 'hsl(var(--sales-tertiary))',
-					bg: {
-						primary: 'hsl(var(--sales-bg-primary))',
-						secondary: 'hsl(var(--sales-bg-secondary))',
-						tertiary: 'hsl(var(--sales-bg-tertiary))',
-					},
-					text: {
-						primary: 'hsl(var(--sales-text-primary))',
-						secondary: 'hsl(var(--sales-text-secondary))',
-						tertiary: 'hsl(var(--sales-text-tertiary))',
-						muted: 'hsl(var(--sales-text-muted))',
-					},
-					border: {
-						DEFAULT: 'hsl(var(--sales-border))',
-						light: 'hsl(var(--sales-border-light))',
-					}
 				}
 			},
 			borderRadius: {
@@ -115,14 +89,6 @@ export default {
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out'
-			},
-			boxShadow: {
-				'sales-xs': '0 1px 2px rgba(0, 0, 0, 0.04)',
-				'sales-sm': '0 2px 4px rgba(0, 0, 0, 0.04)',
-				'sales-md': '0 4px 8px rgba(0, 0, 0, 0.08)',
-				'sales-lg': '0 8px 16px rgba(0, 0, 0, 0.12)',
-				'sales-xl': '0 12px 24px rgba(0, 0, 0, 0.16)',
-				'sales-focus': '0 0 0 3px rgba(160, 130, 109, 0.1)',
 			}
 		}
 	},

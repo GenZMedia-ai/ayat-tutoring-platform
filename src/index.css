@@ -45,25 +45,6 @@
     --sidebar-accent-foreground: 25 15% 25%;
     --sidebar-border: 25 20% 91%;
     --sidebar-ring: 25 25% 65%;
-
-    /* Sales Dashboard Specific Colors */
-    --sales-primary: 25 25% 63%; /* #A0826D */
-    --sales-primary-light: 25 25% 75%; /* #B89880 */
-    --sales-primary-dark: 28 35% 47%; /* #8B6F47 */
-    --sales-secondary: 33 45% 65%; /* #D4A574 */
-    --sales-tertiary: 28 35% 40%; /* #6B5637 */
-    
-    --sales-bg-primary: 220 14% 96%; /* #F8F9FA */
-    --sales-bg-secondary: 0 0% 100%; /* #FFFFFF */
-    --sales-bg-tertiary: 220 9% 96%; /* #F5F5F7 */
-    
-    --sales-text-primary: 218 11% 15%; /* #212529 */
-    --sales-text-secondary: 215 14% 42%; /* #6C757D */
-    --sales-text-tertiary: 220 9% 53%; /* #868E96 */
-    --sales-text-muted: 218 11% 68%; /* #ADB5BD */
-    
-    --sales-border: 220 13% 91%; /* #E9ECEF */
-    --sales-border-light: 220 13% 91%; /* #DEE2E6 */
   }
 
   .dark {
@@ -113,50 +94,6 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-  }
-}
-
-/* Sales Dashboard Design System Classes */
-@layer components {
-  /* Colors */
-  .bg-sales-primary { @apply bg-[hsl(var(--sales-primary))]; }
-  .bg-sales-secondary { @apply bg-[hsl(var(--sales-secondary))]; }
-  .bg-sales-tertiary { @apply bg-[hsl(var(--sales-tertiary))]; }
-  .bg-sales-bg-primary { @apply bg-[hsl(var(--sales-bg-primary))]; }
-  .bg-sales-bg-secondary { @apply bg-[hsl(var(--sales-bg-secondary))]; }
-  .bg-sales-bg-tertiary { @apply bg-[hsl(var(--sales-bg-tertiary))]; }
-  
-  .text-sales-primary { @apply text-[hsl(var(--sales-primary))]; }
-  .text-sales-text-primary { @apply text-[hsl(var(--sales-text-primary))]; }
-  .text-sales-text-secondary { @apply text-[hsl(var(--sales-text-secondary))]; }
-  .text-sales-text-tertiary { @apply text-[hsl(var(--sales-text-tertiary))]; }
-  .text-sales-text-muted { @apply text-[hsl(var(--sales-text-muted))]; }
-  
-  .border-sales-primary { @apply border-[hsl(var(--sales-primary))]; }
-  .border-sales-border { @apply border-[hsl(var(--sales-border))]; }
-  .border-sales-border-light { @apply border-[hsl(var(--sales-border-light))]; }
-
-  /* Shadows */
-  .shadow-sales-xs { @apply shadow-[0_1px_2px_rgba(0,0,0,0.04)]; }
-  .shadow-sales-sm { @apply shadow-[0_2px_4px_rgba(0,0,0,0.04)]; }
-  .shadow-sales-md { @apply shadow-[0_4px_8px_rgba(0,0,0,0.08)]; }
-  .shadow-sales-lg { @apply shadow-[0_8px_16px_rgba(0,0,0,0.12)]; }
-
-  /* Button Styles */
-  .sales-btn-primary {
-    @apply bg-[hsl(var(--sales-primary))] text-white border-none rounded-lg px-4 py-2 text-sm font-medium shadow-none transition-all duration-200 hover:bg-[hsl(var(--sales-primary-dark))] hover:shadow-[0_2px_4px_rgba(0,0,0,0.1)] hover:-translate-y-px active:bg-[hsl(var(--sales-primary-dark))] active:translate-y-0 disabled:bg-[hsl(var(--sales-border))] disabled:cursor-not-allowed disabled:opacity-60;
-  }
-  
-  .sales-btn-secondary {
-    @apply bg-[hsl(var(--sales-secondary))] text-white border-none rounded-lg px-4 py-2 text-sm font-medium hover:bg-[hsl(var(--sales-secondary))]/90 transition-all duration-200;
-  }
-  
-  .sales-btn-tertiary {
-    @apply bg-[hsl(var(--sales-tertiary))] text-white border-none rounded-lg px-4 py-2 text-sm font-medium hover:bg-[hsl(var(--sales-tertiary))]/90 transition-all duration-200;
-  }
-  
-  .sales-btn-ghost {
-    @apply bg-transparent text-[hsl(var(--sales-primary))] border border-[hsl(var(--sales-primary))] rounded-lg px-3 py-2 text-sm font-medium hover:bg-[hsl(var(--sales-primary))]/10 hover:border-[hsl(var(--sales-primary-dark))] transition-all duration-200;
   }
 }
 
