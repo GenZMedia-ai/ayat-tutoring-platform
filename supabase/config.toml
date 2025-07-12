@@ -1,5 +1,5 @@
 
-project_id = "aqxmhzgnsngxgdfshlkn"
+project_id = "stydrjtstqlozbonskxo"
 
 [api]
 enabled = true
@@ -30,9 +30,9 @@ file_size_limit = "50MiB"
 enabled = true
 port = 54326
 site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://aqxmhzgnsngxgdfshlkn.supabase.co"]
+additional_redirect_urls = ["https://stydrjtstqlozbonskxo.supabase.co"]
 jwt_expiry = 3600
-jwt_secret = "super-secret-jwt-token-with-at-least-32-characters-long"
+jwt_secret = "27hGn5vrNH3s7Kh+GqeMPaqZSCEkDVX4WwW45xClPWwKE4QJ0bD+3/yZJw4A2dkq6S2tZGJ55Hjg1k2Gr0VfeQ=="
 enable_signup = true
 email_confirm = false
 
